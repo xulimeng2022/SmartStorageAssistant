@@ -9,12 +9,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,12 +22,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -50,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -87,6 +90,7 @@ fun HomeRoute(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val parseState by viewModel.parseState.collectAsStateWithLifecycle()
     val timeoutDialog by viewModel.timeoutDialog.collectAsStateWithLifecycle()
+    val isInitialEmpty by viewModel.isInitialEmpty.collectAsStateWithLifecycle()
 
     HomeScreen(
         items = items,
@@ -94,6 +98,7 @@ fun HomeRoute(
         searchQuery = searchQuery,
         parseState = parseState,
         timeoutDialog = timeoutDialog,
+        isInitialEmpty = isInitialEmpty,
         onUndoDelete = viewModel::undoDelete,
         onConsumeUndo = viewModel::consumeUndo,
         onSearchQueryChange = viewModel::onSearchQueryChange,
@@ -119,6 +124,7 @@ fun HomeScreen(
     undoEvent: Item?,
     searchQuery: String,
     parseState: SearchParseState,
+    isInitialEmpty: Boolean,
     onUndoDelete: () -> Unit,
     onConsumeUndo: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
@@ -169,10 +175,11 @@ fun HomeScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // ===== 1. 标题栏（固定高度）=====
+            // ===== 1. 标题栏（固定高度；顶部避开系统状态栏）=====
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -193,18 +200,20 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // 搜索输入框：weight(1f) 占满剩余宽度，单行固定高度，文字实时可见
+            // 搜索输入框：weight(1f) 占满剩余宽度，固定高度 56dp，带圆角阴影
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
-                placeholder = { Text("搜索物品...") },
+                placeholder = { Text("搜索物品，试试语音...") },
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
                     color = MaterialTheme.colorScheme.onSurface,
                 ),
                 leadingIcon = {
+                    // 放大镜图标：使用 onSurfaceVariant 弱化
                     Icon(
                         imageVector = Icons.Outlined.Search,
                         contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 },
                 trailingIcon = {
@@ -221,58 +230,72 @@ fun HomeScreen(
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(24.dp),
+                // 背景使用 surfaceContainerHighest、边框透明，整体靠圆角 + 阴影体现质感
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
-                    unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 ),
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxHeight()
+                    .height(56.dp)
+                    // 轻微阴影（2dp），clip = false 避免阴影被圆角容器裁剪
+                    .shadow(
+                        elevation = 2.dp,
+                        shape = RoundedCornerShape(24.dp),
+                        clip = false,
+                    )
                     .focusRequester(searchFocusRequester)
                     .onFocusChanged { if (it.isFocused) maybeShowSearchTips() },
             )
 
-            // 麦克风按钮（固定 48dp，带 Emoji）：聚焦搜索框并调起键盘语音
-            EmojiIconButton(
-                onClick = {
-                    searchFocusRequester.requestFocus()
-                    keyboardController?.show()
-                    Toast.makeText(
-                        context,
-                        "请用键盘语音说出要找的物品",
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                },
-                modifier = Modifier.size(48.dp),
+            // 右侧按钮组：麦克风 + 智能解析（两按钮之间间距 4dp；与搜索框间距 8dp）
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Mic,
-                    contentDescription = "语音搜索",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            // 智能解析按钮（固定 48dp，带 Emoji）：提取搜索关键词并填入搜索框
-            EmojiIconButton(
-                onClick = {
-                    if (searchQuery.isBlank()) {
-                        Toast.makeText(context, "请先输入搜索内容", Toast.LENGTH_SHORT).show()
-                    } else {
-                        onAiParse()
-                    }
-                },
-                modifier = Modifier.size(48.dp),
-            ) {
-                if (parseState == SearchParseState.Parsing) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                } else {
+                // 麦克风按钮（固定 48dp，带 Emoji）：聚焦搜索框并调起键盘语音
+                EmojiIconButton(
+                    onClick = {
+                        searchFocusRequester.requestFocus()
+                        keyboardController?.show()
+                        Toast.makeText(
+                            context,
+                            "请用键盘语音说出要找的物品",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    },
+                    modifier = Modifier.size(48.dp),
+                ) {
                     Icon(
-                        imageVector = Icons.Outlined.AutoAwesome,
-                        contentDescription = "智能解析",
-                        tint = MaterialTheme.colorScheme.primary,
+                        imageVector = Icons.Outlined.Mic,
+                        contentDescription = "语音搜索",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+
+                // 智能解析按钮（固定 48dp，带 Emoji）：提取搜索关键词并填入搜索框
+                EmojiIconButton(
+                    onClick = {
+                        if (searchQuery.isBlank()) {
+                            Toast.makeText(context, "请先输入搜索内容", Toast.LENGTH_SHORT).show()
+                        } else {
+                            onAiParse()
+                        }
+                    },
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    // 解析中：显示加载圈；解析完成：恢复图标
+                    if (parseState == SearchParseState.Parsing) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.AutoAwesome,
+                            contentDescription = "智能解析",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
             }
         }
@@ -288,23 +311,32 @@ fun HomeScreen(
         }
 
         // ===== 3. 物品列表 / 空状态（占据剩余全部空间）=====
-        if (items.isEmpty()) {
-            EmptyState(onAddClick = onAddClick, modifier = Modifier.weight(1f))
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(items, key = { it.id }) { item ->
-                    ItemCard(
-                        item = item,
-                        onClick = { onItemClick(item) },
-                        onDelete = { onDeleteClick(item) },
-                    )
+        when {
+            // 有物品：正常列表
+            items.isNotEmpty() -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(items, key = { it.id }) { item ->
+                        ItemCard(
+                            item = item,
+                            onClick = { onItemClick(item) },
+                            onDelete = { onDeleteClick(item) },
+                        )
+                    }
                 }
+            }
+            // 从未添加过任何物品：显示圆形“添加物品”按钮（引导添加）
+            isInitialEmpty -> {
+                EmptyState(onAddClick = onAddClick, modifier = Modifier.weight(1f))
+            }
+            // 搜索/筛选无结果：显示“未找到相关物品”提示
+            else -> {
+                NoResultState(searchQuery = searchQuery, modifier = Modifier.weight(1f))
             }
         }
         }
@@ -395,11 +427,29 @@ private fun ItemCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (item.location.isNotBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.Place,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = item.location,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                if (item.description.isNotBlank()) {
                     Text(
-                        text = item.location,
-                        style = MaterialTheme.typography.bodySmall,
+                        text = item.description,
+                        fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
@@ -414,6 +464,34 @@ private fun ItemCard(
                 )
             }
         }
+    }
+}
+
+/**
+ * 搜索/筛选无结果空状态：居中显示 SearchOff 图标 + “未找到相关物品”提示。
+ */
+@Composable
+private fun NoResultState(
+    searchQuery: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.SearchOff,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.outline,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = if (searchQuery.isBlank()) "未找到相关物品" else "未找到与「$searchQuery」匹配的物品",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

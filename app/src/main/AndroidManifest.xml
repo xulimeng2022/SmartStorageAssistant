@@ -6,6 +6,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- 拍照：相机权限（运行时申请） -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- 保存收款码到相册：仅 Android 12 及以下需要（Android 13+ 无需存储权限） -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
 
     <application
         android:name=".SmartStorageApp"

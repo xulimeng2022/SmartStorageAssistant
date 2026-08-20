@@ -2,6 +2,7 @@ package com.example.smartstorage.presentation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,9 +37,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.smartstorage.domain.model.Item
+import com.example.smartstorage.presentation.about.AboutRoute
 import com.example.smartstorage.presentation.add.AddItemRoute
 import com.example.smartstorage.presentation.add.AddItemViewModel
 import com.example.smartstorage.presentation.detail.ItemDetailScreen
+import com.example.smartstorage.presentation.donate.DonateRoute
 import com.example.smartstorage.presentation.home.HomeRoute
 import com.example.smartstorage.presentation.common.EmojiEffect
 import com.example.smartstorage.presentation.navigation.Screen
@@ -68,6 +71,9 @@ fun MainScreen() {
     // 添加/编辑页共用 ViewModel；设置页 ViewModel
     val addViewModel: AddItemViewModel = hiltViewModel()
     val settingsViewModel: SettingsViewModel = hiltViewModel()
+
+    // 设置页滚动状态（提升到 MainScreen，进入子页面返回后仍保持滚动位置）
+    val settingsListState = rememberLazyListState()
 
     // 是否有未保存修改（用于拦截底部 Tab 切换）
     val addHasChanges by addViewModel.hasChanges.collectAsStateWithLifecycle()
@@ -157,6 +163,12 @@ fun MainScreen() {
             Screen.Trash.route -> {
                 currentRoute = Screen.Settings.route
             }
+            Screen.About.route -> {
+                currentRoute = Screen.Settings.route
+            }
+            Screen.Donate.route -> {
+                currentRoute = Screen.Settings.route
+            }
         }
     }
 
@@ -217,6 +229,9 @@ fun MainScreen() {
 
                 Screen.Settings.route -> SettingsScreen(
                     onOpenTrash = { currentRoute = Screen.Trash.route },
+                    onOpenAbout = { currentRoute = Screen.About.route },
+                    onOpenDonate = { currentRoute = Screen.Donate.route },
+                    listState = settingsListState,
                     onBack = {
                         settingsViewModel.refresh()
                         currentRoute = Screen.Home.route
@@ -224,6 +239,15 @@ fun MainScreen() {
                 )
 
                 Screen.Trash.route -> TrashScreen(
+                    onBack = { currentRoute = Screen.Settings.route },
+                )
+
+                Screen.About.route -> AboutRoute(
+                    onBack = { currentRoute = Screen.Settings.route },
+                    onOpenDonate = { currentRoute = Screen.Donate.route },
+                )
+
+                Screen.Donate.route -> DonateRoute(
                     onBack = { currentRoute = Screen.Settings.route },
                 )
             }
@@ -324,7 +348,9 @@ private fun CustomBottomBar(
         BottomTabItem(
             label = "设置",
             icon = Icons.Filled.Settings,
-            selected = currentRoute == Screen.Settings.route,
+            selected = currentRoute == Screen.Settings.route ||
+                currentRoute == Screen.About.route ||
+                currentRoute == Screen.Donate.route,
             onClick = {
                 onTabClick()
                 onNavigate(Screen.Settings.route)

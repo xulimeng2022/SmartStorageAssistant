@@ -22,4 +22,10 @@ sealed class Screen(val route: String) {
 
     /** 回收站（设置页进入） */
     data object Trash : Screen("trash")
+
+    /** 关于（设置页进入） */
+    data object About : Screen("about")
+
+    /** 捐赠（设置页/关于页进入） */
+    data object Donate : Screen("donate")
 }

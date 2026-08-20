@@ -23,6 +23,8 @@ class ItemRepositoryImpl @Inject constructor(
     override fun observeItems(): Flow<List<Item>> =
         itemDao.observeAll().map { list -> list.map { it.toDomain() } }
 
+    override fun observeActiveCount(): Flow<Int> = itemDao.observeActiveCount()
+
     override fun observeItemById(id: Long): Flow<Item?> =
         itemDao.observeById(id).map { it?.toDomain() }
 

@@ -88,6 +88,7 @@ fun ItemDetailScreen(
 ) {
     val viewModel: ItemDetailViewModel = hiltViewModel()
     val item by viewModel.item.collectAsStateWithLifecycle()
+    val addingPhoto by viewModel.addingPhoto.collectAsStateWithLifecycle()
 
     // 加载并订阅该物品（编辑返回后自动刷新）
     LaunchedEffect(itemId) {
@@ -121,14 +122,15 @@ fun ItemDetailScreen(
         }
     }
 
-    // 相册：Android 13+ 一次多选；低版本单张多次（均无需存储权限）
+    // 相册：Android 13+ 与低版本均可一次多选（均无需存储权限）
     val pickMultipleMediaLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(9),
-    ) { uris -> uris.forEach { viewModel.addPhoto(it) } }
+    ) { uris -> if (uris.isNotEmpty()) viewModel.addPhotos(uris) }
 
-    val getContentLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent(),
-    ) { uri -> uri?.let(viewModel::addPhoto) }
+    // 低版本相册：一次多选（与 Android 13+ 体验一致，均无需存储权限）
+    val getMultipleContentsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetMultipleContents(),
+    ) { uris -> if (uris.isNotEmpty()) viewModel.addPhotos(uris) }
 
     val pickFromGallery: () -> Unit = {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -136,7 +138,7 @@ fun ItemDetailScreen(
                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
             )
         } else {
-            getContentLauncher.launch("image/*")
+            getMultipleContentsLauncher.launch("image/*")
         }
     }
 
@@ -253,27 +255,48 @@ fun ItemDetailScreen(
                         .fillMaxWidth()
                         .height(200.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { showImageSheet = true },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Image,
-                        contentDescription = null,
-                        modifier = Modifier.size(56.dp),
-                        tint = MaterialTheme.colorScheme.outline,
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Filled.Image,
+                            contentDescription = null,
+                            modifier = Modifier.size(56.dp),
+                            tint = MaterialTheme.colorScheme.outline,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "点击添加照片",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 
-            // 添加照片按钮（继续添加新照片）
-            TextButton(onClick = { showImageSheet = true }) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("添加照片")
+            // 添加照片按钮（继续添加新照片；添加中显示进度圈并禁用，防重复点击）
+            TextButton(
+                onClick = { showImageSheet = true },
+                enabled = !addingPhoto,
+            ) {
+                if (addingPhoto) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("正在添加…")
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("添加照片")
+                }
             }
 
             // 物品名

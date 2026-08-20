@@ -7,6 +7,7 @@ import com.example.smartstorage.data.remote.llm.LlmClient
 import com.example.smartstorage.data.remote.llm.LlmTimeoutException
 import com.example.smartstorage.domain.model.Item
 import com.example.smartstorage.domain.usecase.DeleteItemUseCase
+import com.example.smartstorage.domain.usecase.ObserveActiveCountUseCase
 import com.example.smartstorage.domain.usecase.ObserveItemsUseCase
 import com.example.smartstorage.domain.usecase.RestoreItemUseCase
 import com.example.smartstorage.domain.usecase.SearchItemsByFieldsUseCase
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -33,6 +35,7 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     observeItemsUseCase: ObserveItemsUseCase,
+    observeActiveCountUseCase: ObserveActiveCountUseCase,
     private val searchItemsUseCase: SearchItemsUseCase,
     private val searchItemsByFieldsUseCase: SearchItemsByFieldsUseCase,
     private val deleteItemUseCase: DeleteItemUseCase,
@@ -61,6 +64,15 @@ class HomeViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = emptyList(),
     )
+
+    // 是否从未添加过任何物品（用于区分“初始空状态”与“搜索无结果”）
+    val isInitialEmpty: StateFlow<Boolean> = observeActiveCountUseCase()
+        .map { it == 0 }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = true,
+        )
 
     // AI 解析状态（用于按钮加载圈/失败提示）
     private val _parseState = MutableStateFlow<SearchParseState>(SearchParseState.Idle)

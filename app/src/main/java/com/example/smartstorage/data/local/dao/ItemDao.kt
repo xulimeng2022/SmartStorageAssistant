@@ -18,6 +18,10 @@ interface ItemDao {
     @Query("SELECT * FROM items WHERE deleted_at IS NULL ORDER BY updated_at DESC")
     fun observeAll(): Flow<List<ItemEntity>>
 
+    /** 观察正常物品总数（不含回收站），用于首页区分“从未添加”与“搜索无结果”。 */
+    @Query("SELECT COUNT(*) FROM items WHERE deleted_at IS NULL")
+    fun observeActiveCount(): Flow<Int>
+
     /** 按 ID 观察单个物品。 */
     @Query("SELECT * FROM items WHERE id = :id")
     fun observeById(id: Long): Flow<ItemEntity?>

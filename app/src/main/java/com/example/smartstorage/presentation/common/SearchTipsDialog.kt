@@ -41,7 +41,7 @@ fun SearchTipsDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "② 说完点搜索条内的 ✨ 智能解析，AI 会自动提取名称、地点、备注，精确定位物品。",
+                    text = "② 说完点搜索框右侧的 ✨ 智能解析，AI 会自动提取名称、地点、备注，精确定位物品。",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(modifier = Modifier.height(8.dp))

@@ -11,6 +11,9 @@ interface ItemRepository {
     /** 观察全部物品。 */
     fun observeItems(): Flow<List<Item>>
 
+    /** 观察正常物品总数（不含回收站）。 */
+    fun observeActiveCount(): Flow<Int>
+
     /** 按 ID 观察单个物品。 */
     fun observeItemById(id: Long): Flow<Item?>
 
