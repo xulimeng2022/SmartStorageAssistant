@@ -1,5 +1,13 @@
 package com.example.smartstorage.presentation
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -45,6 +53,8 @@ import com.example.smartstorage.presentation.donate.DonateRoute
 import com.example.smartstorage.presentation.home.HomeRoute
 import com.example.smartstorage.presentation.common.EmojiEffect
 import com.example.smartstorage.presentation.navigation.Screen
+import com.example.smartstorage.presentation.onboarding.OnboardingScreen
+import com.example.smartstorage.presentation.onboarding.OnboardingViewModel
 import com.example.smartstorage.presentation.settings.SettingsScreen
 import com.example.smartstorage.presentation.settings.SettingsViewModel
 import com.example.smartstorage.presentation.trash.TrashScreen
@@ -71,6 +81,7 @@ fun MainScreen() {
     // 添加/编辑页共用 ViewModel；设置页 ViewModel
     val addViewModel: AddItemViewModel = hiltViewModel()
     val settingsViewModel: SettingsViewModel = hiltViewModel()
+    val onboardingViewModel: OnboardingViewModel = hiltViewModel()
 
     // 设置页滚动状态（提升到 MainScreen，进入子页面返回后仍保持滚动位置）
     val settingsListState = rememberLazyListState()
@@ -78,6 +89,9 @@ fun MainScreen() {
     // 是否有未保存修改（用于拦截底部 Tab 切换）
     val addHasChanges by addViewModel.hasChanges.collectAsStateWithLifecycle()
     val settingsHasChanges by settingsViewModel.hasChanges.collectAsStateWithLifecycle()
+
+    // 是否显示首次启动引导页
+    val showOnboarding by onboardingViewModel.showOnboarding.collectAsStateWithLifecycle()
 
     // 待确认的 Tab 切换目标（null 表示无）
     var pendingRoute by remember { mutableStateOf<String?>(null) }
@@ -172,11 +186,44 @@ fun MainScreen() {
         }
     }
 
+    when (showOnboarding) {
+        // 首次启动：全屏展示引导页（不显示底部导航）
+        true -> OnboardingScreen(onFinish = onboardingViewModel::onFinished)
+
+        // 非首次启动：直接进入主界面
+        false -> {
     Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
         // 内容区：占满底部导航以外的全部空间
         Box(modifier = Modifier.weight(1f)) {
-            when (currentRoute) {
+            // 页面切换过渡动画：底部 Tab 之间淡入淡出，其余页面滑动 + 淡入淡出
+            AnimatedContent(
+                targetState = currentRoute,
+                transitionSpec = {
+                    val bottomTabs = setOf(
+                        Screen.Home.route,
+                        Screen.Add.route,
+                        Screen.Settings.route,
+                    )
+                    if (targetState in bottomTabs && initialState in bottomTabs) {
+                        // 底部导航切换：淡入淡出
+                        fadeIn(animationSpec = tween(200)) togetherWith
+                            fadeOut(animationSpec = tween(200))
+                    } else {
+                        // 子页面进出：从右滑入 + 淡入淡出
+                        (slideInHorizontally(
+                            initialOffsetX = { it },
+                            animationSpec = tween(300, easing = FastOutSlowInEasing),
+                        ) + fadeIn(animationSpec = tween(300))) togetherWith
+                            (slideOutHorizontally(
+                                targetOffsetX = { -it / 3 },
+                                animationSpec = tween(250, easing = FastOutSlowInEasing),
+                            ) + fadeOut(animationSpec = tween(200)))
+                    }
+                },
+                label = "pageTransition",
+            ) { targetRoute ->
+                when (targetRoute) {
                 Screen.Home.route -> HomeRoute(
                     onAddClick = {
                         addViewModel.clearState()
@@ -250,6 +297,7 @@ fun MainScreen() {
                 Screen.Donate.route -> DonateRoute(
                     onBack = { currentRoute = Screen.Settings.route },
                 )
+                }
             }
         }
 
@@ -307,6 +355,10 @@ fun MainScreen() {
                 EmojiEffect(onFinished = { navEmojis.remove(id) })
             }
         }
+    }
+        }
+        // 读取中（null）：短暂空白，避免非首次用户闪一下引导页
+        else -> Unit
     }
 }
 

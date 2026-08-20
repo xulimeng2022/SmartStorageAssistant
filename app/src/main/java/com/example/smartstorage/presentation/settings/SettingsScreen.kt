@@ -83,6 +83,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.smartstorage.BuildConfig
 import com.example.smartstorage.data.local.prefs.AiConfig
 import com.example.smartstorage.data.local.prefs.FreeModel
 import com.example.smartstorage.data.local.prefs.LlmPreset
@@ -490,7 +491,7 @@ fun SettingsScreen(
                                 // 关于：进入关于页
                                 SettingsItem(
                                     label = "关于智能收纳助手",
-                                    value = "版本 2.7.8",
+                                    value = "版本 ${BuildConfig.VERSION_NAME}",
                                     icon = Icons.Filled.Info,
                                     onClick = onOpenAbout,
                                 ),

@@ -53,7 +53,7 @@ data class AiConfig(
 }
 
 /**
- * 免费模式内置模型（硅基流动 Qwen3.5-4B，完全免费）。
+ * 免费模式内置模型（硅基流动 Qwen2.5-7B-Instruct，完全免费）。
  *
  * 固定 API 不写入 DataStore；API Key 仅从 local.properties 经 BuildConfig 注入。
  */

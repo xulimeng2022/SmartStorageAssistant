@@ -25,8 +25,8 @@ android {
         applicationId = "com.example.smartstorage"
         minSdk = 26
         targetSdk = 35
-        versionCode = 51
-        versionName = "2.7.8"
+        versionCode = 52
+        versionName = "2.8.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -85,9 +85,6 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
-
-    // 导航
-    implementation(libs.androidx.navigation.compose)
 
     // Hilt 依赖注入
     implementation(libs.hilt.android)

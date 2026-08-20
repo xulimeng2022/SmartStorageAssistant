@@ -39,10 +39,14 @@
 - 关于页：版本号、版权信息、联系方式（QQ / 微信 / GitHub / 个人网站，支持跳转 / 复制）
 - 捐赠页：0.66 / 2 / 5 / 20 / 66 / 99 元档位，支付宝 / 微信收款码，可保存到系统相册
 
+### 首次启动引导页
+- 首次启动全屏展示 3 页引导（左右滑动 + 跳过），最后一页点击「开始使用」进入主界面，完成后不再出现
+
 ### 交互细节
 - 自定义底部导航（固定高度，规避部分机型 M3 NavigationBar 高度测量异常把内容区挤为 0）
 - Emoji 彩蛋：主要按钮点击弹出随机 Emoji 飘动动画（最多 3 个并发，动画结束自动回收）
 - 立体按压按钮动效（缩放 + 阴影变化）
+- 页面切换动画：底部 Tab 之间淡入淡出，子页面进出滑动 + 淡入淡出
 
 ## 技术栈
 
@@ -53,7 +57,7 @@
 - 依赖注入：Hilt（含 Hilt Navigation Compose）
 - 异步：Kotlin Coroutines + Flow
 - 网络：OkHttp（大模型 HTTP 请求，7 秒超时用于免费模式超时引导）
-- 配置存储：DataStore Preferences（AI 配置）+ EncryptedSharedPreferences（API Key 加密）
+- 配置存储：DataStore Preferences（AI 配置 / 引导页标志）+ EncryptedSharedPreferences（API Key 加密）
 - 图片加载：Coil
 - 页面路由：自定义 `sealed class Screen` + 状态切换（底部导航为自实现，未使用 NavHost）
 
@@ -67,7 +71,7 @@ com.example.smartstorage
 │   │   ├── dao                 # ItemDao（含软删除 / 搜索 / 回收站查询）
 │   │   ├── converters          # List<String> 与 JSON 数组互转（多图）
 │   │   ├── image               # ImageStorage（照片压缩 / EXIF 修正 / 删除）
-│   │   ├── prefs               # SettingsRepository（AI 配置）+ AppPreferencesRepository（外观）
+│   │   ├── prefs               # SettingsRepository（AI 配置）+ AppPreferencesRepository（外观）+ OnboardingRepository（引导）
 │   │   └── AppDatabase         # Room 数据库（v1→v4 显式迁移）
 │   ├── mapper                  # 实体与领域模型互转
 │   ├── remote.llm              # LlmClient（OpenAI 兼容接口调用 / JSON 容错解析）
@@ -80,6 +84,7 @@ com.example.smartstorage
 └── presentation                # 表现层
     ├── MainScreen.kt           # 底部导航 + 页面容器（自定义路由切换）
     ├── navigation              # Screen 路由定义
+    ├── onboarding              # 首次启动引导页（3 页滑动 + 跳过）
     ├── home                    # 首页（清单 / 搜索 / AI 语义搜索）
     ├── add                     # 添加 / 编辑（语音描述 + AI 解析 + 多图）
     ├── detail                  # 物品详情（大图预览 / 照片管理）
@@ -110,6 +115,7 @@ com.example.smartstorage
 
 - 免费模式：内置硅基流动免费模型，开箱即用；API Key 在构建时从根目录 `local.properties` 的 `SILICONFLOW_API_KEY` 注入（未配置也能正常编译，App 内会提示切换到自定义模式）。
 - 自定义模式：在设置页选择预设（或自定义）→ 填 Base URL / 模型版本 / API Key → 保存；API Key 加密存储，切换预设时各预设配置相互独立。
+- 预设的 Base URL 与可选模型版本在代码 `SettingsRepository` 的 `LlmPreset` 中维护，可按实际可用的模型名自行修改。
 
 ## 权限
 
@@ -131,5 +137,5 @@ com.example.smartstorage
 
 ## 版本
 
-- 当前版本：2.7.8（versionCode 51）
+- 当前版本：2.8.0（versionCode 52）
 - minSdk 26 / targetSdk 35 / compileSdk 35，Java 17，AGP 8.7.3，Kotlin 2.0.21
