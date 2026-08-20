@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 私有图片目录 -->
+    <files-path name="item_images" path="item_images/" />
+    <!-- 拍照临时文件 -->
+    <cache-path name="camera_cache" path="." />
+</paths>
