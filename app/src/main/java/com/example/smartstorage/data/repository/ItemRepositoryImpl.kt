@@ -31,11 +31,15 @@ class ItemRepositoryImpl @Inject constructor(
     override fun observeTrash(): Flow<List<Item>> =
         itemDao.observeTrash().map { list -> list.map { it.toDomain() } }
 
-    override fun searchItems(query: String): Flow<List<Item>> {
+        override fun searchItems(query: String): Flow<List<Item>> {
         val keyword = query.trim()
         // 空关键字直接返回全部，避免 LIKE '%%' 的无效查询
         if (keyword.isEmpty()) return observeItems()
-        return itemDao.searchByNameOrLocation(keyword)
+        // 去掉所有空白后生成逐字模糊模式（“红色 口红”与“红色口红”结果一致）
+        val normalized = query.filterNot { it.isWhitespace() }
+        val pattern = buildFuzzyLikePattern(normalized)
+        if (pattern.isEmpty()) return observeItems()
+        return itemDao.searchFuzzy(pattern, normalized)
             .map { list -> list.map { it.toDomain() } }
     }
 
