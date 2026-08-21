@@ -11,7 +11,7 @@
   - `KEYSTORE_PASSWORD`：密钥库密码
   - `KEY_ALIAS`：密钥别名
   - `KEY_PASSWORD`：密钥密码
-- 当前 `local.properties` 中填的是**临时测试密钥**（仅用于验证构建流程），**正式上架前必须替换为你自己的正式密钥**。
+- 当前 `local.properties` 中尚未配置签名密钥，请按下面的步骤填入你自己的正式密钥（只填在本地，不会提交到 GitHub）。
 
 ## 二、生成正式签名密钥（只需一次）
 
@@ -66,7 +66,7 @@ apksigner verify --print-certs app\build\outputs\apk\release\app-release.apk
 1. 打开仓库：`https://github.com/xulimeng2022/SmartStorageAssistant`
 2. 进入 **Releases** → **Draft a new release**（或 Create a new release）。
 3. 填写：
-   - **Tag**：`v1.0.0`（可自行定义，如 `v2.8.0`）
+   - **Tag**：`v1.0.0`（可自行定义，如 `v1.0.0`）
    - **Title**：`智能收纳助手 v1.0.0`
    - **描述**：写更新日志，例如“首次发布：支持语音录入、AI 智能解析、物品照片、回收站、数据备份恢复等功能”。
 4. 点击 **Attach binaries**，上传 `app-release.apk`。
@@ -102,6 +102,6 @@ apksigner verify --print-certs app\build\outputs\apk\release\app-release.apk
 ## 六、版本号维护
 
 - 版本名 / 版本号在 `app/build.gradle.kts` 的 `defaultConfig` 中：
-  - `versionName`：展示给用户的版本号（如 `2.8.0`）
+  - `versionName`：展示给用户的版本号（如 `1.0.0`）
   - `versionCode`：自增整数，每次发版必须**大于上一版**（Android 用它判断升级）
 - 每次发版前记得递增 `versionCode`。
