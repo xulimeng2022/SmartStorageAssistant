@@ -19,3 +19,6 @@ Thumbs.db
 # 签名密钥库（严禁提交到 GitHub）
 *.jks
 *.keystore
+
+# 本地保留的 APK 产物副本
+app/release/
