@@ -73,6 +73,8 @@ import com.example.smartstorage.presentation.common.EmojiEffect
 import com.example.smartstorage.presentation.common.EmojiIconButton
 import com.example.smartstorage.presentation.common.SearchTipsDialog
 import com.example.smartstorage.presentation.common.TimeoutDialog
+import com.example.smartstorage.data.local.prefs.TextColorConfig
+import com.example.smartstorage.presentation.theme.textColorStyle
 import java.io.File
 
 /**
@@ -92,6 +94,7 @@ fun HomeRoute(
     val parseState by viewModel.parseState.collectAsStateWithLifecycle()
     val timeoutDialog by viewModel.timeoutDialog.collectAsStateWithLifecycle()
     val isInitialEmpty by viewModel.isInitialEmpty.collectAsStateWithLifecycle()
+    val textColorConfig by viewModel.textColorConfig.collectAsStateWithLifecycle()
 
     HomeScreen(
         items = items,
@@ -111,6 +114,7 @@ fun HomeRoute(
         onAddClick = onAddClick,
         onItemClick = onItemClick,
         onDeleteClick = viewModel::delete,
+        textColorConfig = textColorConfig,
     )
 }
 
@@ -126,6 +130,7 @@ fun HomeScreen(
     searchQuery: String,
     parseState: SearchParseState,
     isInitialEmpty: Boolean,
+    textColorConfig: TextColorConfig,
     onUndoDelete: () -> Unit,
     onConsumeUndo: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
@@ -325,6 +330,7 @@ fun HomeScreen(
                     items(items, key = { it.id }) { item ->
                         ItemCard(
                             item = item,
+                            textColorConfig = textColorConfig,
                             onClick = { onItemClick(item) },
                             onDelete = { onDeleteClick(item) },
                         )
@@ -377,6 +383,7 @@ fun HomeScreen(
 @Composable
 private fun ItemCard(
     item: Item,
+    textColorConfig: TextColorConfig,
     onClick: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -426,9 +433,11 @@ private fun ItemCard(
             ) {
                 Text(
                     text = item.name,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    style = textColorStyle(
+                        config = textColorConfig,
+                        baseStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                        defaultColor = MaterialTheme.colorScheme.onSurface,
+                    ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -442,19 +451,25 @@ private fun ItemCard(
                         )
                         Spacer(modifier = Modifier.width(2.dp))
                         Text(
-                            text = item.location,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        text = item.location,
+                        style = textColorStyle(
+                            config = textColorConfig,
+                            baseStyle = MaterialTheme.typography.bodyMedium,
+                            defaultColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     }
                 }
                 if (item.description.isNotBlank()) {
                     Text(
                         text = item.description,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        style = textColorStyle(
+                            config = textColorConfig,
+                            baseStyle = MaterialTheme.typography.bodySmall,
+                            defaultColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

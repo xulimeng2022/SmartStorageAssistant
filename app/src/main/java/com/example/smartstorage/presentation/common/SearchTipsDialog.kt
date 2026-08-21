@@ -36,17 +36,22 @@ fun SearchTipsDialog(
         text = {
             Column {
                 Text(
-                    text = "① 支持按 名称 / 地点 / 备注 搜索，可输入，或点 🎤 用键盘语音说出要找的物品。",
+                    text = "• 文字搜索：在首页搜索框输入关键词，查找已保存的物品",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "② 说完点搜索框右侧的 ✨ 智能解析，AI 会自动提取名称、地点、备注，精确定位物品。",
+                    text = "• 语音搜索：点击搜索框右侧的 🎤 麦克风，说出你想找的物品",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "例如：“昨天放在桌子上的一支笔” → 名称「笔」· 地点「桌子上」",
+                    text = "• AI 智能解析：点击搜索框右侧的 ✨ 按钮，AI 自动提取关键词并搜索",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "💡 小技巧：支持模糊搜索，输入“笔”即可找到所有包含“笔”的物品",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )

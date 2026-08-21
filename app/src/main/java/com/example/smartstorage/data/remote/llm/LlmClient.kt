@@ -65,6 +65,30 @@ class LlmClient @Inject constructor(
     }
 
     /**
+     * 批量解析一段口语描述（可能包含多条物品），返回 0~N 条结构化物品。
+     *
+     * 模型返回 JSON 数组；模型失败 / 超时 / 返回空时，降级为本地按中文标点分割 + 正则解析。
+     *
+     * @return 解析出的物品列表（可能为空，由调用方决定降级处理）。
+     */
+    suspend fun parseItems(rawText: String): List<ParsedItem> = withContext(Dispatchers.IO) {
+        val systemPrompt = """
+            你是一个物品收纳解析助手。用户会输入一条或多条物品描述，请按以下规则处理：
+            1. 识别输入中包含的所有物品描述，每条描述包含“物品名称”和“存放地点”。
+            2. 如果输入包含多条描述（用逗号、句号、分号或“还有”等词分隔），请分别提取每条。
+            3. 每条描述输出一个 JSON 对象，所有结果放在一个 JSON 数组中。
+            4. 输出格式：[{"name":"物品名","location":"存放地点","description":"备注"}]
+            5. 如果只有一条描述，也返回包含一个对象的数组。
+            6. 如果解析失败，返回空数组 []。
+        """.trimIndent()
+        // 模型解析；失败 / 超时 / 空结果时降级为本地分割解析
+        val modelResult = runCatching {
+            chatCompletion(systemPrompt, rawText)?.let { parseJsonArray(it) } ?: emptyList()
+        }.getOrDefault(emptyList())
+        if (modelResult.isNotEmpty()) modelResult else fallbackLocalSplit(rawText)
+    }
+
+    /**
      * 解析一段自然语言，提取物品搜索关键词（用于首页“智能解析”按钮）。
      *
      * @return 提取到的关键词（去掉可能的首尾引号）；配置缺失或调用失败时返回 null（调用方降级用原文搜索）。
@@ -223,4 +247,61 @@ class LlmClient @Inject constructor(
     private fun extractField(json: String, key: String): String? =
         Regex("\"$key\"\\s*:\\s*\"([^\"]*)\"")
             .find(json)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() }
+
+    /**
+     * 容错解析模型返回的 JSON 数组：支持数组、单个对象、Markdown 代码块包裹等情况。
+     * 全部失败返回空列表（由上层降级）。
+     */
+    private fun parseJsonArray(content: String): List<ParsedItem> {
+        var cleaned = content
+            .trim()
+            .removePrefix("```json")
+            .removePrefix("```")
+            .removeSuffix("```")
+            .trim()
+        val arrStart = cleaned.indexOf('[')
+        val arrEnd = cleaned.lastIndexOf(']')
+        // 非数组（单对象或异常文本）：尝试按单条解析
+        if (arrStart < 0 || arrEnd <= arrStart) {
+            return parseJsonContent(cleaned)?.let { listOf(it) } ?: emptyList()
+        }
+        return try {
+            val arr = JSONArray(cleaned.substring(arrStart, arrEnd + 1))
+            (0 until arr.length()).mapNotNull { i ->
+                val obj = arr.optJSONObject(i) ?: return@mapNotNull null
+                ParsedItem(
+                    name = obj.optString("name", "").trim(),
+                    location = obj.optString("location", "").trim(),
+                    description = obj.optString("description", "").trim(),
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("LlmClient", "批量 JSON 解析失败，原始返回：$content", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * 本地降级解析：按中文标点（，。；、\\n）分割文本，对每个片段用正则提取
+     * “X 放在/放到/放于/存于/在 Y”中的名称与地点；无法匹配的片段名称取原文、地点为空。
+     */
+    private fun fallbackLocalSplit(rawText: String): List<ParsedItem> {
+        val pattern = Regex("(.+?)(?:放在|放到|放于|存于|在)(.+)")
+        return rawText
+            .split(Regex("[，。；、\\n]+"))
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .map { seg ->
+                val m = pattern.find(seg)
+                if (m != null) {
+                    ParsedItem(
+                        name = m.groupValues[1].trim(),
+                        location = m.groupValues[2].trim(),
+                        description = "",
+                    )
+                } else {
+                    ParsedItem(name = seg, location = "", description = "")
+                }
+            }
+    }
 }

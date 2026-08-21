@@ -17,7 +17,25 @@ if (localPropsFile.exists()) {
 }
 val siliconflowApiKey: String = localProperties.getProperty("SILICONFLOW_API_KEY", "")
 
+// 读取 local.properties 中的 Release 签名配置（未配置则 Release 构建不签名，便于开发期验证混淆）
+val keystoreFile: String = localProperties.getProperty("KEYSTORE_FILE", "")
+val keystorePassword: String = localProperties.getProperty("KEYSTORE_PASSWORD", "")
+val signingKeyAlias: String = localProperties.getProperty("KEY_ALIAS", "")
+val signingKeyPassword: String = localProperties.getProperty("KEY_PASSWORD", "")
+
 android {
+
+    // Release 签名配置：密钥路径与密码从 local.properties 读取（该文件已加入 .gitignore，避免泄露到 GitHub）
+    signingConfigs {
+        if (keystoreFile.isNotBlank()) {
+            create("release") {
+                storeFile = file(keystoreFile)
+                storePassword = keystorePassword
+                keyAlias = signingKeyAlias
+                keyPassword = signingKeyPassword
+            }
+        }
+    }
     namespace = "com.example.smartstorage"
     compileSdk = 35
 
@@ -46,12 +64,17 @@ android {
 
     buildTypes {
         release {
-            // 初始版本暂不启用代码混淆，后续可再开启
-            isMinifyEnabled = false
+            // 开启官方混淆（R8）与资源压缩：增加逆向难度并减小 APK 体积
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // 配置了签名密钥时应用签名（未配置则生成未签名 APK，便于开发期验证混淆）
+            if (keystoreFile.isNotBlank()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

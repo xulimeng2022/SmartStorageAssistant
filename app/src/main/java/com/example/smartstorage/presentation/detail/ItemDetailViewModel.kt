@@ -6,6 +6,8 @@ import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.smartstorage.data.local.image.ImageStorage
+import com.example.smartstorage.data.local.prefs.TextColorConfig
+import com.example.smartstorage.data.local.prefs.ThemeRepository
 import com.example.smartstorage.domain.model.Item
 import com.example.smartstorage.domain.usecase.DeleteItemUseCase
 import com.example.smartstorage.domain.usecase.ObserveItemByIdUseCase
@@ -30,8 +32,12 @@ class ItemDetailViewModel @Inject constructor(
     private val deleteItemUseCase: DeleteItemUseCase,
     private val imageStorage: ImageStorage,
     @ApplicationContext private val context: Context,
+    private val themeRepository: ThemeRepository,
 ) : ViewModel() {
 
+
+    // 全局文字颜色配置（订阅 ThemeRepository 实时流：设置页改色后详情页立即生效）
+    val textColorConfig: StateFlow<TextColorConfig> = themeRepository.textColorConfig
     private val _item = MutableStateFlow<Item?>(null)
     val item: StateFlow<Item?> = _item.asStateFlow()
 

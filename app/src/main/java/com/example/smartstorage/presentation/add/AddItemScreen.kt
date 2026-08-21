@@ -65,10 +65,16 @@ import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.smartstorage.data.local.prefs.TextColorConfig
 import com.example.smartstorage.domain.model.Item
 import com.example.smartstorage.presentation.common.AnimatedButton
 import com.example.smartstorage.presentation.common.EmojiIconButton
 import com.example.smartstorage.presentation.common.TimeoutDialog
+import com.example.smartstorage.presentation.theme.textColorStyle
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import com.example.smartstorage.data.remote.llm.ParsedItem
 import java.io.File
 
 /**
@@ -87,10 +93,15 @@ fun AddItemRoute(
     val editState by viewModel.editState.collectAsStateWithLifecycle()
     val saveState by viewModel.saveState.collectAsStateWithLifecycle()
     val parseState by viewModel.parseState.collectAsStateWithLifecycle()
-    val inputTextColor by viewModel.inputTextColor.collectAsStateWithLifecycle()
+    val textColorConfig by viewModel.textColorConfig.collectAsStateWithLifecycle()
     val hasChanges by viewModel.hasChanges.collectAsStateWithLifecycle()
     val duplicateCheckState by viewModel.duplicateCheckState.collectAsStateWithLifecycle()
     val timeoutDialog by viewModel.timeoutDialog.collectAsStateWithLifecycle()
+    val batchItems by viewModel.batchItems.collectAsStateWithLifecycle()
+    val batchSelected by viewModel.batchSelected.collectAsStateWithLifecycle()
+    val showBatchDialog by viewModel.showBatchDialog.collectAsStateWithLifecycle()
+    val batchDuplicateNames by viewModel.batchDuplicateNames.collectAsStateWithLifecycle()
+    val batchDuplicatePending by viewModel.batchDuplicatePending.collectAsStateWithLifecycle()
 
     // 进入页面时先重置表单状态（避免复用上次保存结果导致闪屏），
     // 编辑模式再加载现有物品数据
@@ -114,7 +125,7 @@ fun AddItemRoute(
         saveState = saveState,
         voiceDescription = editState.voiceDescription,
         parseState = parseState,
-        inputTextColor = inputTextColor,
+        textColorConfig = textColorConfig,
         imagePaths = editState.currentImagePaths,
         hasChanges = hasChanges,
         duplicateCheckState = duplicateCheckState,
@@ -131,6 +142,15 @@ fun AddItemRoute(
         timeoutDialog = timeoutDialog,
         onConsumeTimeout = viewModel::consumeTimeout,
         onGoToSettings = onGoToSettings,
+        batchItems = batchItems,
+        batchSelected = batchSelected,
+        showBatchDialog = showBatchDialog,
+        batchDuplicateNames = batchDuplicateNames,
+        batchDuplicatePending = batchDuplicatePending,
+        onBatchSelectionChange = viewModel::onBatchSelectionChange,
+        onBatchDuplicateChoice = viewModel::onBatchDuplicateChoice,
+        onConfirmBatchAdd = viewModel::confirmBatchAdd,
+        onDismissBatchDialog = viewModel::dismissBatchDialog,
         onBack = onBack,
     )
 }
@@ -149,7 +169,7 @@ fun AddItemScreen(
     saveState: SaveState,
     voiceDescription: String,
     parseState: LlmParseState,
-    inputTextColor: Int,
+    textColorConfig: TextColorConfig,
     imagePaths: List<String>,
     hasChanges: Boolean,
     duplicateCheckState: DuplicateCheckState?,
@@ -166,14 +186,24 @@ fun AddItemScreen(
     timeoutDialog: Boolean,
     onConsumeTimeout: () -> Unit,
     onGoToSettings: () -> Unit,
+    batchItems: List<ParsedItem>,
+    batchSelected: Set<Int>,
+    showBatchDialog: Boolean,
+    batchDuplicateNames: Set<String>,
+    batchDuplicatePending: BatchDuplicatePending?,
+    onBatchSelectionChange: (Int, Boolean) -> Unit,
+    onBatchDuplicateChoice: (BatchDuplicateChoice) -> Unit,
+    onConfirmBatchAdd: () -> Unit,
+    onDismissBatchDialog: () -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
 
-    // 输入文字颜色：使用用户设置的深色，与浅色提示文字明确区分
-    val inputTextStyle = MaterialTheme.typography.bodyLarge.copy(
-        color = Color(inputTextColor),
-
+    // 输入文字样式：使用全局文字颜色配置（纯色 / 渐变 / 默认跟随主题），实时生效
+    val inputTextStyle = textColorStyle(
+        config = textColorConfig,
+        baseStyle = MaterialTheme.typography.bodyLarge,
+        defaultColor = MaterialTheme.colorScheme.onSurface,
     )
 
 
@@ -281,7 +311,7 @@ fun AddItemScreen(
         ) {
             // ===== 语音描述（手机键盘语音输入 + 大模型智能解析）=====
             Text(
-                text = "🎤 语音录入：点击下方输入框，用手机键盘的语音（麦克风）说出物品描述",
+                text = "🎙️ 语音录入：点击麦克风说话，AI 自动提取物品信息\n支持批量录入（如“红色的笔在柜子里，蓝色的笔在抽屉里”）",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -585,6 +615,115 @@ fun AddItemScreen(
                     }
                     TextButton(onClick = { onDuplicateDecision(DuplicateDecision.CANCEL) }) {
                         Text("取消")
+                    }
+                }
+            },
+        )
+    }
+
+    // AI 批量解析确认 BottomSheet：多选物品 + 重名冲突处理 + 批量添加
+    if (showBatchDialog) {
+        ModalBottomSheet(onDismissRequest = onDismissBatchDialog) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("📦 批量添加物品", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "检测到 ${batchItems.size} 件物品，请确认或编辑后批量添加\n（重复物品将在添加时逐一询问）",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                // 物品列表：Checkbox 多选 + 名称 / 地点 + 重名标记
+                batchItems.forEachIndexed { index, item ->
+                    val checked = index in batchSelected
+                    val isDuplicate = item.name.trim() in batchDuplicateNames
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onBatchSelectionChange(index, !checked) },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = checked,
+                            onCheckedChange = { onBatchSelectionChange(index, it) },
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(item.name, style = MaterialTheme.typography.bodyLarge)
+                            if (item.location.isNotBlank()) {
+                                Text(
+                                    text = item.location,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        if (isDuplicate) {
+                            Text(
+                                text = "⚠ 已存在",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                // 批量添加按钮（X 为勾选数量，未勾选时禁用）
+                Button(
+                    onClick = onConfirmBatchAdd,
+                    enabled = batchSelected.isNotEmpty(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                ) {
+                    Text("批量添加 ${batchSelected.size} 件物品")
+                }
+            }
+        }
+    }
+
+    // 批量处理中重复物品弹窗：展示旧/新信息，让用户逐条选择（点外部/返回键 = 跳过此物品并继续）
+    batchDuplicatePending?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { onBatchDuplicateChoice(BatchDuplicateChoice.SKIP) },
+            title = { Text("⚠️ 物品已存在") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "“${pending.newItem.name}” 已存在",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    if (pending.existingItem.location.isNotBlank()) {
+                        Text(
+                            text = "当前位置：${pending.existingItem.location}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (pending.newItem.location.isNotBlank()) {
+                        Text(
+                            text = "新位置：${pending.newItem.location}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { onBatchDuplicateChoice(BatchDuplicateChoice.UPDATE_EXISTING) }) {
+                    Text("更新旧记录")
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { onBatchDuplicateChoice(BatchDuplicateChoice.INSERT_NEW) }) {
+                        Text("新建记录")
+                    }
+                    TextButton(onClick = { onBatchDuplicateChoice(BatchDuplicateChoice.SKIP) }) {
+                        Text("跳过此物品")
                     }
                 }
             },

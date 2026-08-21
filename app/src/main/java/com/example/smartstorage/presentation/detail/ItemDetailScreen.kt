@@ -74,6 +74,8 @@ import com.example.smartstorage.presentation.common.EmojiIconButton
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
+import com.example.smartstorage.data.local.prefs.TextColorConfig
+import com.example.smartstorage.presentation.theme.textColorStyle
 import java.time.format.DateTimeFormatter
 
 /**
@@ -89,6 +91,7 @@ fun ItemDetailScreen(
     val viewModel: ItemDetailViewModel = hiltViewModel()
     val item by viewModel.item.collectAsStateWithLifecycle()
     val addingPhoto by viewModel.addingPhoto.collectAsStateWithLifecycle()
+    val textColorConfig by viewModel.textColorConfig.collectAsStateWithLifecycle()
 
     // 加载并订阅该物品（编辑返回后自动刷新）
     LaunchedEffect(itemId) {
@@ -302,7 +305,11 @@ fun ItemDetailScreen(
             // 物品名
             Text(
                 text = current.name,
-                style = MaterialTheme.typography.headlineSmall,
+                style = textColorStyle(
+                    config = textColorConfig,
+                    baseStyle = MaterialTheme.typography.headlineSmall,
+                    defaultColor = MaterialTheme.colorScheme.onSurface,
+                ),
             )
 
             // 存放地点
@@ -317,7 +324,11 @@ fun ItemDetailScreen(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = current.location,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = textColorStyle(
+                            config = textColorConfig,
+                            baseStyle = MaterialTheme.typography.bodyLarge,
+                            defaultColor = MaterialTheme.colorScheme.onSurface,
+                        ),
                     )
                 }
             }
@@ -326,8 +337,11 @@ fun ItemDetailScreen(
             if (current.description.isNotBlank()) {
                 Text(
                     text = current.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = textColorStyle(
+                        config = textColorConfig,
+                        baseStyle = MaterialTheme.typography.bodyMedium,
+                        defaultColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
                 )
             }
 

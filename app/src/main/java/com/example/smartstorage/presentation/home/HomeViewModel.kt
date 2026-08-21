@@ -2,6 +2,8 @@ package com.example.smartstorage.presentation.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.smartstorage.data.local.prefs.TextColorConfig
+import com.example.smartstorage.data.local.prefs.ThemeRepository
 import com.example.smartstorage.data.local.prefs.AppPreferencesRepository
 import com.example.smartstorage.data.remote.llm.LlmClient
 import com.example.smartstorage.data.remote.llm.LlmTimeoutException
@@ -42,8 +44,12 @@ class HomeViewModel @Inject constructor(
     private val restoreItemUseCase: RestoreItemUseCase,
     private val llmClient: LlmClient,
     private val appPreferencesRepository: AppPreferencesRepository,
+    private val themeRepository: ThemeRepository,
 ) : ViewModel() {
 
+
+    // 全局文字颜色配置（订阅 ThemeRepository 实时流：设置页改色后首页立即生效）
+    val textColorConfig: StateFlow<TextColorConfig> = themeRepository.textColorConfig
     // 搜索框文本（可手动输入，也可用键盘语音说出整句话）
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()

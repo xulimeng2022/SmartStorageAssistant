@@ -110,4 +110,16 @@ interface ItemDao {
     /** 清空回收站：物理删除所有已删除记录（调用方需先清理图片文件）。 */
     @Query("DELETE FROM items WHERE deleted_at IS NOT NULL")
     suspend fun permanentDeleteAll()
+
+    /** 查询全部物品（含回收站），用于数据备份导出 */
+    @Query("SELECT * FROM items")
+    suspend fun getAllItems(): List<ItemEntity>
+
+    /** 物理删除全部记录（仅供覆盖导入前清空使用） */
+    @Query("DELETE FROM items")
+    suspend fun deleteAllItems()
+
+    /** 按名称精确查重（忽略大小写，含回收站），用于合并导入去重 */
+    @Query("SELECT * FROM items WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+    suspend fun findByNameIgnoreCase(name: String): ItemEntity?
 }
