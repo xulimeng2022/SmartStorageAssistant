@@ -18,12 +18,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -44,6 +48,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -59,6 +64,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -70,11 +76,13 @@ import com.example.smartstorage.domain.model.Item
 import com.example.smartstorage.presentation.common.AnimatedButton
 import com.example.smartstorage.presentation.common.EmojiIconButton
 import com.example.smartstorage.presentation.common.TimeoutDialog
+import com.example.smartstorage.presentation.common.PhotoPreviewDialog
 import com.example.smartstorage.presentation.theme.textColorStyle
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import com.example.smartstorage.data.remote.llm.ParsedItem
+import com.example.smartstorage.domain.model.BatchDuplicateChoice
+import com.example.smartstorage.domain.model.BatchDraftItem
 import java.io.File
 
 /**
@@ -102,6 +110,8 @@ fun AddItemRoute(
     val showBatchDialog by viewModel.showBatchDialog.collectAsStateWithLifecycle()
     val batchDuplicateNames by viewModel.batchDuplicateNames.collectAsStateWithLifecycle()
     val batchDuplicatePending by viewModel.batchDuplicatePending.collectAsStateWithLifecycle()
+    val parseWarning by viewModel.parseWarning.collectAsStateWithLifecycle()
+    val batchNotice by viewModel.batchNotice.collectAsStateWithLifecycle()
 
     // 进入页面时先重置表单状态（避免复用上次保存结果导致闪屏），
     // 编辑模式再加载现有物品数据
@@ -140,14 +150,21 @@ fun AddItemRoute(
         onRemoveImageAt = viewModel::removeImageAt,
         onSave = viewModel::save,
         timeoutDialog = timeoutDialog,
-        onConsumeTimeout = viewModel::consumeTimeout,
+        onConsumeTimeout = viewModel::dismissTimeoutDialog,
+        onTimeoutUseLocal = viewModel::onTimeoutUseLocal,
         onGoToSettings = onGoToSettings,
         batchItems = batchItems,
         batchSelected = batchSelected,
         showBatchDialog = showBatchDialog,
         batchDuplicateNames = batchDuplicateNames,
         batchDuplicatePending = batchDuplicatePending,
+        batchNotice = batchNotice,
+        parseWarning = parseWarning,
         onBatchSelectionChange = viewModel::onBatchSelectionChange,
+        onBatchItemChange = viewModel::updateBatchItem,
+        onRemoveBatchItem = viewModel::removeBatchItem,
+        onToggleBatchItemPhoto = viewModel::toggleBatchItemPhoto,
+        onConsumeParseWarning = viewModel::consumeParseWarning,
         onBatchDuplicateChoice = viewModel::onBatchDuplicateChoice,
         onConfirmBatchAdd = viewModel::confirmBatchAdd,
         onDismissBatchDialog = viewModel::dismissBatchDialog,
@@ -185,13 +202,20 @@ fun AddItemScreen(
     onSave: () -> Unit,
     timeoutDialog: Boolean,
     onConsumeTimeout: () -> Unit,
+    onTimeoutUseLocal: () -> Unit,
     onGoToSettings: () -> Unit,
-    batchItems: List<ParsedItem>,
-    batchSelected: Set<Int>,
+    batchItems: List<BatchDraftItem>,
+    batchSelected: Set<Long>,
     showBatchDialog: Boolean,
     batchDuplicateNames: Set<String>,
     batchDuplicatePending: BatchDuplicatePending?,
-    onBatchSelectionChange: (Int, Boolean) -> Unit,
+    batchNotice: String?,
+    parseWarning: String?,
+    onBatchItemChange: (Long, String, String, String) -> Unit,
+    onRemoveBatchItem: (Long) -> Unit,
+    onToggleBatchItemPhoto: (Long, String, Boolean) -> Unit,
+    onBatchSelectionChange: (Long, Boolean) -> Unit,
+    onConsumeParseWarning: () -> Unit,
     onBatchDuplicateChoice: (BatchDuplicateChoice) -> Unit,
     onConfirmBatchAdd: () -> Unit,
     onDismissBatchDialog: () -> Unit,
@@ -206,7 +230,6 @@ fun AddItemScreen(
         defaultColor = MaterialTheme.colorScheme.onSurface,
     )
 
-
     // 未保存修改退出确认弹窗
     var showDiscardDialog by remember { mutableStateOf(false) }
     BackHandler(enabled = hasChanges && saveState != SaveState.Saving) {
@@ -215,6 +238,7 @@ fun AddItemScreen(
 
     // 图片来源弹窗与临时文件
     var showImageSheet by remember { mutableStateOf(false) }
+    var previewIndex by remember { mutableStateOf<Int?>(null) }
     var cameraTempFile by remember { mutableStateOf<File?>(null) }
 
     // 拍照：目标 URI 经 FileProvider 暴露缓存文件
@@ -369,6 +393,28 @@ fun AddItemScreen(
                 else -> Unit
             }
 
+            // 模型解析降级警示（模型不可用回退本地规则时提示用户核对，可关闭）
+            parseWarning?.let { warning ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = warning,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFE6A23C),
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = onConsumeParseWarning) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "关闭提示",
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+            }
+
             // ===== 物品名 =====
             OutlinedTextField(
                 value = name,
@@ -451,7 +497,8 @@ fun AddItemScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(100.dp)
-                                    .clip(RoundedCornerShape(12.dp)),
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { previewIndex = imagePaths.indexOf(path) },
                             ) {
                                 AsyncImage(
                                     model = File(path),
@@ -560,6 +607,17 @@ fun AddItemScreen(
         }
     }
 
+    // 全屏照片预览（可缩放/拖动/多图切换；关闭后表单内容原样保留）
+    previewIndex?.let { index ->
+        if (imagePaths.isNotEmpty()) {
+            PhotoPreviewDialog(
+                imagePaths = imagePaths,
+                initialIndex = index.coerceIn(0, imagePaths.lastIndex),
+                onDismiss = { previewIndex = null },
+            )
+        }
+    }
+
     // 未保存修改退出确认
     if (showDiscardDialog) {
         AlertDialog(
@@ -587,8 +645,12 @@ fun AddItemScreen(
     // 免费模式解析超时弹窗
     if (timeoutDialog) {
         TimeoutDialog(
-            onGoToSettings = onGoToSettings,
-            onLater = onConsumeTimeout,
+            onUseLocal = onTimeoutUseLocal,
+            onGoToSettings = {
+                onConsumeTimeout()
+                onGoToSettings()
+            },
+            onCancel = onConsumeTimeout,
         )
     }
 
@@ -621,60 +683,97 @@ fun AddItemScreen(
         )
     }
 
-    // AI 批量解析确认 BottomSheet：多选物品 + 重名冲突处理 + 批量添加
+    // AI 批量解析确认 BottomSheet：照片池与未分配提示 + 可编辑条目卡片（每件可预览/分配/取消照片）+ 批量添加
     if (showBatchDialog) {
+        // 弹窗内预览某条草稿已分配的照片（全屏，缩放/拖动/切图/返回）
+        var batchPreview by remember { mutableStateOf<Pair<Long, Int>?>(null) }
+        // 正在为哪件物品打开“分配照片”对话框（null 表示未打开）
+        var assignTargetUid by remember { mutableStateOf<Long?>(null) }
+
         ModalBottomSheet(onDismissRequest = onDismissBatchDialog) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .fillMaxHeight(0.92f)
+                    .verticalScroll(rememberScrollState())
+                    .imePadding()
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text("📦 批量添加物品", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = "检测到 ${batchItems.size} 件物品，请确认或编辑后批量添加\n（重复物品将在添加时逐一询问）",
+                    text = "识别到 ${batchItems.size} 件物品：可逐条编辑名称/地点/备注，并为每件分配照片；未勾选或删除的不会保存。\n原文已保留在“口语描述”中，可随时修改后重新解析。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                // 物品列表：Checkbox 多选 + 名称 / 地点 + 重名标记
-                batchItems.forEachIndexed { index, item ->
-                    val checked = index in batchSelected
-                    val isDuplicate = item.name.trim() in batchDuplicateNames
-                    Row(
+                // 模型解析降级警示（本地规则结果）
+                parseWarning?.let { warning ->
+                    Text(
+                        text = warning,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFE6A23C),
+                    )
+                }
+                // 部分失败等提示
+                batchNotice?.let { notice ->
+                    Text(
+                        text = notice,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                // 照片池与未分配提示：本次添加的照片可分配给一件或多件；未分配的不会保存
+                if (imagePaths.isNotEmpty()) {
+                    // “将保存”（已勾选）物品分配到的照片集合
+                    val savedAssigned = batchItems
+                        .filter { it.uid in batchSelected }
+                        .flatMap { it.photoPaths }
+                        .toSet()
+                    val unassignedCount = imagePaths.count { it !in savedAssigned }
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onBatchSelectionChange(index, !checked) },
-                        verticalAlignment = Alignment.CenterVertically,
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Checkbox(
-                            checked = checked,
-                            onCheckedChange = { onBatchSelectionChange(index, it) },
+                        Text(
+                            text = "📎 本次添加 ${imagePaths.size} 张照片：可分配给一件或多件物品（同一张照片可分给多件）",
+                            style = MaterialTheme.typography.bodySmall,
                         )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(item.name, style = MaterialTheme.typography.bodyLarge)
-                            if (item.location.isNotBlank()) {
-                                Text(
-                                    text = item.location,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                        if (isDuplicate) {
+                        if (unassignedCount > 0) {
                             Text(
-                                text = "⚠ 已存在",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error,
+                                text = "⚠ $unassignedCount 张照片未分配给任何“将保存”的物品，本次保存不会包含它们；可继续分配，或直接点“批量添加”即视为明确不保存这些照片。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFE6A23C),
                             )
                         }
                     }
                 }
+                // 物品编辑卡片：勾选 + 名称/地点/备注 + 照片分配/预览 + 删除
+                batchItems.forEach { draft ->
+                    BatchDraftCard(
+                        draft = draft,
+                        checked = draft.uid in batchSelected,
+                        isDuplicate = draft.name.trim() in batchDuplicateNames,
+                        photoPoolSize = imagePaths.size,
+                        onCheckedChange = { onBatchSelectionChange(draft.uid, it) },
+                        onNameChange = { onBatchItemChange(draft.uid, it, draft.location, draft.description) },
+                        onLocationChange = { onBatchItemChange(draft.uid, draft.name, it, draft.description) },
+                        onDescriptionChange = { onBatchItemChange(draft.uid, draft.name, draft.location, it) },
+                        onRemove = { onRemoveBatchItem(draft.uid) },
+                        onAssignPhoto = { assignTargetUid = draft.uid },
+                        onUnassignPhoto = { path -> onToggleBatchItemPhoto(draft.uid, path, false) },
+                        onPreviewPhoto = { index -> batchPreview = draft.uid to index },
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
-                // 批量添加按钮（X 为勾选数量，未勾选时禁用）
+                // 批量添加按钮（勾选数动态更新；保存中禁用防重复）
                 Button(
                     onClick = onConfirmBatchAdd,
-                    enabled = batchSelected.isNotEmpty(),
+                    enabled = batchSelected.isNotEmpty() && saveState != SaveState.Saving,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
@@ -683,8 +782,33 @@ fun AddItemScreen(
                 }
             }
         }
-    }
 
+        // 全屏预览某条草稿已分配的照片（关闭后保留弹窗内容）
+        batchPreview?.let { (uid, index) ->
+            val paths = batchItems.firstOrNull { it.uid == uid }?.photoPaths.orEmpty()
+            if (paths.isNotEmpty()) {
+                PhotoPreviewDialog(
+                    imagePaths = paths,
+                    initialIndex = index.coerceIn(0, paths.lastIndex),
+                    onDismiss = { batchPreview = null },
+                )
+            }
+        }
+
+        // 分配照片对话框：从照片池中为当前草稿多选/取消照片（同一张照片可同时分配给多件）
+        assignTargetUid?.let { uid ->
+            val draft = batchItems.firstOrNull { it.uid == uid }
+            if (draft != null) {
+                BatchPhotoAssignDialog(
+                    poolPaths = imagePaths,
+                    draft = draft,
+                    maxImages = AddItemViewModel.MAX_IMAGES,
+                    onToggle = { path, assign -> onToggleBatchItemPhoto(uid, path, assign) },
+                    onDismiss = { assignTargetUid = null },
+                )
+            }
+        }
+    }
     // 批量处理中重复物品弹窗：展示旧/新信息，让用户逐条选择（点外部/返回键 = 跳过此物品并继续）
     batchDuplicatePending?.let { pending ->
         AlertDialog(
@@ -729,4 +853,208 @@ fun AddItemScreen(
             },
         )
     }
+}
+
+/** 批量弹窗内单件物品的编辑卡片：勾选 + 名称/地点/备注 + 已分配照片缩略图（预览/取消分配）+ 分配入口 + 删除。 */
+@Composable
+private fun BatchDraftCard(
+    draft: BatchDraftItem,
+    checked: Boolean,
+    isDuplicate: Boolean,
+    photoPoolSize: Int,
+    onCheckedChange: (Boolean) -> Unit,
+    onNameChange: (String) -> Unit,
+    onLocationChange: (String) -> Unit,
+    onDescriptionChange: (String) -> Unit,
+    onRemove: () -> Unit,
+    onAssignPhoto: () -> Unit,
+    onUnassignPhoto: (String) -> Unit,
+    onPreviewPhoto: (Int) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(checked = checked, onCheckedChange = onCheckedChange)
+            Text(
+                text = draft.name.ifBlank { "（未命名）" },
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (isDuplicate) {
+                Text(
+                    text = "⚠ 已存在",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(end = 4.dp),
+                )
+            }
+            IconButton(onClick = onRemove) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "删除此条目",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        OutlinedTextField(
+            value = draft.name,
+            onValueChange = onNameChange,
+            label = { Text("物品名 *") },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = draft.location,
+            onValueChange = onLocationChange,
+            label = { Text("存放地点") },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = draft.description,
+            onValueChange = onDescriptionChange,
+            label = { Text("备注") },
+            textStyle = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 60.dp),
+        )
+        // 已分配给这件物品的照片：点击缩略图全屏预览；右上 ✕ 取消分配
+        Text(
+            text = "📷 照片（${draft.photoPaths.size}/${AddItemViewModel.MAX_IMAGES}）",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (draft.photoPaths.isEmpty()) {
+            Text(
+                text = "未分配照片",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outline,
+            )
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                draft.photoPaths.forEachIndexed { index, path ->
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onPreviewPhoto(index) },
+                    ) {
+                        AsyncImage(
+                            model = File(path),
+                            contentDescription = "已分配照片",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                        // 取消分配：照片仍留在池中，可再分配给其它物品
+                        EmojiIconButton(
+                            onClick = { onUnassignPhoto(path) },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(24.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "取消分配此照片",
+                                modifier = Modifier.size(14.dp),
+                                tint = Color.White,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        TextButton(
+            onClick = onAssignPhoto,
+            enabled = photoPoolSize > 0,
+            modifier = Modifier.align(Alignment.Start),
+        ) {
+            Text("＋ 分配照片")
+        }
+    }
+}
+
+/** 批量弹窗的“分配照片”对话框：从照片池中为当前物品多选/取消照片（可多选，同一张照片可分给多件）。 */
+@Composable
+private fun BatchPhotoAssignDialog(
+    poolPaths: List<String>,
+    draft: BatchDraftItem,
+    maxImages: Int,
+    onToggle: (String, Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("为「${draft.name.ifBlank { "未命名" }}」分配照片") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = "勾选要关联到这件物品的照片（可多张）；同一张照片也可同时分配给其它物品。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                poolPaths.forEach { path ->
+                    val assigned = path in draft.photoPaths
+                    // 已达上限时禁止继续勾选新照片（已勾选的仍可取消）
+                    val canCheck = assigned || draft.photoPaths.size < maxImages
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AsyncImage(
+                            model = File(path),
+                            contentDescription = "照片 ${poolPaths.indexOf(path) + 1}",
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(6.dp)),
+                            contentScale = ContentScale.Crop,
+                        )
+                        Text(
+                            text = "照片 ${poolPaths.indexOf(path) + 1}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 8.dp),
+                        )
+                        Checkbox(
+                            checked = assigned,
+                            onCheckedChange = { checked -> onToggle(path, checked) },
+                            enabled = canCheck,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("完成")
+            }
+        },
+    )
 }

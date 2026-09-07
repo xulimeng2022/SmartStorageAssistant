@@ -1,5 +1,8 @@
 package com.example.smartstorage.presentation.home
 
+import androidx.compose.ui.res.stringResource
+import com.example.smartstorage.R
+
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -107,7 +110,8 @@ fun HomeRoute(
         onConsumeUndo = viewModel::consumeUndo,
         onSearchQueryChange = viewModel::onSearchQueryChange,
         onAiParse = viewModel::onAiParse,
-        onConsumeTimeout = viewModel::consumeTimeout,
+        onConsumeTimeout = viewModel::dismissTimeoutDialog,
+        onTimeoutUseLocal = viewModel::onTimeoutUseLocal,
         isSearchTipsEnabled = viewModel::isSearchTipsEnabled,
         onSetSearchTipsEnabled = viewModel::setSearchTipsEnabled,
         onGoToSettings = onGoToSettings,
@@ -139,6 +143,7 @@ fun HomeScreen(
     onSetSearchTipsEnabled: (Boolean) -> Unit,
     timeoutDialog: Boolean,
     onConsumeTimeout: () -> Unit,
+    onTimeoutUseLocal: () -> Unit,
     onGoToSettings: () -> Unit,
     onAddClick: () -> Unit,
     onItemClick: (Item) -> Unit,
@@ -168,8 +173,8 @@ fun HomeScreen(
     LaunchedEffect(undoEvent) {
         undoEvent?.let {
             val result = snackbarHostState.showSnackbar(
-                message = "已移入回收站",
-                actionLabel = "撤销",
+                message = context.getString(R.string.home_deleted),
+                actionLabel = context.getString(R.string.home_undo),
                 duration = SnackbarDuration.Short,
             )
             if (result == SnackbarResult.ActionPerformed) {
@@ -190,7 +195,7 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "物品清单",
+                text = stringResource(R.string.home_title),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -210,7 +215,7 @@ fun HomeScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
-                placeholder = { Text("搜索物品，试试语音...") },
+                placeholder = { Text(stringResource(R.string.home_search_hint)) },
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
                     color = MaterialTheme.colorScheme.onSurface,
                 ),
@@ -228,7 +233,7 @@ fun HomeScreen(
                         EmojiIconButton(onClick = { onSearchQueryChange("") }) {
                             Icon(
                                 imageVector = Icons.Outlined.Clear,
-                                contentDescription = "清除",
+                                contentDescription = stringResource(R.string.home_cd_clear),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -268,7 +273,7 @@ fun HomeScreen(
                         keyboardController?.show()
                         Toast.makeText(
                             context,
-                            "请用键盘语音说出要找的物品",
+                            context.getString(R.string.home_voice_toast),
                             Toast.LENGTH_SHORT,
                         ).show()
                     },
@@ -276,7 +281,7 @@ fun HomeScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Mic,
-                        contentDescription = "语音搜索",
+                        contentDescription = stringResource(R.string.home_cd_voice),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -285,7 +290,7 @@ fun HomeScreen(
                 EmojiIconButton(
                     onClick = {
                         if (searchQuery.isBlank()) {
-                            Toast.makeText(context, "请先输入搜索内容", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.home_empty_search_toast), Toast.LENGTH_SHORT).show()
                         } else {
                             onAiParse()
                         }
@@ -298,7 +303,7 @@ fun HomeScreen(
                     } else {
                         Icon(
                             imageVector = Icons.Outlined.AutoAwesome,
-                            contentDescription = "智能解析",
+                            contentDescription = stringResource(R.string.home_cd_ai),
                             tint = MaterialTheme.colorScheme.primary,
                         )
                     }
@@ -309,7 +314,7 @@ fun HomeScreen(
         // 解析失败提示（小字）
         if (parseState == SearchParseState.Error) {
             Text(
-                text = "解析失败，已使用原文搜索",
+                text = stringResource(R.string.home_parse_error),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -358,8 +363,12 @@ fun HomeScreen(
     // 免费模式解析超时弹窗
     if (timeoutDialog) {
         TimeoutDialog(
-            onGoToSettings = onGoToSettings,
-            onLater = onConsumeTimeout,
+            onUseLocal = onTimeoutUseLocal,
+            onGoToSettings = {
+                onConsumeTimeout()
+                onGoToSettings()
+            },
+            onCancel = onConsumeTimeout,
         )
     }
 
@@ -411,7 +420,7 @@ private fun ItemCard(
                 if (!thumbPath.isNullOrBlank()) {
                     AsyncImage(
                         model = File(thumbPath),
-                        contentDescription = "物品照片",
+                        contentDescription = stringResource(R.string.home_cd_item_photo),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
                     )
@@ -480,7 +489,7 @@ private fun ItemCard(
             EmojiIconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Outlined.DeleteOutline,
-                    contentDescription = "删除",
+                    contentDescription = stringResource(R.string.common_delete),
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
@@ -509,7 +518,7 @@ private fun NoResultState(
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = if (searchQuery.isBlank()) "未找到相关物品" else "未找到与「$searchQuery」匹配的物品",
+            text = if (searchQuery.isBlank()) stringResource(R.string.home_no_result_title) else stringResource(R.string.home_no_result_text, searchQuery),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -545,7 +554,7 @@ private fun EmptyState(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "添加物品",
+                text = stringResource(R.string.home_empty_add),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,

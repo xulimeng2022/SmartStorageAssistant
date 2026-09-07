@@ -1,5 +1,8 @@
 package com.example.smartstorage.presentation.onboarding
 
+import androidx.compose.ui.res.stringResource
+import com.example.smartstorage.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,21 +46,22 @@ private data class OnboardingPage(
     val icon: ImageVector,
 )
 
-/** 引导页三页内容。 */
-private val onboardingPages = listOf(
+/** 引导页三页内容（文案从资源读取，随语言切换）。 */
+@Composable
+private fun onboardingPages(): List<OnboardingPage> = listOf(
     OnboardingPage(
-        title = "📦 记录你的物品",
-        description = "语音录入物品名称和存放位置，再也不会找不到东西",
+        title = stringResource(R.string.onboarding_1_title),
+        description = stringResource(R.string.onboarding_1_sub),
         icon = Icons.Outlined.Inventory,
     ),
     OnboardingPage(
-        title = "🎙️ AI 智能解析",
-        description = "说一句话，AI 自动提取物品名和地点，省去手动输入",
+        title = stringResource(R.string.onboarding_2_title),
+        description = stringResource(R.string.onboarding_2_sub),
         icon = Icons.Outlined.AutoAwesome,
     ),
     OnboardingPage(
-        title = "🔍 随时查找",
-        description = "语音搜索、智能解析，一秒找到你存放的任何物品",
+        title = stringResource(R.string.onboarding_3_title),
+        description = stringResource(R.string.onboarding_3_sub),
         icon = Icons.Outlined.Search,
     ),
 )
@@ -70,7 +74,8 @@ private val onboardingPages = listOf(
 @Composable
 fun OnboardingScreen(onFinish: () -> Unit) {
     // 页码状态：rememberPagerState 在屏幕旋转/进程重建时自动保持当前页
-    val pagerState = rememberPagerState(pageCount = { onboardingPages.size })
+    val pages = onboardingPages()
+    val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
 
     Box(
@@ -93,7 +98,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                 .align(Alignment.TopEnd)
                 .padding(16.dp),
         ) {
-            Text("跳过")
+            Text(stringResource(R.string.onboarding_skip))
         }
 
         // 中间：三页内容（图标 + 标题 + 描述）
@@ -103,7 +108,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                 .fillMaxSize()
                 .padding(horizontal = 32.dp),
         ) { pageIndex ->
-            val page = onboardingPages[pageIndex]
+            val page = pages[pageIndex]
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -150,7 +155,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                onboardingPages.indices.forEach { index ->
+                pages.indices.forEach { index ->
                     val selected = pagerState.currentPage == index
                     Box(
                         modifier = Modifier
@@ -173,7 +178,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
             // 主按钮：非最后一页显示“下一步”，最后一页显示“开始使用”
             Button(
                 onClick = {
-                    val isLastPage = pagerState.currentPage == onboardingPages.lastIndex
+                    val isLastPage = pagerState.currentPage == pages.lastIndex
                     if (isLastPage) {
                         onFinish()
                     } else {
@@ -188,7 +193,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                 shape = RoundedCornerShape(24.dp),
             ) {
                 Text(
-                    text = if (pagerState.currentPage == onboardingPages.lastIndex) "开始使用" else "下一步",
+                    text = if (pagerState.currentPage == pages.lastIndex) stringResource(R.string.onboarding_start) else stringResource(R.string.onboarding_next),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                 )

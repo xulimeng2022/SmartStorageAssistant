@@ -13,9 +13,15 @@ import com.example.smartstorage.data.local.prefs.TextColorConfig
 import com.example.smartstorage.data.local.prefs.ThemeRepository
 import com.example.smartstorage.data.remote.llm.LlmClient
 import com.example.smartstorage.data.remote.llm.LlmTimeoutException
-import com.example.smartstorage.data.remote.llm.ParsedItem
+import com.example.smartstorage.data.remote.llm.ParseItemsResult
+import com.example.smartstorage.domain.model.BatchDuplicateChoice
+import com.example.smartstorage.domain.model.BatchDraftItem
+import com.example.smartstorage.domain.model.BatchDraftOps
+import com.example.smartstorage.domain.model.ParsedItem
 import com.example.smartstorage.domain.model.Item
 import com.example.smartstorage.domain.usecase.AddItemUseCase
+import com.example.smartstorage.domain.usecase.BatchAddItemsUseCase
+import com.example.smartstorage.domain.usecase.BatchAddOutcome
 import com.example.smartstorage.domain.usecase.GetItemByNameUseCase
 import com.example.smartstorage.domain.usecase.UpdateItemUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -91,6 +97,7 @@ enum class DuplicateDecision {
 @HiltViewModel
 class AddItemViewModel @Inject constructor(
     private val addItemUseCase: AddItemUseCase,
+    private val batchAddItemsUseCase: BatchAddItemsUseCase,
     private val updateItemUseCase: UpdateItemUseCase,
     private val getItemByNameUseCase: GetItemByNameUseCase,
     private val llmClient: LlmClient,
@@ -154,13 +161,16 @@ class AddItemViewModel @Inject constructor(
     private val _timeoutDialog = MutableStateFlow(false)
     val timeoutDialog: StateFlow<Boolean> = _timeoutDialog.asStateFlow()
 
+    // 本页面会话内是否已选择「本地识别继续」（避免同一会话内反复弹超时框）
+    private var freeTimeoutFallbackChosen = false
+
     // ===== AI 批量解析 =====
-    // 批量解析出的物品列表（>1 条时进入批量模式）
-    private val _batchItems = MutableStateFlow<List<ParsedItem>>(emptyList())
-    val batchItems: StateFlow<List<ParsedItem>> = _batchItems.asStateFlow()
-    // 批量勾选状态（index 集合，默认全选）
-    private val _batchSelected = MutableStateFlow<Set<Int>>(emptySet())
-    val batchSelected: StateFlow<Set<Int>> = _batchSelected.asStateFlow()
+    // 批量解析出的草稿条目（>1 条时进入批量模式；以 uid 为稳定标识，勾选/照片归属不依赖列表下标）
+    private val _batchItems = MutableStateFlow<List<BatchDraftItem>>(emptyList())
+    val batchItems: StateFlow<List<BatchDraftItem>> = _batchItems.asStateFlow()
+    // 批量勾选状态（uid 集合，默认全选）
+    private val _batchSelected = MutableStateFlow<Set<Long>>(emptySet())
+    val batchSelected: StateFlow<Set<Long>> = _batchSelected.asStateFlow()
     // 是否显示批量确认对话框
     private val _showBatchDialog = MutableStateFlow(false)
     val showBatchDialog: StateFlow<Boolean> = _showBatchDialog.asStateFlow()
@@ -171,9 +181,47 @@ class AddItemViewModel @Inject constructor(
     private val _batchDuplicatePending = MutableStateFlow<BatchDuplicatePending?>(null)
     val batchDuplicatePending: StateFlow<BatchDuplicatePending?> = _batchDuplicatePending.asStateFlow()
 
-    /** 关闭“解析超时”对话框。 */
-    fun consumeTimeout() {
+    // 是否正在执行批量保存（防重复点击）
+    private var _batchRunning = false
+
+    // 批量弹窗内的提示文本（如部分保存失败时的说明）
+    private val _batchNotice = MutableStateFlow<String?>(null)
+    val batchNotice: StateFlow<String?> = _batchNotice.asStateFlow()
+
+    // 本会话内批量保存已以“原路径”直存、被某条记录引用的草稿照片路径；
+    // 部分失败重试时作为 alreadyClaimedPaths 传入，避免重试条目与已成功条目共享同一照片文件
+    private val batchClaimedOriginals = mutableSetOf<String>()
+
+    // 草稿条目 uid 分配器（进入批量模式时为每条识别结果分配新 uid，重新识别后不会串用旧归属）
+    private var batchNextUid = 1L
+
+    // 模型解析降级/失败警示（模型不可用回退本地规则时提示用户核对；null 表示无）
+    private val _parseWarning = MutableStateFlow<String?>(null)
+    val parseWarning: StateFlow<String?> = _parseWarning.asStateFlow()
+
+    /** 关闭“解析超时”对话框（取消/去配置共用）：停止任务、保留输入，等待后续手动操作。 */
+    fun dismissTimeoutDialog() {
         _timeoutDialog.value = false
+        if (_parseState.value == LlmParseState.Parsing) {
+            _parseState.value = LlmParseState.Idle
+        }
+    }
+
+    /** 免费模式超时后选择「本地识别继续」：结束等待，用本地规则继续处理本次输入。 */
+    fun onTimeoutUseLocal() {
+        // 本会话内后续免费模式超时不再弹框，直接走本地降级，避免失败循环
+        freeTimeoutFallbackChosen = true
+        _timeoutDialog.value = false
+        val text = _editState.value.voiceDescription.trim()
+        if (text.isEmpty()) {
+            _parseState.value = LlmParseState.Error("请先输入或语音录入描述")
+            return
+        }
+        if (_parseState.value == LlmParseState.Parsing) return
+        _parseState.value = LlmParseState.Parsing
+        viewModelScope.launch {
+            applyParseResult(llmClient.parseItemsLocal(text), forcedLocal = true)
+        }
     }
 
     // GitHub Star 里程碑提醒：待展示的里程碑（null 表示无）
@@ -253,12 +301,16 @@ class AddItemViewModel @Inject constructor(
         _duplicateCheckState.value = null
         _parseState.value = LlmParseState.Idle
         _timeoutDialog.value = false
+        freeTimeoutFallbackChosen = false
         // 重置 AI 批量解析状态
         _batchItems.value = emptyList()
         _batchSelected.value = emptySet()
         _showBatchDialog.value = false
         _batchDuplicateNames.value = emptySet()
         _batchDuplicatePending.value = null
+        _batchNotice.value = null
+        batchClaimedOriginals.clear()
+        _parseWarning.value = null
         recomputeHasChanges()
     }
 
@@ -321,10 +373,10 @@ class AddItemViewModel @Inject constructor(
 
     /** 移除指定位置的图片：仅标记（原始图计入 removedImagePaths），文件删除延迟到保存时执行。 */
     fun removeImageAt(index: Int) {
+        val removedPath = _editState.value.currentImagePaths.getOrNull(index) ?: return
         updateState { state ->
-            val removed = state.currentImagePaths.getOrNull(index) ?: return@updateState state
-            val removedList = if (removed in state.originalImagePaths) {
-                state.removedImagePaths + removed
+            val removedList = if (removedPath in state.originalImagePaths) {
+                state.removedImagePaths + removedPath
             } else {
                 state.removedImagePaths
             }
@@ -333,13 +385,18 @@ class AddItemViewModel @Inject constructor(
                 removedImagePaths = removedList,
             )
         }
+        // 照片池移除后，同步剥离所有批量草稿里对该路径的引用，避免保存悬空路径
+        if (_batchItems.value.isNotEmpty()) {
+            _batchItems.value = BatchDraftOps.detachPath(_batchItems.value, removedPath)
+        }
     }
 
     /**
      * 用已配置的大模型把口语描述解析为物品字段并填入表单。
      *
-     * 注意：解析与“保存时的查重”（save → getItemByName）调用链相互独立；
-     * 解析失败只置错误态，绝不影响用户手动填写与后续保存。
+     * 单条：自动填入表单（照片留在表单中，保存时自动关联）；多条：进入批量确认弹窗（可逐条编辑、逐张分配照片）；
+     * 免费模型超时弹“解析超时”引导；模型不可用回退本地规则并给出明确警示（绝不显示“解析完成”冒充模型成功）；
+     * 解析失败只置错误态，绝不影响用户手动填写、照片与后续保存。
      */
     fun parseDescription() {
         val text = _editState.value.voiceDescription.trim()
@@ -347,163 +404,242 @@ class AddItemViewModel @Inject constructor(
             _parseState.value = LlmParseState.Error("请先输入或语音录入描述")
             return
         }
+        // 单飞：解析中忽略重复触发
+        if (_parseState.value == LlmParseState.Parsing) return
         _parseState.value = LlmParseState.Parsing
+        _parseWarning.value = null
         viewModelScope.launch {
-            runCatching { llmClient.parseItems(text) }
-                .onSuccess { parsed ->
-                    when {
-                        parsed.isEmpty() -> {
-                            _parseState.value = LlmParseState.Error("AI 解析失败或未配置，请到设置页检查 API 配置")
-                        }
-                        parsed.size == 1 -> {
-                            // 单条：自动填入表单（维持原有行为）
-                            val item = parsed.first()
-                            updateState {
-                                it.copy(name = item.name, location = item.location, desc = item.description)
-                            }
-                            _parseState.value = LlmParseState.Success
-                        }
-                        else -> {
-                            // 多条：进入批量添加确认
-                            enterBatchMode(parsed)
-                            _parseState.value = LlmParseState.Success
-                        }
-                    }
+            try {
+                applyParseResult(llmClient.parseItems(text))
+            } catch (e: LlmTimeoutException) {
+                if (freeTimeoutFallbackChosen) {
+                    // 本次会话已选择本地降级：不再弹框，静默继续处理
+                    applyParseResult(llmClient.parseItemsLocal(text), forcedLocal = true)
+                } else {
+                    // 免费模型超时：弹“解析超时”引导对话框（与首页行为一致）
+                    _timeoutDialog.value = true
+                    _parseState.value = LlmParseState.Idle
                 }
-                .onFailure { e ->
-                    _parseState.value = LlmParseState.Error("解析失败：${e.message ?: "未知错误"}")
-                }
+            } catch (e: Exception) {
+                _parseState.value = LlmParseState.Error("解析失败：${e.message ?: "未知错误"}")
+            }
         }
     }
 
-    /** 进入批量模式：记录解析结果、默认全选，并预查重名物品。 */
+    /**
+     * 把解析结果应用到表单/批量弹窗（模型结果与本地降级共用同一套处理，行为一致）。
+     *
+     * @param forcedLocal 免费模式超时后主动选择本地降级时传 true，用于展示对应的降级提示
+     */
+    private suspend fun applyParseResult(result: ParseItemsResult, forcedLocal: Boolean = false) {
+        when {
+            result.items.isEmpty() -> {
+                // 未识别出有效物品：保留原文并明确提示，不显示“解析完成”
+                _parseState.value = LlmParseState.Error(
+                    if (result.warning != null) {
+                        "未能识别出有效物品：${result.warning}。原文已保留在“口语描述”中，请手动填写或补充后重试"
+                    } else {
+                        "未能识别出有效物品，原文已保留在“口语描述”中，请手动填写或补充后重试"
+                    },
+                )
+            }
+            result.items.size == 1 -> {
+                val item = result.items.first()
+                if (item.name.isBlank()) {
+                    _parseState.value = LlmParseState.Error("识别结果缺少物品名，请手动填写")
+                } else {
+                    // 单条：自动填入表单（维持原有行为）
+                    updateState {
+                        it.copy(name = item.name, location = item.location, desc = item.description)
+                    }
+                    if (forcedLocal) {
+                        _parseWarning.value = "⚠ 免费识别暂时不可用，已切换至本地规则解析，请核对后再保存"
+                    } else if (result.warning != null) {
+                        _parseWarning.value = "⚠ 大模型解析失败：${result.warning}；当前为本地规则结果，请核对后再保存"
+                    }
+                    _parseState.value = LlmParseState.Success
+                }
+            }
+            else -> {
+                // 多条：进入批量确认弹窗；表单区不再显示“已自动填入表单”的误导提示
+                enterBatchMode(result.items)
+                if (forcedLocal) {
+                    _parseWarning.value = "⚠ 免费识别暂时不可用，已切换至本地规则解析，请逐条核对"
+                } else if (result.warning != null) {
+                    _parseWarning.value = "⚠ 大模型解析失败：${result.warning}；当前为本地规则结果，请逐条核对"
+                }
+                _parseState.value = LlmParseState.Idle
+            }
+        }
+    }
+
+    /** 消费“解析降级警示”（用户关闭提示时调用）。 */
+    fun consumeParseWarning() {
+        _parseWarning.value = null
+    }
+
+    /** 进入批量模式：为每条识别结果分配稳定 uid、默认全选、照片初始未分配，并预查重名物品。 */
     private fun enterBatchMode(items: List<ParsedItem>) {
-        _batchItems.value = items
-        _batchSelected.value = items.indices.toSet()
+        val drafts = items.map {
+            BatchDraftItem(
+                uid = batchNextUid++,
+                name = it.name,
+                location = it.location,
+                description = it.description,
+            )
+        }
+        _batchItems.value = drafts
+        _batchSelected.value = drafts.map { it.uid }.toSet()
+        _batchNotice.value = null
         _showBatchDialog.value = true
-        // 预查重：查询每个名称是否已存在于库中（忽略大小写，含回收站）
+        refreshBatchDuplicateNames()
+    }
+
+    /** 切换某条草稿的勾选状态（按 uid）。 */
+    fun onBatchSelectionChange(uid: Long, checked: Boolean) {
+        val current = _batchSelected.value.toMutableSet()
+        if (checked) current.add(uid) else current.remove(uid)
+        _batchSelected.value = current
+    }
+
+    /** 修改某条草稿的字段（随输入实时更新，供弹窗内编辑）。 */
+    fun updateBatchItem(uid: Long, name: String, location: String, desc: String) {
+        if (_batchItems.value.none { it.uid == uid }) return
+        _batchItems.value = BatchDraftOps.update(_batchItems.value, uid, name, location, desc)
+        // 名称可能变化，重查“⚠ 已存在”标记
+        refreshBatchDuplicateNames()
+    }
+
+    /** 删除某条草稿：仅移除条目本身，不删除照片文件；照片仍留在池中可重新分配给其它物品。 */
+    fun removeBatchItem(uid: Long) {
+        if (_batchItems.value.none { it.uid == uid }) return
+        _batchItems.value = BatchDraftOps.remove(_batchItems.value, uid)
+        _batchSelected.value = _batchSelected.value - uid
+        refreshBatchDuplicateNames()
+    }
+
+    /**
+     * 切换某条草稿对某张照片的归属（同一张照片可分给多个草稿；单件最多 [MAX_IMAGES] 张）。
+     */
+    fun toggleBatchItemPhoto(uid: Long, photoPath: String, assign: Boolean) {
+        val draft = _batchItems.value.firstOrNull { it.uid == uid } ?: return
+        if (assign && photoPath !in draft.photoPaths && draft.photoPaths.size >= MAX_IMAGES) {
+            Toast.makeText(context, "单件物品最多关联 $MAX_IMAGES 张照片", Toast.LENGTH_SHORT).show()
+            return
+        }
+        _batchItems.value = BatchDraftOps.setPhoto(_batchItems.value, uid, photoPath, assign)
+    }
+
+    /** 重查批量列表中与库中重名的名称（用于弹窗内“⚠ 已存在”标记）。 */
+    private fun refreshBatchDuplicateNames() {
         viewModelScope.launch {
-            val dups = items.mapNotNull { it.name.trim() }
+            val names = _batchItems.value.map { it.name.trim() }
                 .filter { it.isNotEmpty() }
                 .distinct()
-                .filter { name ->
-                    runCatching { getItemByNameUseCase(name) != null }.getOrDefault(false)
-                }
-                .toSet()
+            val dups = names.filter { name ->
+                runCatching { getItemByNameUseCase(name) != null }.getOrDefault(false)
+            }.toSet()
             _batchDuplicateNames.value = dups
         }
     }
 
-    /** 切换某条物品的勾选状态。 */
-    fun onBatchSelectionChange(index: Int, checked: Boolean) {
-        val current = _batchSelected.value.toMutableSet()
-        if (checked) current.add(index) else current.remove(index)
-        _batchSelected.value = current
-    }
-
-
-    /** 关闭批量确认对话框（表单内容保留，可继续手动编辑）。 */
+    /** 关闭批量确认对话框（表单内容与草稿保留，可继续手动编辑或重新解析）。 */
     fun dismissBatchDialog() {
         _showBatchDialog.value = false
+        _batchNotice.value = null
     }
 
-    /** 批量添加：对勾选物品逐条保存；重名时逐个弹窗让用户决策，完成后返回首页并提示结果。 */
+    /** 批量添加：对勾选草稿逐条保存；重名逐个弹窗决策；部分失败保留失败与未勾选草稿（含照片归属）供修改重试。 */
     fun confirmBatchAdd() {
-        val items = _batchItems.value
+        val drafts = _batchItems.value
         val selected = _batchSelected.value
-        if (selected.isEmpty()) return
+        if (selected.isEmpty() || _batchRunning) return
+        // 防重复点击：保存期间忽略再次触发
+        _batchRunning = true
         _showBatchDialog.value = false
         _saveState.value = SaveState.Saving
+        _batchNotice.value = null
         viewModelScope.launch {
-            var added = 0
-            var updated = 0
-            var skipped = 0
-            val now = System.currentTimeMillis()
-            selected.sorted().forEach { index ->
-                val parsed = items.getOrNull(index) ?: return@forEach
-                val name = parsed.name.trim()
-                if (name.isEmpty()) {
-                    skipped++
-                    return@forEach
-                }
-                try {
-                    val existing = getItemByNameUseCase(name)
-                    if (existing == null) {
-                        // 无重名：直接新增
-                        addItemUseCase(
-                            Item(
-                                name = name,
-                                location = parsed.location.trim(),
-                                description = parsed.description.trim(),
-                            ),
-                        )
-                        added++
-                    } else {
+            // 已被既有记录占用的路径：编辑模式下原记录照片 + 此前成功批次已直存的路径
+            val claimedSeed = batchClaimedOriginals + _editState.value.originalImagePaths
+            val result = runCatching {
+                batchAddItemsUseCase.execute(
+                    drafts = drafts,
+                    selected = selected,
+                    alreadyClaimedPaths = claimedSeed,
+                    resolveDuplicate = { existing, draft ->
                         // 重名：阻塞等待用户在重复弹窗中做出选择
-                        when (awaitBatchDuplicateChoice(existing, parsed)) {
-                            BatchDuplicateChoice.UPDATE_EXISTING -> {
-                                // 更新旧记录：保留 id / createdAt / 图片，覆盖位置与备注
-                                updateItemUseCase(
-                                    existing.copy(
-                                        location = parsed.location.trim(),
-                                        description = parsed.description.trim(),
-                                        imagePaths = existing.imagePaths,
-                                        updatedAt = now,
-                                    ),
-                                )
-                                updated++
-                            }
-                            BatchDuplicateChoice.INSERT_NEW -> {
-                                // 新建记录（图片为空）
-                                addItemUseCase(
-                                    Item(
-                                        name = name,
-                                        location = parsed.location.trim(),
-                                        description = parsed.description.trim(),
-                                    ),
-                                )
-                                added++
-                            }
-                            BatchDuplicateChoice.SKIP -> {
-                                skipped++
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    skipped++
+                        awaitBatchDuplicateChoice(existing, draft)
+                    },
+                    copyFile = { path -> imageStorage.saveFromFile(File(path)) },
+                )
+            }
+            result.onSuccess { outcome ->
+                // 记录本次以原路径直存、已被记录引用的照片，供部分失败重试时避免重复占用
+                batchClaimedOriginals += outcome.consumedOriginals
+                // 每成功新增一件都累计历史添加数并检查 Star 里程碑（含部分成功场景）
+                if (outcome.added > 0) bumpStarMilestone(outcome.added)
+                if (outcome.failedUids.isEmpty()) {
+                    // 全部成功：清空批量状态并驱动返回首页
+                    _batchItems.value = emptyList()
+                    _batchSelected.value = emptySet()
+                    batchClaimedOriginals.clear()
+                    _batchNotice.value = null
+                    _parseWarning.value = null
+                    _saveState.value = SaveState.Success
+                } else {
+                    // 部分失败：保留失败条目与未勾选条目（含各自照片归属），重开弹窗供修改后重试
+                    val failedSet = outcome.failedUids.toSet()
+                    val remaining = drafts.filter { it.uid in failedSet || it.uid !in selected }
+                    _batchItems.value = remaining
+                    _batchSelected.value = remaining.map { it.uid }.filter { it in selected }.toSet()
+                    _batchNotice.value = buildBatchFailureNotice(outcome, drafts)
+                    _showBatchDialog.value = true
+                    _saveState.value = SaveState.Idle
                 }
+            }.onFailure { e ->
+                // 整体异常（极少见）：保留原列表，重开弹窗并提示
+                _batchNotice.value = "批量保存失败：${e.message ?: "未知错误"}"
+                _showBatchDialog.value = true
+                _saveState.value = SaveState.Idle
             }
+            _batchRunning = false
+        }
+    }
 
-            // 批量新增同样计入历史累计添加数，并检查 Star 里程碑
-            if (added > 0) {
-                repeat(added) { starMilestoneRepository.incrementTotalAdded() }
-                val state = starMilestoneRepository.readState()
-                val milestone = state.pendingMilestone(System.currentTimeMillis())
-                if (milestone != null) {
-                    _starReminder.value = milestone
-                }
-            }
+    /** 拼接批量保存失败的提示文本（含成功/更新/跳过与失败名单）。 */
+    private fun buildBatchFailureNotice(outcome: BatchAddOutcome, drafts: List<BatchDraftItem>): String = buildString {
+        append("成功添加 ${outcome.added} 件")
+        if (outcome.updated > 0) append("，更新 ${outcome.updated} 件")
+        if (outcome.skipped > 0) append("，跳过 ${outcome.skipped} 件")
+        val failedNames = outcome.failedUids
+            .mapNotNull { uid -> drafts.firstOrNull { it.uid == uid }?.name?.trim() }
+            .filter { it.isNotEmpty() }
+        if (failedNames.isNotEmpty()) {
+            append("；${failedNames.size} 件失败：${failedNames.joinToString("、")}（可修改后重试）")
+        }
+    }
 
-            // 结果提示 + 保存成功（驱动返回首页）
-            val msg = buildString {
-                append("成功添加 $added 件")
-                if (updated > 0) append("，更新 $updated 件")
-                if (skipped > 0) append("，跳过 $skipped 件重复")
-            }
-            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-            _saveState.value = SaveState.Success
+    /** 新增成功后累计历史添加数并检查 Star 里程碑（added 为本次成功新增件数）。 */
+    private suspend fun bumpStarMilestone(added: Int) {
+        if (added <= 0) return
+        repeat(added) { starMilestoneRepository.incrementTotalAdded() }
+        val state = starMilestoneRepository.readState()
+        val milestone = state.pendingMilestone(System.currentTimeMillis())
+        if (milestone != null) {
+            _starReminder.value = milestone
         }
     }
 
     /** 批量重名：挂起等待用户在重复弹窗中做出选择（阻塞式，选择后才继续下一条）。 */
     private suspend fun awaitBatchDuplicateChoice(
         existing: Item,
-        parsed: ParsedItem,
+        draft: BatchDraftItem,
     ): BatchDuplicateChoice {
         val deferred = CompletableDeferred<BatchDuplicateChoice>()
         _batchDuplicatePending.value = BatchDuplicatePending(
             existingItem = existing,
-            newItem = parsed,
+            newItem = draft,
             deferred = deferred,
         )
         return deferred.await()
@@ -514,7 +650,6 @@ class AddItemViewModel @Inject constructor(
         _batchDuplicatePending.value?.deferred?.complete(choice)
         _batchDuplicatePending.value = null
     }
-
     /** 保存：先按名称查重，无重名或编辑自身直接写入；有重名则弹窗让用户选择。 */
     fun save() {
         val state = _editState.value
@@ -657,22 +792,10 @@ class AddItemViewModel @Inject constructor(
 
 /** 大模型解析状态。 */
 
-/** 批量添加时重复物品的用户选择。 */
-enum class BatchDuplicateChoice {
-    /** 更新旧记录：用本次解析内容覆盖旧记录（保留图片） */
-    UPDATE_EXISTING,
-
-    /** 新建记录：创建一条同名新记录（图片为空） */
-    INSERT_NEW,
-
-    /** 跳过此物品：不处理 */
-    SKIP,
-}
-
 /** 批量处理中待用户决策的重名物品（existingItem 旧记录、newItem 新解析、deferred 等待用户选择）。 */
 data class BatchDuplicatePending(
     val existingItem: Item,
-    val newItem: ParsedItem,
+    val newItem: BatchDraftItem,
     val deferred: CompletableDeferred<BatchDuplicateChoice>,
 )
 sealed interface LlmParseState {

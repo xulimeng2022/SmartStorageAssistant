@@ -1,5 +1,8 @@
 package com.example.smartstorage.presentation
 
+import androidx.compose.ui.res.stringResource
+import com.example.smartstorage.R
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -407,11 +410,10 @@ fun MainScreen() {
         starReminder?.let { milestone ->
             AlertDialog(
                 onDismissRequest = { addViewModel.onStarRemindLater() },
-                title = { Text("🎉 恭喜你已添加 $milestone 件物品！") },
+                title = { Text(stringResource(R.string.star_title, milestone)) },
                 text = {
                     Text(
-                        "如果你觉得这个 App 对你有帮助，欢迎到 GitHub 给项目点个 Star ⭐\n" +
-                            "这对我非常重要，也是我继续更新的动力！",
+                        stringResource(R.string.star_text1) + stringResource(R.string.star_text2),
                     )
                 },
                 confirmButton = {
@@ -422,12 +424,12 @@ fun MainScreen() {
                             addViewModel.onStarGoToGithub(milestone)
                         },
                     ) {
-                        Text("去 GitHub 点 Star")
+                        Text(stringResource(R.string.star_go))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = addViewModel::onStarRemindLater) {
-                        Text("稍后提醒")
+                        Text(stringResource(R.string.star_later))
                     }
                 },
             )
@@ -458,7 +460,7 @@ private fun CustomBottomBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BottomTabItem(
-            label = "首页",
+            label = stringResource(R.string.nav_home),
             icon = Icons.AutoMirrored.Filled.List,
             selected = currentPage == 0,
             onClick = {
@@ -467,7 +469,7 @@ private fun CustomBottomBar(
             },
         )
         BottomTabItem(
-            label = "添加",
+            label = stringResource(R.string.nav_add),
             icon = Icons.Filled.Add,
             selected = currentPage == 1,
             onClick = {
@@ -476,7 +478,7 @@ private fun CustomBottomBar(
             },
         )
         BottomTabItem(
-            label = "设置",
+            label = stringResource(R.string.nav_settings),
             icon = Icons.Filled.Settings,
             selected = currentPage == 2,
             onClick = {

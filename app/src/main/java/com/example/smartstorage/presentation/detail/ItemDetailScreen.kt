@@ -63,14 +63,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.smartstorage.domain.model.Item
 import com.example.smartstorage.presentation.common.EmojiEffect
 import com.example.smartstorage.presentation.common.EmojiIconButton
+import com.example.smartstorage.presentation.common.PhotoPreviewDialog
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
@@ -360,31 +359,17 @@ fun ItemDetailScreen(
         }
     }
 
-    // 全屏预览（点击黑底关闭）
+    // 全屏预览（共享组件：支持缩放/拖动/多图切换；右上角按钮或系统返回关闭）
     fullscreenIndex?.let { index ->
-        val path = current.imagePaths.getOrNull(index)
-        if (path != null) {
-            Dialog(
-                onDismissRequest = { fullscreenIndex = null },
-                properties = DialogProperties(usePlatformDefaultWidth = false),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black)
-                        .clickable { fullscreenIndex = null },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    AsyncImage(
-                        model = File(path),
-                        contentDescription = "物品照片大图",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit,
-                    )
-                }
-            }
+        if (current.imagePaths.isNotEmpty()) {
+            PhotoPreviewDialog(
+                imagePaths = current.imagePaths,
+                initialIndex = index.coerceIn(0, current.imagePaths.lastIndex),
+                onDismiss = { fullscreenIndex = null },
+            )
         }
     }
+
 
     // 图片来源底部弹窗（拍照 / 从相册选择）
     if (showImageSheet) {

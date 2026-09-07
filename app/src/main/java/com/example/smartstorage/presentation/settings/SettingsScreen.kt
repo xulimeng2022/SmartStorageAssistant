@@ -68,6 +68,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,7 +82,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.app.Activity
+import androidx.compose.foundation.layout.fillMaxHeight
 import com.example.smartstorage.BuildConfig
+import com.example.smartstorage.R
+import com.example.smartstorage.data.local.prefs.AppLanguage
 import com.example.smartstorage.data.local.prefs.AiConfig
 import com.example.smartstorage.data.local.prefs.FreeModel
 import com.example.smartstorage.data.local.prefs.LlmPreset
@@ -165,6 +171,9 @@ fun SettingsScreen(
     var showSearchTips by remember { mutableStateOf(false) }
     var doNotRemindTips by remember { mutableStateOf(false) }
 
+    // 语言选择弹窗状态
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
     // 退出确认：有未保存修改时按系统返回键先弹窗
     var showDiscardDialog by remember { mutableStateOf(false) }
     BackHandler(enabled = hasChanges) {
@@ -182,7 +191,7 @@ fun SettingsScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             // 顶部标题栏
-            CenterAlignedTopAppBar(title = { Text("设置") })
+            CenterAlignedTopAppBar(title = { Text(stringResource(R.string.settings_title)) })
 
             LazyColumn(
                 state = listState,
@@ -192,20 +201,20 @@ fun SettingsScreen(
                 // ===== 分组 0：通用设置（语言预留 / 搜索小贴士）=====
                 item(key = "general") {
                     SettingsGroup(
-                        title = "通用设置",
+                        title = stringResource(R.string.settings_general),
                         items = listOf(
-                            // 语言：预留项（置灰，开发中）
+                            // 语言：跟随系统 / 简体中文 / 繁體中文 / English
                             SettingsItem(
-                                label = "语言",
-                                value = "开发中",
+                                label = stringResource(R.string.settings_language),
+                                value = currentLanguageLabel(),
                                 icon = Icons.Filled.Language,
-                                enabled = false,
-                                onClick = {},
+                                enabled = true,
+                                onClick = { showLanguageDialog = true },
                             ),
                             // 搜索小贴士：查看 / 重新开启首页搜索提示
                             SettingsItem(
-                                label = "搜索小贴士",
-                                value = "查看搜索方法",
+                                label = stringResource(R.string.settings_searchtips),
+                                value = stringResource(R.string.settings_searchtips_value),
                                 icon = Icons.Outlined.Help,
                                 onClick = {
                                     doNotRemindTips = !viewModel.isSearchTipsEnabled()
@@ -440,7 +449,7 @@ fun SettingsScreen(
                                         color = MaterialTheme.colorScheme.primary,
                                     )
                                     Text(
-                                        text = "无需配置，即开即用",
+                                        text = "内置免费模型：需在构建时配置 SILICONFLOW_API_KEY 才能启用；若提示未内置免费 Key，请切换到自定义模式填写自己的接口。",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -555,7 +564,7 @@ fun SettingsScreen(
             title = { Text("如何配置 AI 智能解析？") },
             text = {
                 Text(
-                    "0. 免费模式使用内置硅基流动 Qwen2.5-7B-Instruct，无需任何配置；自定义模式可填写自己的接入商与 API Key。\n\n" +
+                    "0. 免费模式内置硅基流动 Qwen2.5-7B-Instruct（完全免费）：免费 Key 需在构建安装包时配置 SILICONFLOW_API_KEY；若提示未内置免费 Key，请切换到自定义模式填写自己的接入商与 API Key。自定义模式可填写任意 OpenAI 兼容接口。\n\n" +
                         "1. 点击上方预设按钮（如 DeepSeek、OpenAI 等），会自动填入该供应商的接口地址与默认模型版本。\n\n" +
                         "2. 可在「模型版本」下拉框中选择具体模型；每个预设的 API Key 独立保存，切换预设会自动恢复对应的 Key。\n\n" +
                         "3. 填写该供应商的 API Key 后，点击「保存配置」。\n\n" +
@@ -693,6 +702,57 @@ fun SettingsScreen(
                 }
             },
             confirmButton = {},
+        )
+    }
+
+    // 语言选择弹窗：选择后持久化并重建 Activity 立即生效（语言与深浅主题互不覆盖）
+    if (showLanguageDialog) {
+        val context = LocalContext.current
+        val current = AppLanguage.getCode(context)
+        val options = listOf(
+            "" to stringResource(R.string.lang_follow_system),
+            "zh" to stringResource(R.string.lang_zh),
+            "zh-rTW" to stringResource(R.string.lang_tw),
+            "en" to stringResource(R.string.lang_en),
+        )
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title = { Text(stringResource(R.string.lang_dialog_title)) },
+            text = {
+                Column {
+                    options.forEach { (code, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showLanguageDialog = false
+                                    if (code != current) {
+                                        AppLanguage.setCode(context, code)
+                                        (context as? Activity)?.recreate()
+                                    }
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (code == current) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (code == current) {
+                                Text("✓", color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLanguageDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
         )
     }
 }
@@ -843,4 +903,13 @@ internal fun SettingsListItem(
             )
         }
     }
+}
+
+/** 当前语言显示名（跟随系统 / 简体中文 / 繁體中文 / English）。 */
+@Composable
+private fun currentLanguageLabel(): String = when (AppLanguage.getCode(LocalContext.current)) {
+    "zh" -> stringResource(R.string.lang_zh)
+    "zh-rTW" -> stringResource(R.string.lang_tw)
+    "en" -> stringResource(R.string.lang_en)
+    else -> stringResource(R.string.lang_follow_system)
 }

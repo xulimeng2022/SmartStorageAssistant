@@ -88,17 +88,33 @@ class HomeViewModel @Inject constructor(
     private val _timeoutDialog = MutableStateFlow(false)
     val timeoutDialog: StateFlow<Boolean> = _timeoutDialog.asStateFlow()
 
-    /** 关闭“解析超时”对话框。 */
-    fun consumeTimeout() {
+    // 本页面会话内是否已选择本地降级（首页=直接用原文关键词搜索），避免同一会话反复弹超时框
+    private var freeSearchTimeoutFallback = false
+
+    /** 关闭“解析超时”对话框（取消/去配置共用）。 */
+    fun dismissTimeoutDialog() {
         _timeoutDialog.value = false
     }
 
+    /** 免费模式超时后选择本地降级：直接用原文关键词搜索，本次会话内不再重复弹框。 */
+    fun onTimeoutUseLocal() {
+        freeSearchTimeoutFallback = true
+        _timeoutDialog.value = false
+        // 原文保留在搜索框，自动按关键词搜索；错误提示告知用户当前为原文搜索结果
+        _parseState.value = SearchParseState.Error
+    }
+
     // 最近一次软删除的物品（用于 Snackbar 撤销），null 表示无
+    // 搜索框输入代数：解析结果返回时若代数已变化则丢弃（旧请求迟到不得覆盖新输入）
+    private var queryGeneration = 0L
+
     private val _undoEvent = MutableStateFlow<Item?>(null)
     val undoEvent: StateFlow<Item?> = _undoEvent.asStateFlow()
 
     /** 更新搜索框文本（手动输入时退出 AI 筛选，回到普通关键词搜索）。 */
     fun onSearchQueryChange(query: String) {
+        // 输入变化代数：用于丢弃迟到的旧解析结果
+        queryGeneration++
         _searchQuery.value = query
         _aiFilter.value = null
         if (_parseState.value == SearchParseState.Error) {
@@ -110,10 +126,17 @@ class HomeViewModel @Inject constructor(
     fun onAiParse() {
         val raw = _searchQuery.value.trim()
         if (raw.isEmpty() || _parseState.value == SearchParseState.Parsing) return
+        // 记录本次解析对应的输入代数：若解析期间用户修改了输入则丢弃结果
+        val generation = queryGeneration
         _parseState.value = SearchParseState.Parsing
         viewModelScope.launch {
             runCatching { llmClient.parseSearchKeyword(raw) }
                 .onSuccess { keyword ->
+                    if (queryGeneration != generation) {
+                        // 用户已修改输入：丢弃迟到的旧结果，不覆盖新输入
+                        _parseState.value = SearchParseState.Idle
+                        return@onSuccess
+                    }
                     if (!keyword.isNullOrBlank()) {
                         // 提取到关键词：填入搜索框并触发实时搜索
                         _aiFilter.value = null
@@ -126,18 +149,28 @@ class HomeViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
+                    if (queryGeneration != generation) {
+                        // 用户已修改输入：丢弃迟到的旧错误，不弹超时框
+                        _parseState.value = SearchParseState.Idle
+                        return@onFailure
+                    }
                     // 解析失败：保持原文搜索
                     _searchQuery.value = raw
                     _parseState.value = SearchParseState.Error
                     if (e is LlmTimeoutException) {
-                        // 免费模式超时：弹“解析超时”引导
-                        _timeoutDialog.value = true
+                        if (freeSearchTimeoutFallback) {
+                            // 本次会话已选择本地降级：不再弹框，直接用原文关键词搜索
+                            _timeoutDialog.value = false
+                        } else {
+                            // 免费模式超时：弹“解析超时”引导
+                            _timeoutDialog.value = true
+                        }
                     }
                 }
         }
     }
 
-    /** 清除 AI 三字段筛选，回到关键词搜索。 */
+    /** 清除 AI 三字段筛选，回到关键词搜索。 */    /** 清除 AI 三字段筛选，回到关键词搜索。 */
     fun clearAiFilter() {
         _aiFilter.value = null
     }

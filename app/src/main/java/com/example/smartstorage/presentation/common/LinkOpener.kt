@@ -1,5 +1,7 @@
 package com.example.smartstorage.presentation.common
 
+import com.example.smartstorage.R
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -16,13 +18,13 @@ import android.widget.Toast
 fun openUrlWithChooser(context: Context, url: String) {
     try {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-        val chooser = Intent.createChooser(intent, "选择浏览器打开")
+        val chooser = Intent.createChooser(intent, context.getString(R.string.link_browser))
         chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(chooser)
     } catch (e: Exception) {
         // 兜底：复制链接到剪贴板
         copyTextToClipboard(context, url)
-        Toast.makeText(context, "无法打开链接，已复制到剪贴板", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.link_copied), Toast.LENGTH_SHORT).show()
     }
 }
 

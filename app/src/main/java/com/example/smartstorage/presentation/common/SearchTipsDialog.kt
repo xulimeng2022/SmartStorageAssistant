@@ -15,6 +15,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.example.smartstorage.R
 import androidx.compose.ui.unit.dp
 
 /**
@@ -32,26 +34,26 @@ fun SearchTipsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onConfirm,
-        title = { Text("🔍 搜索小贴士") },
+        title = { Text(stringResource(R.string.searchtips_title)) },
         text = {
             Column {
                 Text(
-                    text = "• 文字搜索：在首页搜索框输入关键词，查找已保存的物品",
+                    text = stringResource(R.string.searchtips_1),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "• 语音搜索：点击搜索框右侧的 🎤 麦克风，说出你想找的物品",
+                    text = stringResource(R.string.searchtips_2),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "• AI 智能解析：点击搜索框右侧的 ✨ 按钮，AI 自动提取关键词并搜索",
+                    text = stringResource(R.string.searchtips_3),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "💡 小技巧：支持模糊搜索，输入“笔”即可找到所有包含“笔”的物品",
+                    text = stringResource(R.string.searchtips_4),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -67,12 +69,12 @@ fun SearchTipsDialog(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "不再提示",
+                        text = stringResource(R.string.searchtips_dont),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Text(
-                        text = "可在设置页再次查看",
+                        text = stringResource(R.string.searchtips_5),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(end = 4.dp),
@@ -82,7 +84,7 @@ fun SearchTipsDialog(
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("知道了")
+                Text(stringResource(R.string.searchtips_ok))
             }
         },
     )

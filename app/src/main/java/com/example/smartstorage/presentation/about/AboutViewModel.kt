@@ -1,6 +1,8 @@
 package com.example.smartstorage.presentation.about
 
 import android.content.Context
+import androidx.annotation.StringRes
+import com.example.smartstorage.R
 import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Chat
@@ -48,14 +50,14 @@ class AboutViewModel @Inject constructor(
             label = "QQ",
             value = "2913895771",
             copyable = true, // 部分设备无法拉起 QQ，点击=复制号码
-            onClick = { copyContact("2913895771", "QQ号已复制，请打开QQ搜索添加") },
+            onClick = { copyContact("2913895771", R.string.about_qq_copied) },
         ),
         ContactItem(
             icon = Icons.Outlined.Chat,
             label = "微信",
             value = "xulimeng2021",
             copyable = true, // 微信无法直接跳转加好友，点击=复制
-            onClick = { copyContact("xulimeng2021", "微信号已复制，请打开微信搜索添加") },
+            onClick = { copyContact("xulimeng2021", R.string.about_wechat_copied) },
         ),
         ContactItem(
             icon = Icons.Outlined.Code,
@@ -79,8 +81,8 @@ class AboutViewModel @Inject constructor(
     )
 
     /** 复制联系方式并 Toast 提示（QQ/微信共用） */
-    private fun copyContact(value: String, message: String) {
+    private fun copyContact(value: String, @StringRes messageRes: Int) {
         copyTextToClipboard(context, value)
-        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        Toast.makeText(context, context.getString(messageRes), Toast.LENGTH_LONG).show()
     }
 }

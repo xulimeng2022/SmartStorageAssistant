@@ -2,4 +2,7 @@
 <resources>
     <!-- 启动图标背景色 -->
     <color name="ic_launcher_background">#405DAD</color>
+    <!-- 启动窗口背景：浅色白色、深色深灰，避免深色模式冷启动白色闪屏 -->
+    <color name="window_background_light">#FFFFFF</color>
+    <color name="window_background_dark">#111111</color>
 </resources>

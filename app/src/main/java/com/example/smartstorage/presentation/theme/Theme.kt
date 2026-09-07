@@ -1,17 +1,14 @@
 package com.example.smartstorage.presentation.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import com.example.smartstorage.data.local.prefs.ThemeMode
 
-// 浅色配色方案
+// 浅色配色方案（沿用品牌靛蓝，保持既有浅色观感）
 private val LightColorScheme = lightColorScheme(
     primary = Blue40,
     onPrimary = OnBlue40,
@@ -23,7 +20,8 @@ private val LightColorScheme = lightColorScheme(
     onSecondaryContainer = OnBlueGreyContainerLight,
 )
 
-// 深色配色方案
+// 深色配色方案：微信式深灰层次（页面/卡片/填充/描边分层），强调色沿用品牌靛蓝；
+// 关闭 Android 12+ 动态取色，保证深色观感稳定可控、与语言/浅色主题组合一致
 private val DarkColorScheme = darkColorScheme(
     primary = Blue80,
     onPrimary = OnBlue80,
@@ -33,6 +31,27 @@ private val DarkColorScheme = darkColorScheme(
     onSecondary = OnBlueGrey80,
     secondaryContainer = BlueGreyContainerDark,
     onSecondaryContainer = OnBlueGreyContainerDark,
+    // 语义层级：深灰表面，避免大面积纯黑纯白
+    background = DarkBackground,
+    onBackground = DarkOnSurface,
+    surface = DarkSurface,
+    onSurface = DarkOnSurface,
+    surfaceVariant = DarkSurfaceContainerHigh,
+    onSurfaceVariant = DarkOnSurfaceVariant,
+    surfaceDim = DarkBackground,
+    surfaceBright = DarkSurfaceContainerHigh,
+    surfaceContainerLowest = Color(0xFF0D0D0D),
+    surfaceContainerLow = DarkSurface,
+    surfaceContainer = DarkSurfaceContainer,
+    surfaceContainerHigh = DarkSurfaceContainerHigh,
+    surfaceContainerHighest = DarkSurfaceContainerHigh,
+    outline = DarkOutline,
+    outlineVariant = DarkOutline,
+    error = Color(0xFFF2B8B5),
+    onError = Color(0xFF601410),
+    inverseSurface = DarkOnSurface,
+    inverseOnSurface = Color(0xFF2F3033),
+    inversePrimary = Blue40,
 )
 
 /**
@@ -40,13 +59,11 @@ private val DarkColorScheme = darkColorScheme(
  *
  * @param themeMode 主题模式（跟随系统 / 浅色 / 深色）；由 MainActivity 订阅 ThemeRepository 传入，
  *                  切换后全局即时生效，无需重启 App
- * @param dynamicColor 是否启用 Android 12+ 动态取色（默认开启）
  * @param content 页面内容
  */
 @Composable
 fun SmartStorageTheme(
     themeMode: ThemeMode = ThemeMode.FOLLOW_SYSTEM,
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     // 根据主题模式计算是否使用深色：跟随系统时用系统设置，浅色 / 深色强制固定
@@ -55,15 +72,8 @@ fun SmartStorageTheme(
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
     }
-    val colorScheme = when {
-        // Android 12 及以上且开启动态取色时，使用系统壁纸配色
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    // 不使用系统动态取色：深色按既定深灰层次渲染，浅色维持品牌色板
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     MaterialTheme(
         colorScheme = colorScheme,

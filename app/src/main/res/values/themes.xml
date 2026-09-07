@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- 应用基础主题：UI 全部由 Compose 绘制，因此使用无 ActionBar 的系统主题 -->
-    <style name="Theme.SmartStorage" parent="android:Theme.Material.Light.NoActionBar" />
+        <style name="Theme.SmartStorage" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background_light</item>
+    </style>
 </resources>
