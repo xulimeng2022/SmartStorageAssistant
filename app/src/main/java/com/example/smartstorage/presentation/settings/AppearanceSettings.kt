@@ -1,5 +1,8 @@
 package com.example.smartstorage.presentation.settings
 
+import androidx.compose.ui.res.stringResource
+import com.example.smartstorage.R
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -120,7 +123,7 @@ fun AppearanceSettingsGroup(
     Column(modifier = modifier.fillMaxWidth()) {
         // 分组标题：小字、灰色、Medium，与卡片间距 4dp
         Text(
-            text = "外观设置",
+            text = stringResource(R.string.settings_appearance),
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -138,7 +141,7 @@ fun AppearanceSettingsGroup(
                 // ===== 1. 主题模式：跟随系统 / 浅色 / 深色 =====
                 SettingsListItem(
                     item = SettingsItem(
-                        label = "深色模式",
+                        label = stringResource(R.string.settings_dark_mode),
                         icon = Icons.Outlined.DarkMode,
                         onClick = {},
                         // 主题模式为常驻展开，不显示右侧箭头
@@ -170,7 +173,7 @@ fun AppearanceSettingsGroup(
                 // ===== 2. 文字颜色：抽屉（折叠箭头 + 展开动画 + 完整选择器）=====
                 SettingsListItem(
                     item = SettingsItem(
-                        label = "文字颜色",
+                        label = stringResource(R.string.settings_text_color),
                         icon = Icons.Filled.Palette,
                         onClick = { textColorExpanded = !textColorExpanded },
                         // 抽屉箭头：收起显示 →，展开旋转 90° 变成 ↓
@@ -211,7 +214,7 @@ private fun DrawerArrow(expanded: Boolean) {
     )
     Icon(
         imageVector = Icons.Outlined.KeyboardArrowRight,
-        contentDescription = if (expanded) "收起" else "展开",
+        contentDescription = if (expanded) stringResource(R.string.settings_collapse) else stringResource(R.string.settings_expand),
         tint = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.graphicsLayer { rotationZ = rotation },
     )
@@ -231,7 +234,7 @@ private fun TextColorDrawerContent(
     ) {
         // 预览区：示例文字实时应用当前颜色配置（纯色/渐变即时可见）
         Text(
-            text = "红色的笔放在柜子里，蓝色的笔放在抽屉里",
+            text = stringResource(R.string.appearance_demo),
             style = textColorStyle(
                 config = config,
                 baseStyle = MaterialTheme.typography.bodyMedium,
@@ -258,7 +261,7 @@ private fun TextColorDrawerContent(
         when (config.type) {
             // 默认：跟随主题，无需额外配置
             TextColorType.DEFAULT -> Text(
-                text = "跟随主题默认文字颜色（深色模式自动适配）",
+                text = stringResource(R.string.settings_default_text),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -279,7 +282,7 @@ private fun SolidColorContent(
     onConfigChange: (TextColorConfig) -> Unit,
 ) {
     Text(
-        text = "预设颜色",
+        text = stringResource(R.string.settings_preset),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -312,7 +315,7 @@ private fun SolidColorContent(
                 )
                 Spacer(modifier = Modifier.size(2.dp))
                 Text(
-                    text = name,
+                    text = localizedPresetName(name),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -320,7 +323,7 @@ private fun SolidColorContent(
         }
     }
     Text(
-        text = "自定义颜色",
+        text = stringResource(R.string.settings_custom_color),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -345,7 +348,7 @@ private fun GradientColorContent(
     onConfigChange: (TextColorConfig) -> Unit,
 ) {
     Text(
-        text = "预设渐变",
+        text = stringResource(R.string.settings_preset_gradient),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -381,7 +384,7 @@ private fun GradientColorContent(
     }
 
     Text(
-        text = "渐变方向",
+        text = stringResource(R.string.settings_gradient_dir),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -406,7 +409,7 @@ private fun GradientColorContent(
         FilterChip(
             selected = !targetEnd,
             onClick = { targetEnd = false },
-            label = { Text("起始色") },
+            label = { Text(stringResource(R.string.settings_color_start)) },
             colors = FilterChipDefaults.filterChipColors(
                 selectedContainerColor = MaterialTheme.colorScheme.primary,
                 selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
@@ -415,7 +418,7 @@ private fun GradientColorContent(
         FilterChip(
             selected = targetEnd,
             onClick = { targetEnd = true },
-            label = { Text("结束色") },
+            label = { Text(stringResource(R.string.settings_color_end)) },
             colors = FilterChipDefaults.filterChipColors(
                 selectedContainerColor = MaterialTheme.colorScheme.primary,
                 selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
@@ -435,4 +438,19 @@ private fun GradientColorContent(
             )
         },
     )
+}
+
+/** 预设颜色/渐变显示名按当前语言渲染（数据里保存稳定中文名，仅用于 UI 展示）。 */
+@Composable
+private fun localizedPresetName(name: String): String = when (name) {
+    "深黑" -> stringResource(R.string.color_black)
+    "深蓝" -> stringResource(R.string.color_blue)
+    "深灰" -> stringResource(R.string.color_grey)
+    "墨绿" -> stringResource(R.string.color_green)
+    "深棕" -> stringResource(R.string.color_brown)
+    "红→橙" -> stringResource(R.string.gradient_red_orange)
+    "蓝→紫" -> stringResource(R.string.gradient_blue_purple)
+    "绿→青" -> stringResource(R.string.gradient_green_cyan)
+    "黑→灰" -> stringResource(R.string.gradient_black_grey)
+    else -> name
 }

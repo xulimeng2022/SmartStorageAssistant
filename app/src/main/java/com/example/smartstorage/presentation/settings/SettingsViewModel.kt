@@ -238,6 +238,24 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // 一次性标志：从失败引导「去配置 API」进入时，自动切到自定义模式并定位到 AI 配置卡
+    private val _autoOpenAiConfig = MutableStateFlow(false)
+    val autoOpenAiConfig: StateFlow<Boolean> = _autoOpenAiConfig.asStateFlow()
+
+    /** 「去配置 API」入口调用：切到自定义模式（持久化，便于继续编辑/保存），回到设置页自动定位。 */
+    fun markAutoOpenAiConfig() {
+        if (_mode.value != AiConfig.MODE_CUSTOM) {
+            _mode.value = AiConfig.MODE_CUSTOM
+            viewModelScope.launch { settingsRepository.saveMode(AiConfig.MODE_CUSTOM) }
+        }
+        _autoOpenAiConfig.value = true
+    }
+
+    /** 消费自动定位标志。 */
+    fun consumeAutoOpenAiConfig() {
+        _autoOpenAiConfig.value = false
+    }
+
     /** 消费 Snackbar 消息 */
     fun consumeSaveMessage() {
         _saveMessage.value = null

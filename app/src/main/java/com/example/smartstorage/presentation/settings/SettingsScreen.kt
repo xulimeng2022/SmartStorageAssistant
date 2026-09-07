@@ -82,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import android.app.Activity
 import androidx.compose.foundation.layout.fillMaxHeight
 import com.example.smartstorage.BuildConfig
@@ -171,6 +172,16 @@ fun SettingsScreen(
     var showSearchTips by remember { mutableStateOf(false) }
     var doNotRemindTips by remember { mutableStateOf(false) }
 
+    // 「去配置 API」进入：自动滚动定位到「AI 智能解析」卡片（LazyColumn 第 3 项，index=2）
+    val autoOpenAiConfig by viewModel.autoOpenAiConfig.collectAsStateWithLifecycle()
+    LaunchedEffect(autoOpenAiConfig) {
+        if (autoOpenAiConfig) {
+            viewModel.consumeAutoOpenAiConfig()
+            delay(120)
+            listState.animateScrollToItem(2)
+        }
+    }
+
     // 语言选择弹窗状态
     var showLanguageDialog by remember { mutableStateOf(false) }
 
@@ -241,7 +252,7 @@ fun SettingsScreen(
                     Column(modifier = Modifier.fillMaxWidth()) {
                         // 分组标题
                         Text(
-                            text = "AI 智能解析",
+                            text = stringResource(R.string.ai_group_title),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -270,7 +281,7 @@ fun SettingsScreen(
                                         tint = MaterialTheme.colorScheme.primary,
                                     )
                                     Text(
-                                        text = "AI 智能解析",
+                                        text = stringResource(R.string.ai_group_title),
                                         style = MaterialTheme.typography.titleMedium,
                                     )
                                     Spacer(modifier = Modifier.weight(1f))
@@ -278,7 +289,7 @@ fun SettingsScreen(
                                     EmojiIconButton(onClick = { showHelpDialog = true }) {
                                         Icon(
                                             imageVector = Icons.Outlined.Help,
-                                            contentDescription = "配置帮助",
+                                            contentDescription = stringResource(R.string.help_cd_config),
                                             modifier = Modifier.size(24.dp),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
@@ -292,14 +303,14 @@ fun SettingsScreen(
                                         onClick = { viewModel.onModeSelect(AiConfig.MODE_FREE) },
                                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                                     ) {
-                                        Text("免费模式")
+                                        Text(stringResource(R.string.free_mode))
                                     }
                                     SegmentedButton(
                                         selected = mode == AiConfig.MODE_CUSTOM,
                                         onClick = { viewModel.onModeSelect(AiConfig.MODE_CUSTOM) },
                                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                                     ) {
-                                        Text("自定义模式")
+                                        Text(stringResource(R.string.custom_mode))
                                     }
                                 }
 
@@ -362,7 +373,7 @@ fun SettingsScreen(
                                                 value = editState.modelName,
                                                 onValueChange = viewModel::onModelChange,
                                                 readOnly = !isCustom,
-                                                label = { Text("模型版本") },
+                                                label = { Text(stringResource(R.string.model_version)) },
                                                 placeholder = { Text("deepseek-chat") },
                                                 textStyle = inputTextStyle,
                                                 singleLine = true,
@@ -419,9 +430,9 @@ fun SettingsScreen(
                                                             Icons.Filled.Visibility
                                                         },
                                                         contentDescription = if (editState.apiKeyVisible) {
-                                                            "隐藏 API Key"
+                                                            stringResource(R.string.hide_api_key)
                                                         } else {
-                                                            "显示 API Key"
+                                                            stringResource(R.string.show_api_key)
                                                         },
                                                     )
                                                 }
@@ -436,7 +447,7 @@ fun SettingsScreen(
                                                 .fillMaxWidth()
                                                 .height(44.dp),
                                         ) {
-                                            Text("保存配置")
+                                            Text(stringResource(R.string.save_config))
                                         }
                                     }
                                 }
@@ -444,17 +455,12 @@ fun SettingsScreen(
                                 // 免费模式：内置免费模型，无需任何配置
                                 if (mode == AiConfig.MODE_FREE) {
                                     Text(
-                                        text = "🎉 当前使用：${FreeModel.LABEL}（完全免费）",
+                                        text = stringResource(R.string.free_current, FreeModel.LABEL),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.primary,
                                     )
                                     Text(
-                                        text = "内置免费模型：需在构建时配置 SILICONFLOW_API_KEY 才能启用；若提示未内置免费 Key，请切换到自定义模式填写自己的接口。",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Text(
-                                        text = "💡 支持单条和批量解析，输入多条描述时用逗号、句号或分号分隔",
+                                        text = stringResource(R.string.free_tip),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -467,13 +473,13 @@ fun SettingsScreen(
                 // ===== 分组 3：数据管理（回收站 / 导出数据预留）=====
                 item(key = "data") {
                     SettingsGroup(
-                        title = "数据管理",
+                        title = stringResource(R.string.data_group),
                         trailing = {
                             // 数据管理模块右上角帮助按钮：弹出备份与恢复教程
                             EmojiIconButton(onClick = { showDataHelpDialog = true }) {
                                 Icon(
                                     imageVector = Icons.Outlined.Help,
-                                    contentDescription = "备份教程",
+                                    contentDescription = stringResource(R.string.backup_help_cd),
                                     modifier = Modifier.size(20.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -482,23 +488,23 @@ fun SettingsScreen(
                         items = listOf(
                             // 回收站：进入回收站页面
                             SettingsItem(
-                                label = "回收站",
-                                value = "查看被删除的物品，可恢复或永久删除",
+                                label = stringResource(R.string.trash),
+                                value = stringResource(R.string.trash_desc),
                                 icon = Icons.Filled.DeleteSweep,
                                 iconTint = MaterialTheme.colorScheme.error,
                                 onClick = onOpenTrash,
                             ),
                             // 导出数据：导出所有物品与图片到 ZIP 备份文件
                             SettingsItem(
-                                label = "导出数据",
-                                value = "导出所有物品数据到 ZIP 文件",
+                                label = stringResource(R.string.export_data),
+                                value = stringResource(R.string.export_desc),
                                 icon = Icons.Outlined.FileDownload,
                                 onClick = { viewModel.onExportClick() },
                             ),
                             // 导入数据：从备份文件恢复数据
                             SettingsItem(
-                                label = "导入数据",
-                                value = "从备份文件恢复数据",
+                                label = stringResource(R.string.import_data),
+                                value = stringResource(R.string.import_desc),
                                 icon = Icons.Outlined.FileUpload,
                                 onClick = { openDocumentLauncher.launch(arrayOf("application/zip")) },
                             ),
@@ -509,25 +515,25 @@ fun SettingsScreen(
                 // ===== 分组 4：关于与支持（关于 / 赞助支持 / 更多功能占位）=====
                 item(key = "about") {
                     SettingsGroup(
-                        title = "关于与支持",
+                        title = stringResource(R.string.about_group),
                         items = listOf(
                             // 关于：进入关于页
                             SettingsItem(
-                                label = "关于智能收纳助手",
-                                value = "版本 ${BuildConfig.VERSION_NAME}",
+                                label = stringResource(R.string.about_app),
+                                value = stringResource(R.string.version_label, BuildConfig.VERSION_NAME),
                                 icon = Icons.Filled.Info,
                                 onClick = onOpenAbout,
                             ),
                             // 赞助支持：进入捐赠页
                             SettingsItem(
-                                label = "❤️ 赞助支持",
-                                value = "请开发者喝杯咖啡，支持项目持续维护",
+                                label = stringResource(R.string.donate_entry),
+                                value = stringResource(R.string.donate_desc),
                                 icon = Icons.Outlined.Favorite,
                                 onClick = onOpenDonate,
                             ),
                             // 更多功能占位（保留）
                             SettingsItem(
-                                label = "更多功能开发中",
+                                label = stringResource(R.string.more_coming),
                                 icon = Icons.Filled.Settings,
                                 enabled = false,
                                 onClick = {},
@@ -564,7 +570,7 @@ fun SettingsScreen(
             title = { Text("如何配置 AI 智能解析？") },
             text = {
                 Text(
-                    "0. 免费模式内置硅基流动 Qwen2.5-7B-Instruct（完全免费）：免费 Key 需在构建安装包时配置 SILICONFLOW_API_KEY；若提示未内置免费 Key，请切换到自定义模式填写自己的接入商与 API Key。自定义模式可填写任意 OpenAI 兼容接口。\n\n" +
+                    "0. 免费模式内置硅基流动 Qwen2.5-7B-Instruct（完全免费）：免费模式内置免费模型，无需任何配置；若模型暂时不可用，可切换到自定义模式并填写自己的接入商与 API Key 后重试。自定义模式可填写任意 OpenAI 兼容接口。\n\n" +
                         "1. 点击上方预设按钮（如 DeepSeek、OpenAI 等），会自动填入该供应商的接口地址与默认模型版本。\n\n" +
                         "2. 可在「模型版本」下拉框中选择具体模型；每个预设的 API Key 独立保存，切换预设会自动恢复对应的 Key。\n\n" +
                         "3. 填写该供应商的 API Key 后，点击「保存配置」。\n\n" +
@@ -574,7 +580,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showHelpDialog = false }) {
-                    Text("知道了")
+                    Text(stringResource(R.string.common_ok))
                 }
             },
         )
@@ -594,7 +600,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showDataHelpDialog = false }) {
-                    Text("知道了")
+                    Text(stringResource(R.string.common_ok))
                 }
             },
         )
@@ -604,8 +610,8 @@ fun SettingsScreen(
     if (showDiscardDialog) {
         AlertDialog(
             onDismissRequest = { showDiscardDialog = false },
-            title = { Text("放弃修改？") },
-            text = { Text("确定要放弃已修改的内容吗？") },
+            title = { Text(stringResource(R.string.discard_title)) },
+            text = { Text(stringResource(R.string.discard_text)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -613,12 +619,12 @@ fun SettingsScreen(
                         onBack()
                     },
                 ) {
-                    Text("放弃修改", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.discard_confirm), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDiscardDialog = false }) {
-                    Text("继续编辑")
+                    Text(stringResource(R.string.discard_cancel))
                 }
             },
         )
@@ -649,7 +655,7 @@ fun SettingsScreen(
                         createDocumentLauncher.launch(name)
                     },
                 ) {
-                    Text("导出")
+                    Text(stringResource(R.string.export_confirm))
                 }
             },
             dismissButton = {
@@ -667,17 +673,17 @@ fun SettingsScreen(
             title = { Text("导入数据") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("导出时间：${formatBackupTime(info.exportTime)}", style = MaterialTheme.typography.bodyMedium)
-                    Text("物品数量：${info.itemCount} 件", style = MaterialTheme.typography.bodyMedium)
-                    Text("请选择导入模式：", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.backup_export_time, formatBackupTime(info.exportTime)), style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.backup_item_count, info.itemCount), style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.choose_import_mode), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         // 合并：保留现有数据，按名称去重，跳过重复物品
                         TextButton(onClick = { viewModel.onImportModeSelected(ImportMode.MERGE) }) {
-                            Text("合并导入")
+                            Text(stringResource(R.string.import_mode_merge))
                         }
                         // 覆盖：清空现有数据与图片后导入
                         TextButton(onClick = { viewModel.onImportModeSelected(ImportMode.OVERWRITE) }) {
-                            Text("覆盖导入", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.import_mode_overwrite), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -694,11 +700,11 @@ fun SettingsScreen(
     if (backupBusy) {
         AlertDialog(
             onDismissRequest = {},
-            title = { Text("请稍候") },
+            title = { Text(stringResource(R.string.please_wait)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    Text("正在处理备份数据…", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.processing_backup), style = MaterialTheme.typography.bodyMedium)
                 }
             },
             confirmButton = {},
@@ -759,7 +765,7 @@ fun SettingsScreen(
 
 /** 时间戳转「yyyy-MM-dd HH:mm」格式（导入确认对话框展示导出时间） */
 private fun formatBackupTime(timestamp: Long): String {
-    if (timestamp <= 0L) return "未知"
+    if (timestamp <= 0L) return ""
     return SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(timestamp))
 }
 
@@ -889,7 +895,7 @@ internal fun SettingsListItem(
             } else if (item.enabled) {
                 Icon(
                     imageVector = Icons.Outlined.ChevronRight,
-                    contentDescription = "进入",
+                    contentDescription = stringResource(R.string.about_enter),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

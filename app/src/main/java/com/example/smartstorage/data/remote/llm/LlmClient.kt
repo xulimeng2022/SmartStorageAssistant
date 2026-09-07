@@ -39,6 +39,15 @@ data class ParseItemsResult(
     val warning: String?,
 )
 
+/** 首页“智能解析”的结果：区分成功提取与明确模型失败（超时/配置缺失/请求错误/空结果）。 */
+sealed interface SearchParseOutcome {
+    /** 提取到可用的搜索关键词。 */
+    data class Keyword(val text: String) : SearchParseOutcome
+
+    /** 明确模型/请求失败（不把“无法提取”与“服务失败”混为一谈）。 */
+    data class Failed(val timedOut: Boolean) : SearchParseOutcome
+}
+
 /** 单次 chat/completions 调用的结果（content 与 error 二选一）。 */
 private data class LlmCallResult(
     val content: String?,
@@ -185,17 +194,32 @@ class LlmClient @Inject constructor(
      *
      * @return 提取到的关键词（去掉可能的首尾引号）；配置缺失或调用失败时返回 null（调用方降级用原文搜索）。
      */
-    suspend fun parseSearchKeyword(rawText: String): String? = withContext(Dispatchers.IO) {
+    suspend fun parseSearchKeyword(rawText: String): SearchParseOutcome = withContext(Dispatchers.IO) {
         val systemPrompt = """
             你是一个物品搜索助手。用户想找到他之前存放的某件物品，请从用户的自然语言描述中提取出最关键的物品搜索关键词，
             只返回关键词，不要返回其他内容。例如：用户说“我之前把红色充电器放哪了”，返回“红色充电器”。
             用户说“帮我找一下那个绿色的杯子”，返回“绿色杯子”。如果无法提取，返回用户输入的原文。
         """.trimIndent()
-        val keyword = chatCompletion(systemPrompt, rawText)?.trim()
-        keyword?.takeIf { it.isNotEmpty() }?.let { stripQuotes(it) }
+        try {
+            val result = chatCompletionCore(systemPrompt, rawText)
+            if (result.error != null) {
+                // 请求/配置失败：明确失败（不静默降级为“原文搜索成功”）
+                SearchParseOutcome.Failed(timedOut = false)
+            } else {
+                val keyword = result.content?.trim()?.takeIf { it.isNotEmpty() }?.let { stripQuotes(it) }
+                if (keyword.isNullOrBlank()) {
+                    // 模型成功但没提取到有效关键词：视为“模型返回为空”的明确失败
+                    SearchParseOutcome.Failed(timedOut = false)
+                } else {
+                    SearchParseOutcome.Keyword(keyword)
+                }
+            }
+        } catch (e: LlmTimeoutException) {
+            SearchParseOutcome.Failed(timedOut = true)
+        }
     }
 
-    /** 去掉模型输出中可能带的首尾引号。 */
+    /** 去掉模型输出中可能带的首尾引号。 */    /** 去掉模型输出中可能带的首尾引号。 */
     private fun stripQuotes(text: String): String = text
         .removePrefix("\"")
         .removeSuffix("\"")

@@ -144,8 +144,8 @@ fun MainScreen() {
                 showDiscardDialog = false
                 pendingTab = null
             },
-            title = { Text("放弃修改？") },
-            text = { Text("确定要放弃已修改的内容吗？") },
+            title = { Text(stringResource(R.string.discard_title)) },
+            text = { Text(stringResource(R.string.discard_text)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -170,7 +170,7 @@ fun MainScreen() {
                         }
                     },
                 ) {
-                    Text("放弃修改", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.discard_confirm), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -180,11 +180,14 @@ fun MainScreen() {
                         pendingTab = null
                     },
                 ) {
-                    Text("继续编辑")
+                    Text(stringResource(R.string.discard_cancel))
                 }
             },
         )
     }
+
+    // 从“去配置 API（保留草稿）”进入设置页后的待恢复路由（Add tab 或 Edit 覆盖层）
+    var resumeRoute by remember { mutableStateOf<String?>(null) }
 
     // 统一的 Tab 切换逻辑（底部导航点击）：有未保存修改先弹确认框，否则滚动 Pager
     fun navigateToTab(tab: Int) {
@@ -205,6 +208,17 @@ fun MainScreen() {
             targetRoute == currentRoute -> Unit
 
             else -> {
+                // 从“去配置 API（保留草稿）”返回添加页：恢复草稿且不清空工作副本
+                if (targetRoute == Screen.Add.route && resumeRoute == Screen.Add.route) {
+                    resumeRoute = null
+                    currentRoute = Screen.Add.route
+                    scope.launch { pagerState.animateScrollToPage(tab) }
+                    return
+                }
+                // 除保留返回外的其它离开设置页操作：清除待恢复标记
+                if (resumeRoute != null && targetRoute != Screen.Settings.route) {
+                    resumeRoute = null
+                }
                 // 进入“添加”页前清空工作副本
                 if (targetRoute == Screen.Add.route) {
                     addViewModel.clearState()
@@ -227,12 +241,41 @@ fun MainScreen() {
         }
     }
 
-    // “去配置”：跳转设置页 AI 配置（丢弃添加/编辑页未保存内容）
-    val goToSettings: () -> Unit = {
-        addViewModel.clearState()
+
+    // 打开设置页并定位到 AI 配置；keepDraft=true 时不清添加/编辑草稿，返回时恢复原流程
+    fun openSettingsForAiConfig(keepDraft: Boolean) {
+        if (keepDraft && (currentRoute == Screen.Add.route || currentRoute == Screen.Edit.route)) {
+            resumeRoute = currentRoute
+        } else {
+            resumeRoute = null
+            addViewModel.clearState()
+        }
         settingsViewModel.refresh()
+        settingsViewModel.markAutoOpenAiConfig()
         currentRoute = Screen.Settings.route
         scope.launch { pagerState.animateScrollToPage(2) }
+    }
+
+    // “去配置 API”：Home 等无草稿场景直接跳设置并丢弃添加页工作副本
+    val goToSettings: () -> Unit = { openSettingsForAiConfig(keepDraft = false) }
+
+    // “去配置 API（保留草稿）”：添加/编辑页失败引导使用，保留输入/表单/照片/批量/降级结果
+    val goToSettingsKeepDraft: () -> Unit = { openSettingsForAiConfig(keepDraft = true) }
+
+    // 从设置页返回：若来自“去配置 API（保留草稿）”，回到原添加/编辑流程并保留草稿
+    fun backFromSettings() {
+        settingsViewModel.refresh()
+        val resume = resumeRoute
+        if (resume != null && (resume == Screen.Add.route || resume == Screen.Edit.route)) {
+            resumeRoute = null
+            currentRoute = resume
+            if (resume == Screen.Add.route) {
+                scope.launch { pagerState.animateScrollToPage(1) }
+            }
+        } else {
+            currentRoute = Screen.Home.route
+            scope.launch { pagerState.animateScrollToPage(0) }
+        }
     }
 
     // 全面屏返回/系统返回：非首页返回上一级（首页保持默认退出；页面自身的 BackHandler 优先）
@@ -253,9 +296,7 @@ fun MainScreen() {
                 currentRoute = Screen.Home.route
             }
             Screen.Settings.route -> {
-                settingsViewModel.refresh()
-                currentRoute = Screen.Home.route
-                scope.launch { pagerState.animateScrollToPage(0) }
+                backFromSettings()
             }
             Screen.Trash.route -> {
                 currentRoute = Screen.Settings.route
@@ -297,7 +338,7 @@ fun MainScreen() {
                                         currentRoute = Screen.Add.route
                                         scope.launch { pagerState.animateScrollToPage(1) }
                                     },
-                                    onGoToSettings = goToSettings,
+                                    onGoToSettings = goToSettingsKeepDraft,
                                     onEditClick = { item ->
                                         editingItem = item
                                         addViewModel.clearState()
@@ -318,7 +359,7 @@ fun MainScreen() {
                                         currentRoute = Screen.Home.route
                                         scope.launch { pagerState.animateScrollToPage(0) }
                                     },
-                                    onGoToSettings = goToSettings,
+                                    onGoToSettings = goToSettingsKeepDraft,
                                 )
 
                                 2 -> SettingsScreen(
@@ -326,11 +367,7 @@ fun MainScreen() {
                                     onOpenAbout = { currentRoute = Screen.About.route },
                                     onOpenDonate = { currentRoute = Screen.Donate.route },
                                     listState = settingsListState,
-                                    onBack = {
-                                        settingsViewModel.refresh()
-                                        currentRoute = Screen.Home.route
-                                        scope.launch { pagerState.animateScrollToPage(0) }
-                                    },
+                                    onBack = { backFromSettings() },
                                 )
                             }
                         }
@@ -351,7 +388,7 @@ fun MainScreen() {
                                     addViewModel.clearState()
                                     currentRoute = Screen.Home.route
                                 },
-                                onGoToSettings = goToSettings,
+                                onGoToSettings = goToSettingsKeepDraft,
                             )
 
                             Screen.Detail.route -> ItemDetailScreen(

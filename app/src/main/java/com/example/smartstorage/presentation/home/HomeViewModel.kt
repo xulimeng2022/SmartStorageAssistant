@@ -84,22 +84,22 @@ class HomeViewModel @Inject constructor(
     private val _parseState = MutableStateFlow<SearchParseState>(SearchParseState.Idle)
     val parseState: StateFlow<SearchParseState> = _parseState.asStateFlow()
 
-    // 免费模式解析超时提示（true 时 UI 显示“解析超时”对话框）
-    private val _timeoutDialog = MutableStateFlow(false)
-    val timeoutDialog: StateFlow<Boolean> = _timeoutDialog.asStateFlow()
+    // AI 解析失败引导（true 时 UI 显示“AI 解析未成功”对话框）
+    private val _parseFailedGuide = MutableStateFlow(false)
+    val parseFailedGuide: StateFlow<Boolean> = _parseFailedGuide.asStateFlow()
 
     // 本页面会话内是否已选择本地降级（首页=直接用原文关键词搜索），避免同一会话反复弹超时框
     private var freeSearchTimeoutFallback = false
 
-    /** 关闭“解析超时”对话框（取消/去配置共用）。 */
-    fun dismissTimeoutDialog() {
-        _timeoutDialog.value = false
+    /** 关闭失败引导（去配置 API 前调用）：仅关闭，不改输入与状态。 */
+    fun dismissParseFailedGuide() {
+        _parseFailedGuide.value = false
     }
 
-    /** 免费模式超时后选择本地降级：直接用原文关键词搜索，本次会话内不再重复弹框。 */
-    fun onTimeoutUseLocal() {
+    /** 「稍后」：本次会话内不再重复弹框，直接保留原文关键词搜索。 */
+    fun onParseFailedGuideLater() {
         freeSearchTimeoutFallback = true
-        _timeoutDialog.value = false
+        _parseFailedGuide.value = false
         // 原文保留在搜索框，自动按关键词搜索；错误提示告知用户当前为原文搜索结果
         _parseState.value = SearchParseState.Error
     }
@@ -130,47 +130,43 @@ class HomeViewModel @Inject constructor(
         val generation = queryGeneration
         _parseState.value = SearchParseState.Parsing
         viewModelScope.launch {
-            runCatching { llmClient.parseSearchKeyword(raw) }
-                .onSuccess { keyword ->
+            when (val outcome = llmClient.parseSearchKeyword(raw)) {
+                is com.example.smartstorage.data.remote.llm.SearchParseOutcome.Keyword -> {
                     if (queryGeneration != generation) {
                         // 用户已修改输入：丢弃迟到的旧结果，不覆盖新输入
                         _parseState.value = SearchParseState.Idle
-                        return@onSuccess
+                        return@launch
                     }
-                    if (!keyword.isNullOrBlank()) {
+                    if (outcome.text.isNotBlank()) {
                         // 提取到关键词：填入搜索框并触发实时搜索
                         _aiFilter.value = null
-                        _searchQuery.value = keyword
+                        _searchQuery.value = outcome.text
                         _parseState.value = SearchParseState.Idle
                     } else {
-                        // 解析失败：保持原文搜索
+                        // 未提取到关键词：保持原文搜索
                         _searchQuery.value = raw
                         _parseState.value = SearchParseState.Error
                     }
                 }
-                .onFailure { e ->
+                is com.example.smartstorage.data.remote.llm.SearchParseOutcome.Failed -> {
                     if (queryGeneration != generation) {
-                        // 用户已修改输入：丢弃迟到的旧错误，不弹超时框
+                        // 用户已修改输入：丢弃迟到的旧错误，不弹引导框
                         _parseState.value = SearchParseState.Idle
-                        return@onFailure
+                        return@launch
                     }
-                    // 解析失败：保持原文搜索
+                    // 模型/请求最终失败：保持原文搜索
                     _searchQuery.value = raw
                     _parseState.value = SearchParseState.Error
-                    if (e is LlmTimeoutException) {
-                        if (freeSearchTimeoutFallback) {
-                            // 本次会话已选择本地降级：不再弹框，直接用原文关键词搜索
-                            _timeoutDialog.value = false
-                        } else {
-                            // 免费模式超时：弹“解析超时”引导
-                            _timeoutDialog.value = true
-                        }
+                    if (!freeSearchTimeoutFallback) {
+                        // 本次会话未选过「稍后」：弹“AI 解析未成功”引导
+                        _parseFailedGuide.value = true
                     }
                 }
+            }
         }
     }
 
-    /** 清除 AI 三字段筛选，回到关键词搜索。 */    /** 清除 AI 三字段筛选，回到关键词搜索。 */
+    /** 清除 AI 三字段筛选，回到关键词搜索。 */    /** 清除 AI 三字段筛选，回到关键词搜索。 */    /** 清除 AI 三字段筛选，回到关键词搜索。 */
     fun clearAiFilter() {
         _aiFilter.value = null
     }

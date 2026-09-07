@@ -75,7 +75,7 @@ import com.example.smartstorage.domain.model.Item
 import com.example.smartstorage.presentation.common.EmojiEffect
 import com.example.smartstorage.presentation.common.EmojiIconButton
 import com.example.smartstorage.presentation.common.SearchTipsDialog
-import com.example.smartstorage.presentation.common.TimeoutDialog
+import com.example.smartstorage.presentation.common.AiParseFailedDialog
 import com.example.smartstorage.data.local.prefs.TextColorConfig
 import com.example.smartstorage.presentation.theme.textColorStyle
 import java.io.File
@@ -95,7 +95,7 @@ fun HomeRoute(
     val undoEvent by viewModel.undoEvent.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val parseState by viewModel.parseState.collectAsStateWithLifecycle()
-    val timeoutDialog by viewModel.timeoutDialog.collectAsStateWithLifecycle()
+    val parseFailedGuide by viewModel.parseFailedGuide.collectAsStateWithLifecycle()
     val isInitialEmpty by viewModel.isInitialEmpty.collectAsStateWithLifecycle()
     val textColorConfig by viewModel.textColorConfig.collectAsStateWithLifecycle()
 
@@ -104,14 +104,14 @@ fun HomeRoute(
         undoEvent = undoEvent,
         searchQuery = searchQuery,
         parseState = parseState,
-        timeoutDialog = timeoutDialog,
+        parseFailedGuide = parseFailedGuide,
         isInitialEmpty = isInitialEmpty,
         onUndoDelete = viewModel::undoDelete,
         onConsumeUndo = viewModel::consumeUndo,
         onSearchQueryChange = viewModel::onSearchQueryChange,
         onAiParse = viewModel::onAiParse,
-        onConsumeTimeout = viewModel::dismissTimeoutDialog,
-        onTimeoutUseLocal = viewModel::onTimeoutUseLocal,
+        onDismissParseFailedGuide = viewModel::dismissParseFailedGuide,
+        onParseFailedGuideLater = viewModel::onParseFailedGuideLater,
         isSearchTipsEnabled = viewModel::isSearchTipsEnabled,
         onSetSearchTipsEnabled = viewModel::setSearchTipsEnabled,
         onGoToSettings = onGoToSettings,
@@ -141,9 +141,9 @@ fun HomeScreen(
     onAiParse: () -> Unit,
     isSearchTipsEnabled: () -> Boolean,
     onSetSearchTipsEnabled: (Boolean) -> Unit,
-    timeoutDialog: Boolean,
-    onConsumeTimeout: () -> Unit,
-    onTimeoutUseLocal: () -> Unit,
+    parseFailedGuide: Boolean,
+    onDismissParseFailedGuide: () -> Unit,
+    onParseFailedGuideLater: () -> Unit,
     onGoToSettings: () -> Unit,
     onAddClick: () -> Unit,
     onItemClick: (Item) -> Unit,
@@ -360,15 +360,15 @@ fun HomeScreen(
         )
     }
 
-    // 免费模式解析超时弹窗
-    if (timeoutDialog) {
-        TimeoutDialog(
-            onUseLocal = onTimeoutUseLocal,
+    // AI 解析失败引导弹窗（本次会话未选「稍后」才弹；稍后=保留原文关键词搜索）
+    if (parseFailedGuide) {
+        AiParseFailedDialog(
+            bodyRes = R.string.ai_fail_body_home,
             onGoToSettings = {
-                onConsumeTimeout()
+                onDismissParseFailedGuide()
                 onGoToSettings()
             },
-            onCancel = onConsumeTimeout,
+            onLater = onParseFailedGuideLater,
         )
     }
 

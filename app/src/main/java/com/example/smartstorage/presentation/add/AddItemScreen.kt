@@ -68,6 +68,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.compose.ui.res.stringResource
+import com.example.smartstorage.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -75,7 +77,7 @@ import com.example.smartstorage.data.local.prefs.TextColorConfig
 import com.example.smartstorage.domain.model.Item
 import com.example.smartstorage.presentation.common.AnimatedButton
 import com.example.smartstorage.presentation.common.EmojiIconButton
-import com.example.smartstorage.presentation.common.TimeoutDialog
+import com.example.smartstorage.presentation.common.AiParseFailedDialog
 import com.example.smartstorage.presentation.common.PhotoPreviewDialog
 import com.example.smartstorage.presentation.theme.textColorStyle
 import androidx.compose.material3.Checkbox
@@ -104,7 +106,7 @@ fun AddItemRoute(
     val textColorConfig by viewModel.textColorConfig.collectAsStateWithLifecycle()
     val hasChanges by viewModel.hasChanges.collectAsStateWithLifecycle()
     val duplicateCheckState by viewModel.duplicateCheckState.collectAsStateWithLifecycle()
-    val timeoutDialog by viewModel.timeoutDialog.collectAsStateWithLifecycle()
+    val parseFailedGuide by viewModel.parseFailedGuide.collectAsStateWithLifecycle()
     val batchItems by viewModel.batchItems.collectAsStateWithLifecycle()
     val batchSelected by viewModel.batchSelected.collectAsStateWithLifecycle()
     val showBatchDialog by viewModel.showBatchDialog.collectAsStateWithLifecycle()
@@ -149,9 +151,9 @@ fun AddItemRoute(
         onImageFileSelected = viewModel::onImageFileSelected,
         onRemoveImageAt = viewModel::removeImageAt,
         onSave = viewModel::save,
-        timeoutDialog = timeoutDialog,
-        onConsumeTimeout = viewModel::dismissTimeoutDialog,
-        onTimeoutUseLocal = viewModel::onTimeoutUseLocal,
+        parseFailedGuide = parseFailedGuide,
+        onDismissParseFailedGuide = viewModel::dismissParseFailedGuide,
+        onParseFailedGuideLater = viewModel::onParseFailedGuideLater,
         onGoToSettings = onGoToSettings,
         batchItems = batchItems,
         batchSelected = batchSelected,
@@ -200,9 +202,9 @@ fun AddItemScreen(
     onImageFileSelected: (File) -> Unit,
     onRemoveImageAt: (Int) -> Unit,
     onSave: () -> Unit,
-    timeoutDialog: Boolean,
-    onConsumeTimeout: () -> Unit,
-    onTimeoutUseLocal: () -> Unit,
+    parseFailedGuide: Boolean,
+    onDismissParseFailedGuide: () -> Unit,
+    onParseFailedGuideLater: () -> Unit,
     onGoToSettings: () -> Unit,
     batchItems: List<BatchDraftItem>,
     batchSelected: Set<Long>,
@@ -210,7 +212,7 @@ fun AddItemScreen(
     batchDuplicateNames: Set<String>,
     batchDuplicatePending: BatchDuplicatePending?,
     batchNotice: String?,
-    parseWarning: String?,
+    parseWarning: ParseWarningKind?,
     onBatchItemChange: (Long, String, String, String) -> Unit,
     onRemoveBatchItem: (Long) -> Unit,
     onToggleBatchItemPhoto: (Long, String, Boolean) -> Unit,
@@ -377,14 +379,19 @@ fun AddItemScreen(
             // 解析状态提示
             when (parseState) {
                 is LlmParseState.Error -> Text(
-                    text = parseState.message,
+                    text = when (parseState.kind) {
+                        ParseErrorKind.EMPTY_INPUT -> stringResource(R.string.add_parse_err_empty_input)
+                        ParseErrorKind.EMPTY_RESULT -> stringResource(R.string.add_parse_err_empty_result)
+                        ParseErrorKind.RESULT_NO_NAME -> stringResource(R.string.add_parse_err_no_name)
+                        ParseErrorKind.UNKNOWN -> stringResource(R.string.add_parse_err_unknown)
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center,
                 )
 
                 LlmParseState.Success -> Text(
-                    text = "解析完成，已自动填入下方表单，可手动微调",
+                    text = stringResource(R.string.add_parse_success),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center,
@@ -400,7 +407,12 @@ fun AddItemScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = warning,
+                        text = when (warning) {
+                            ParseWarningKind.FREE_LOCAL_SINGLE -> stringResource(R.string.add_warn_free_single)
+                            ParseWarningKind.FREE_LOCAL_MULTI -> stringResource(R.string.add_warn_free_multi)
+                            ParseWarningKind.MODEL_FAIL_LOCAL_SINGLE -> stringResource(R.string.add_warn_fail_single)
+                            ParseWarningKind.MODEL_FAIL_LOCAL_MULTI -> stringResource(R.string.add_warn_fail_multi)
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFFE6A23C),
                         modifier = Modifier.weight(1f),
@@ -533,7 +545,11 @@ fun AddItemScreen(
             // 保存失败提示
             if (saveState is SaveState.Error) {
                 Text(
-                    text = saveState.message,
+                    text = when (saveState.kind) {
+                            SaveErrorKind.NAME_EMPTY -> stringResource(R.string.save_err_name_empty)
+                            SaveErrorKind.DUPLICATE_CHECK_FAILED -> stringResource(R.string.save_err_duplicate_check)
+                            SaveErrorKind.SAVE_FAILED -> stringResource(R.string.save_err_save_failed)
+                        },
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -642,15 +658,15 @@ fun AddItemScreen(
         )
     }
 
-    // 免费模式解析超时弹窗
-    if (timeoutDialog) {
-        TimeoutDialog(
-            onUseLocal = onTimeoutUseLocal,
+    // AI 解析失败引导弹窗：本次 AI/请求最终失败后出现；橙色降级提示与本地结果保留
+    if (parseFailedGuide) {
+        AiParseFailedDialog(
+            bodyRes = R.string.ai_fail_body_add,
             onGoToSettings = {
-                onConsumeTimeout()
+                onDismissParseFailedGuide()
                 onGoToSettings()
             },
-            onCancel = onConsumeTimeout,
+            onLater = onParseFailedGuideLater,
         )
     }
 
@@ -710,7 +726,12 @@ fun AddItemScreen(
                 // 模型解析降级警示（本地规则结果）
                 parseWarning?.let { warning ->
                     Text(
-                        text = warning,
+                        text = when (warning) {
+                            ParseWarningKind.FREE_LOCAL_SINGLE -> stringResource(R.string.add_warn_free_single)
+                            ParseWarningKind.FREE_LOCAL_MULTI -> stringResource(R.string.add_warn_free_multi)
+                            ParseWarningKind.MODEL_FAIL_LOCAL_SINGLE -> stringResource(R.string.add_warn_fail_single)
+                            ParseWarningKind.MODEL_FAIL_LOCAL_MULTI -> stringResource(R.string.add_warn_fail_multi)
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFFE6A23C),
                     )

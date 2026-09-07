@@ -24,6 +24,7 @@ import com.example.smartstorage.domain.usecase.BatchAddItemsUseCase
 import com.example.smartstorage.domain.usecase.BatchAddOutcome
 import com.example.smartstorage.domain.usecase.GetItemByNameUseCase
 import com.example.smartstorage.domain.usecase.UpdateItemUseCase
+import com.example.smartstorage.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
@@ -157,9 +158,12 @@ class AddItemViewModel @Inject constructor(
     private val _parseState = MutableStateFlow<LlmParseState>(LlmParseState.Idle)
     val parseState: StateFlow<LlmParseState> = _parseState.asStateFlow()
 
-    // 免费模式解析超时提示（true 时 UI 显示“解析超时”对话框）
-    private val _timeoutDialog = MutableStateFlow(false)
-    val timeoutDialog: StateFlow<Boolean> = _timeoutDialog.asStateFlow()
+    // AI 解析失败引导（true 时 UI 显示“AI 解析未成功”对话框）
+    private val _parseFailedGuide = MutableStateFlow(false)
+    val parseFailedGuide: StateFlow<Boolean> = _parseFailedGuide.asStateFlow()
+
+    // 引导是否来自“超时且尚未本地降级”（点「稍后」时需先执行一次本地降级）
+    private var guideNeedsLocalFallback = false
 
     // 本页面会话内是否已选择「本地识别继续」（避免同一会话内反复弹超时框）
     private var freeTimeoutFallbackChosen = false
@@ -195,26 +199,30 @@ class AddItemViewModel @Inject constructor(
     // 草稿条目 uid 分配器（进入批量模式时为每条识别结果分配新 uid，重新识别后不会串用旧归属）
     private var batchNextUid = 1L
 
-    // 模型解析降级/失败警示（模型不可用回退本地规则时提示用户核对；null 表示无）
-    private val _parseWarning = MutableStateFlow<String?>(null)
-    val parseWarning: StateFlow<String?> = _parseWarning.asStateFlow()
+    // 模型解析降级/失败警示（结构化：UI 按当前语言渲染；null 表示无）
+    private val _parseWarning = MutableStateFlow<ParseWarningKind?>(null)
+    val parseWarning: StateFlow<ParseWarningKind?> = _parseWarning.asStateFlow()
 
-    /** 关闭“解析超时”对话框（取消/去配置共用）：停止任务、保留输入，等待后续手动操作。 */
-    fun dismissTimeoutDialog() {
-        _timeoutDialog.value = false
+    /** 关闭失败引导（去配置 API 前调用）：停止任务、保留输入与本地结果，等待后续操作。 */
+    fun dismissParseFailedGuide() {
+        _parseFailedGuide.value = false
         if (_parseState.value == LlmParseState.Parsing) {
             _parseState.value = LlmParseState.Idle
         }
     }
 
-    /** 免费模式超时后选择「本地识别继续」：结束等待，用本地规则继续处理本次输入。 */
-    fun onTimeoutUseLocal() {
-        // 本会话内后续免费模式超时不再弹框，直接走本地降级，避免失败循环
+    /**
+     * 「稍后」：本次会话内不再反复弹引导；未降级（如超时）则补一次本地规则降级，
+     * 已降级则只保留现有结果；不自动重试模型、不自动保存。
+     */
+    fun onParseFailedGuideLater() {
         freeTimeoutFallbackChosen = true
-        _timeoutDialog.value = false
+        _parseFailedGuide.value = false
+        if (!guideNeedsLocalFallback) return
+        guideNeedsLocalFallback = false
         val text = _editState.value.voiceDescription.trim()
         if (text.isEmpty()) {
-            _parseState.value = LlmParseState.Error("请先输入或语音录入描述")
+            _parseState.value = LlmParseState.Error(ParseErrorKind.EMPTY_INPUT)
             return
         }
         if (_parseState.value == LlmParseState.Parsing) return
@@ -300,7 +308,8 @@ class AddItemViewModel @Inject constructor(
         _saveState.value = SaveState.Idle
         _duplicateCheckState.value = null
         _parseState.value = LlmParseState.Idle
-        _timeoutDialog.value = false
+        _parseFailedGuide.value = false
+        guideNeedsLocalFallback = false
         freeTimeoutFallbackChosen = false
         // 重置 AI 批量解析状态
         _batchItems.value = emptyList()
@@ -343,7 +352,7 @@ class AddItemViewModel @Inject constructor(
     private fun appendImage(newPath: String) {
         val current = _editState.value.currentImagePaths
         if (current.size >= MAX_IMAGES) {
-            Toast.makeText(context, "最多添加 $MAX_IMAGES 张照片", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.add_toast_max_photos, MAX_IMAGES), Toast.LENGTH_SHORT).show()
             return
         }
         updateState { it.copy(currentImagePaths = it.currentImagePaths + newPath) }
@@ -355,7 +364,7 @@ class AddItemViewModel @Inject constructor(
             runCatching { imageStorage.saveFromUri(uri) }
                 .onSuccess { appendImage(it) }
                 .onFailure { e ->
-                    Toast.makeText(context, "图片保存失败：${e.message ?: "未知错误"}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.add_toast_img_save_failed), Toast.LENGTH_SHORT).show()
                 }
         }
     }
@@ -366,7 +375,7 @@ class AddItemViewModel @Inject constructor(
             runCatching { imageStorage.saveFromFile(file) }
                 .onSuccess { appendImage(it) }
                 .onFailure { e ->
-                    Toast.makeText(context, "图片保存失败：${e.message ?: "未知错误"}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.add_toast_img_save_failed), Toast.LENGTH_SHORT).show()
                 }
         }
     }
@@ -401,7 +410,7 @@ class AddItemViewModel @Inject constructor(
     fun parseDescription() {
         val text = _editState.value.voiceDescription.trim()
         if (text.isEmpty()) {
-            _parseState.value = LlmParseState.Error("请先输入或语音录入描述")
+            _parseState.value = LlmParseState.Error(ParseErrorKind.EMPTY_INPUT)
             return
         }
         // 单飞：解析中忽略重复触发
@@ -413,15 +422,16 @@ class AddItemViewModel @Inject constructor(
                 applyParseResult(llmClient.parseItems(text))
             } catch (e: LlmTimeoutException) {
                 if (freeTimeoutFallbackChosen) {
-                    // 本次会话已选择本地降级：不再弹框，静默继续处理
+                    // 本次会话已选择「稍后」：不再弹框，直接本地降级继续
                     applyParseResult(llmClient.parseItemsLocal(text), forcedLocal = true)
                 } else {
-                    // 免费模型超时：弹“解析超时”引导对话框（与首页行为一致）
-                    _timeoutDialog.value = true
+                    // 免费模型超时且尚未本地降级：弹统一失败引导，点「稍后」时再降级
+                    guideNeedsLocalFallback = true
+                    _parseFailedGuide.value = true
                     _parseState.value = LlmParseState.Idle
                 }
             } catch (e: Exception) {
-                _parseState.value = LlmParseState.Error("解析失败：${e.message ?: "未知错误"}")
+                _parseState.value = LlmParseState.Error(ParseErrorKind.UNKNOWN)
             }
         }
     }
@@ -432,30 +442,26 @@ class AddItemViewModel @Inject constructor(
      * @param forcedLocal 免费模式超时后主动选择本地降级时传 true，用于展示对应的降级提示
      */
     private suspend fun applyParseResult(result: ParseItemsResult, forcedLocal: Boolean = false) {
+        // 模型路径是否失败（非超时，已自动本地降级）：用于决定是否弹“AI 解析未成功”引导
+        val modelFailed = !forcedLocal && result.warning != null
         when {
             result.items.isEmpty() -> {
                 // 未识别出有效物品：保留原文并明确提示，不显示“解析完成”
-                _parseState.value = LlmParseState.Error(
-                    if (result.warning != null) {
-                        "未能识别出有效物品：${result.warning}。原文已保留在“口语描述”中，请手动填写或补充后重试"
-                    } else {
-                        "未能识别出有效物品，原文已保留在“口语描述”中，请手动填写或补充后重试"
-                    },
-                )
+                _parseState.value = LlmParseState.Error(ParseErrorKind.EMPTY_RESULT)
             }
             result.items.size == 1 -> {
                 val item = result.items.first()
                 if (item.name.isBlank()) {
-                    _parseState.value = LlmParseState.Error("识别结果缺少物品名，请手动填写")
+                    _parseState.value = LlmParseState.Error(ParseErrorKind.RESULT_NO_NAME)
                 } else {
                     // 单条：自动填入表单（维持原有行为）
                     updateState {
                         it.copy(name = item.name, location = item.location, desc = item.description)
                     }
                     if (forcedLocal) {
-                        _parseWarning.value = "⚠ 免费识别暂时不可用，已切换至本地规则解析，请核对后再保存"
+                        _parseWarning.value = ParseWarningKind.FREE_LOCAL_SINGLE
                     } else if (result.warning != null) {
-                        _parseWarning.value = "⚠ 大模型解析失败：${result.warning}；当前为本地规则结果，请核对后再保存"
+                        _parseWarning.value = ParseWarningKind.MODEL_FAIL_LOCAL_SINGLE
                     }
                     _parseState.value = LlmParseState.Success
                 }
@@ -464,16 +470,21 @@ class AddItemViewModel @Inject constructor(
                 // 多条：进入批量确认弹窗；表单区不再显示“已自动填入表单”的误导提示
                 enterBatchMode(result.items)
                 if (forcedLocal) {
-                    _parseWarning.value = "⚠ 免费识别暂时不可用，已切换至本地规则解析，请逐条核对"
+                    _parseWarning.value = ParseWarningKind.FREE_LOCAL_MULTI
                 } else if (result.warning != null) {
-                    _parseWarning.value = "⚠ 大模型解析失败：${result.warning}；当前为本地规则结果，请逐条核对"
+                    _parseWarning.value = ParseWarningKind.MODEL_FAIL_LOCAL_MULTI
                 }
                 _parseState.value = LlmParseState.Idle
             }
         }
+        // 非超时模型最终失败（已自动本地降级并展示）→ 首次弹统一失败引导
+        if (modelFailed && !freeTimeoutFallbackChosen) {
+            _parseFailedGuide.value = true
+            guideNeedsLocalFallback = false
+        }
     }
 
-    /** 消费“解析降级警示”（用户关闭提示时调用）。 */
+    /** 消费“解析降级警示”（用户关闭提示时调用）。 */    /** 消费“解析降级警示”（用户关闭提示时调用）。 */
     fun consumeParseWarning() {
         _parseWarning.value = null
     }
@@ -524,7 +535,7 @@ class AddItemViewModel @Inject constructor(
     fun toggleBatchItemPhoto(uid: Long, photoPath: String, assign: Boolean) {
         val draft = _batchItems.value.firstOrNull { it.uid == uid } ?: return
         if (assign && photoPath !in draft.photoPaths && draft.photoPaths.size >= MAX_IMAGES) {
-            Toast.makeText(context, "单件物品最多关联 $MAX_IMAGES 张照片", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.add_toast_batch_max_photos, MAX_IMAGES), Toast.LENGTH_SHORT).show()
             return
         }
         _batchItems.value = BatchDraftOps.setPhoto(_batchItems.value, uid, photoPath, assign)
@@ -599,7 +610,7 @@ class AddItemViewModel @Inject constructor(
                 }
             }.onFailure { e ->
                 // 整体异常（极少见）：保留原列表，重开弹窗并提示
-                _batchNotice.value = "批量保存失败：${e.message ?: "未知错误"}"
+                _batchNotice.value = context.getString(R.string.notice_batch_unknown)
                 _showBatchDialog.value = true
                 _saveState.value = SaveState.Idle
             }
@@ -607,17 +618,19 @@ class AddItemViewModel @Inject constructor(
         }
     }
 
-    /** 拼接批量保存失败的提示文本（含成功/更新/跳过与失败名单）。 */
-    private fun buildBatchFailureNotice(outcome: BatchAddOutcome, drafts: List<BatchDraftItem>): String = buildString {
-        append("成功添加 ${outcome.added} 件")
-        if (outcome.updated > 0) append("，更新 ${outcome.updated} 件")
-        if (outcome.skipped > 0) append("，跳过 ${outcome.skipped} 件")
+    /** 拼接批量保存失败提示（按当前语言取资源；失败名单为用户输入的物品名，不翻译）。 */
+    private fun buildBatchFailureNotice(outcome: BatchAddOutcome, drafts: List<BatchDraftItem>): String {
+        val sb = StringBuilder()
+        sb.append(context.getString(R.string.notice_batch_added, outcome.added))
+        if (outcome.updated > 0) sb.append(context.getString(R.string.notice_batch_updated, outcome.updated))
+        if (outcome.skipped > 0) sb.append(context.getString(R.string.notice_batch_skipped, outcome.skipped))
         val failedNames = outcome.failedUids
             .mapNotNull { uid -> drafts.firstOrNull { it.uid == uid }?.name?.trim() }
             .filter { it.isNotEmpty() }
         if (failedNames.isNotEmpty()) {
-            append("；${failedNames.size} 件失败：${failedNames.joinToString("、")}（可修改后重试）")
+            sb.append(context.getString(R.string.notice_batch_failed, failedNames.size, failedNames.joinToString("、")))
         }
+        return sb.toString()
     }
 
     /** 新增成功后累计历史添加数并检查 Star 里程碑（added 为本次成功新增件数）。 */
@@ -655,7 +668,7 @@ class AddItemViewModel @Inject constructor(
         val state = _editState.value
         val name = state.name.trim()
         if (name.isEmpty()) {
-            _saveState.value = SaveState.Error("物品名不能为空")
+            _saveState.value = SaveState.Error(SaveErrorKind.NAME_EMPTY)
             return
         }
         _saveState.value = SaveState.Saving
@@ -672,7 +685,7 @@ class AddItemViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _saveState.value = SaveState.Error("查重失败：${e.message ?: "未知错误"}")
+                    _saveState.value = SaveState.Error(SaveErrorKind.DUPLICATE_CHECK_FAILED)
                 }
         }
     }
@@ -774,7 +787,7 @@ class AddItemViewModel @Inject constructor(
                     checkStarMilestoneAfterAdd()
                 }
             }.onFailure {
-                _saveState.value = SaveState.Error("保存失败：${it.message ?: "未知错误"}")
+                _saveState.value = SaveState.Error(SaveErrorKind.SAVE_FAILED)
             }
         }
     }
@@ -808,8 +821,28 @@ sealed interface LlmParseState {
     /** 解析成功 */
     data object Success : LlmParseState
 
-    /** 解析失败 */
-    data class Error(val message: String) : LlmParseState
+    /** 解析失败（kind 由 UI 按当前语言渲染，避免语言切换后残留旧文本） */
+    data class Error(val kind: ParseErrorKind) : LlmParseState
+}
+
+/** 解析失败类型。 */
+enum class ParseErrorKind {
+    /** 输入为空（前置校验） */
+    EMPTY_INPUT,
+    /** 未能识别出有效物品（含模型失败后本地降级仍为空） */
+    EMPTY_RESULT,
+    /** 识别结果缺少物品名 */
+    RESULT_NO_NAME,
+    /** 其它解析异常 */
+    UNKNOWN,
+}
+
+/** 解析降级/失败橙色警示类型（本地规则结果提示，UI 按语言渲染）。 */
+enum class ParseWarningKind {
+    FREE_LOCAL_SINGLE,
+    FREE_LOCAL_MULTI,
+    MODEL_FAIL_LOCAL_SINGLE,
+    MODEL_FAIL_LOCAL_MULTI,
 }
 
 /** 保存流程状态。 */
@@ -823,6 +856,16 @@ sealed interface SaveState {
     /** 保存成功 */
     data object Success : SaveState
 
-    /** 保存失败 */
-    data class Error(val message: String) : SaveState
+    /** 保存失败（kind 由 UI 按当前语言渲染） */
+    data class Error(val kind: SaveErrorKind) : SaveState
+}
+
+/** 保存失败类型。 */
+enum class SaveErrorKind {
+    /** 物品名不能为空 */
+    NAME_EMPTY,
+    /** 查重失败 */
+    DUPLICATE_CHECK_FAILED,
+    /** 其它保存失败 */
+    SAVE_FAILED,
 }
