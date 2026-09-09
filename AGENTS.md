@@ -1,111 +1,57 @@
 # 项目指令
 
-## 项目概览
-- Android 应用「智能收纳助手」：记录家中物品存放位置，支持物品清单 + 照片 + AI 解析 + 语义搜索 + 回收站 + 备份恢复。
-- 当前版本：1.1.0（versionCode 4）
+## 知识库与必读顺序
 
-## 技术栈
-- 语言：Kotlin（100%）
-- UI：Jetpack Compose（Material 3，Compose BOM 2024.12.01）+ Material Icons Extended
-- 架构：MVVM + Clean Architecture（UseCase + Repository）
-- 数据库：Room（SQLite，当前版本 v4，显式迁移，失败兜底破坏性重建）
-- DI：Hilt（含 Hilt Navigation Compose）
-- 异步：Kotlin Coroutines + Flow
-- 网络：OkHttp（LLM HTTP 请求，7 秒超时，超时/失败自动降级本地解析）
-- 配置：DataStore Preferences（AI 配置/引导页/外观/Star 提醒）+ EncryptedSharedPreferences（API Key，AES-256-GCM）
-- 图片：Coil
-- 路由：自定义 `sealed class Screen` + HorizontalPager（主 Tab 滑动）+ 子页面覆盖层（未使用 NavHost）
+- 项目「是什么」（版本/需求/架构/模块/环境/发布）一律以 `docs/project/` 知识库为准，代码与配置是最高优先级事实来源。
+- 新会话 / 新 Agent 开始任务前按顺序读取（按需，不必读完所有文档）：
+  1. 本文件（协作规则）
+  2. `docs/project/00-项目索引.md`（项目一句话、当前版本 1.1.0(4)、模块导航）
+  3. `docs/project/01-需求与范围确认.md`（做什么/不做什么/如何验收）
+  4. `docs/project/02-系统架构.md`（分层与模块边界）
+  5. `docs/project/modules/Mxx-*.md`（当前任务对应模块：负责/不负责/代码位置）
+  6. `docs/project/04-任务与验收清单.md` 与 `docs/project/tasks/`（当前任务卡，如有）
+- `docs/reference/ai-project-template/` 是原始通用模板，只作结构/方法论参考，**不是项目事实**，禁止改动。
 
-## 构建环境
-- minSdk 26 / targetSdk 35 / compileSdk 35
-- Java 17，AGP 8.7.3，Kotlin 2.0.21
-- 构建命令：`./gradlew :app:assembleDebug`
-- 使用 Android Studio（Ladybug 或更新）打开；首次同步需联网
-- 根目录 `local.properties` 需指向本机 SDK；免费模式 AI Key 通过 `SILICONFLOW_API_KEY=你的Key` 注入（未配置也能编译，App 内提示切换自定义模式）
-- Release 签名：`app/build.gradle.kts` 的 release 构建类型从 `local.properties` 读取密钥（KEYSTORE_FILE / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD），未配置则产出未签名 APK；密钥严禁提交到 GitHub，完整流程见 `RELEASE_GUIDE.md`
-- 构建 Release APK：`./gradlew :app:assembleRelease`，产物 `app/build/outputs/apk/release/app-release.apk`
+## 协作规则（强制）
 
-## 包结构
-```bash
-com.example.smartstorage
-├── data                        # 数据层：Room / 图片 / 偏好 / 远程 LLM / 备份 / 仓库实现 / 映射
-│   ├── local
-│   │   ├── entity              # ItemEntity（物品表）
-│   │   ├── dao                 # ItemDao（软删除 / 搜索 / 回收站 / 备份查询）
-│   │   ├── converters          # List<String> 与 JSON 数组互转（多图）
-│   │   ├── image               # ImageStorage（压缩 / EXIF 修正 / 删除）
-│   │   ├── prefs               # SettingsRepository + AppPreferencesRepository + OnboardingRepository + ThemeRepository + StarMilestoneRepository
-│   │   ├── backup              # BackupRepository（导出 ZIP / 导入覆盖或合并）
-│   │   └── AppDatabase         # Room 数据库（v1→v4 显式迁移）
-│   ├── mapper                  # 实体与领域模型互转
-│   ├── remote.llm              # LlmClient（OpenAI 兼容调用 / JSON 容错解析 / 批量解析 / 本地降级）
-│   └── repository              # ItemRepositoryImpl
-├── domain                      # 领域层：模型 / 仓库接口 / 用例
-│   ├── model                   # Item
-│   ├── repository              # ItemRepository 接口
-│   └── usecase                 # 增删改查 / 搜索 / 回收站 / 观察
-├── di                          # Hilt 模块（DatabaseModule / RemoteModule / RepositoryModule）
-└── presentation                # 表现层
-    ├── MainScreen.kt           # HorizontalPager 主 Tab + 子页面覆盖层
-    ├── navigation              # Screen 路由
-    ├── onboarding              # 首次启动引导页（3 页滑动 + 跳过）
-    ├── home                    # 首页（清单 / 搜索 / AI 语义搜索）
-    ├── add                     # 添加 / 编辑（语音 + AI 解析 + 批量识别 + 多图）
-    ├── detail                  # 物品详情（大图预览 / 照片管理）
-    ├── trash                   # 回收站（恢复 / 永久删除 / 清空）
-    ├── settings                # 设置（AI 配置 / 主题 / 文字颜色 / 备份恢复）
-    ├── about                   # 关于（版本 / 联系方式）
-    ├── donate                  # 捐赠（多档位收款码）
-    ├── common                  # 通用组件（AnimatedButton / EmojiEffect / 对话框 / LinkOpener）
-    └── theme                   # Material 3 主题 + TextColorStyles
-```
+- 需求不明确 → 不猜，先列「待确认」；事实先从代码/配置验证再记录。
+- 一个任务只改变一个可以说明的主要可观察行为；Bug 先建立最小复现。
+- 适合自动化测试的行为 → 先写失败测试（TDD 缝合点先与用户确认）；再最小实现，不顺手重构无关代码。
+- 改完运行受影响测试（`.\gradlew.bat :app:testDebugUnitTest`）。
+- 长期稳定事实（模块边界/接口/状态/数据模型/架构决策/环境/发布规则）→ 回写 `docs/project/` 对应文档；临时日志、命令输出、真实数据、截图只留任务卡/Git，不写入长期文档。
+- 敏感信息（API Key、签名密码、token、`local.properties` 值、真实账号）禁止出现在任何文档、日志或提交中。
+- 任务完成后用一两句中文说明改了什么、为什么；并同步更新 README/AGENTS/知识库中受影响内容（见「文档同步规则」）。
 
-## 数据模型（items 表）
-| 字段 | 说明 |
-| ---- | ---- |
-| id | 唯一 ID（自增主键） |
-| name | 物品名称 |
-| location | 存放地点 |
-| description | 详细描述 |
-| image_path | 照片绝对路径列表（JSON 数组字符串，可为空） |
-| created_at | 创建时间（毫秒时间戳） |
-| updated_at | 最后修改时间（毫秒时间戳） |
-| deleted_at | 删除时间（毫秒时间戳）；null=正常，非 null=回收站 |
+## 不可破坏的行为约束（速查，细节见模块文档）
 
-迁移：v1→v2 加 `image_path` 列、v2→v3 加 `deleted_at` 列、v3→v4 单图转多图 JSON 数组；迁移失败兜底破坏性重建。
+- 删除一律软删除（只写 `deleted_at`，数据与照片保留）；永久删除/清空才物理删除并清理照片，且需二次确认 → `modules/M01`、`M10`
+- 首页列表按 `updated_at` 倒序；区分「从未添加」与「搜索无结果」→ `M08`
+- 保存前按名称查重（忽略大小写）弹「更新旧记录/新建/取消」；批量逐条询问 → `M09`
+- 编辑页基于工作副本，未保存退出不落库；编辑/设置页有未保存修改时切 Tab 先弹确认 → `M09`/`M07`
+- 搜索：关键词逐字模糊（去空白按字符序匹配，覆盖名称/地点/备注，忽略 ASCII 大小写，保留反向包含）；AI 语义搜索把整句解析为名称/地点/描述三字段精确筛选 → `M01`/`M08`
+- 照片最多 9 张，压缩（1080px 宽 / JPEG 80%）+ EXIF 修正，存 `filesDir/item_images/` → `M04`
+- AI 解析失败两出口（去配置 API / 稍后）的完整语义与降级规则 → `modules/M03` 第 9 节
+- 各预设 API Key 独立加密存储，支持显示/隐藏；免费模式 Key 仅从 `local.properties` 经 BuildConfig 注入 → `M06`
+- 底部导航自定义实现（固定高度）+ 主 Tab 左右滑动双向同步；子页为覆盖层 → `M07`
+- 多语言只本地化显示层；深色为固定微信式深灰色板（关闭动态取色）→ `M11`
+- Star 提醒：累计添加 5/15/30 弹窗，稍后 24h 重弹 → `M06`
+- Emoji 彩蛋：主要按钮点击随机飘动（最多 3 并发，结束回收）→ `M12`
 
-## 功能实现约束
-- 删除一律软删除（只写 `deleted_at`，数据与照片保留），永久删除/清空回收站才物理删除并清理照片，需二次确认。
-- 首页列表按 `updated_at` 倒序；区分「从未添加」与「搜索无结果」两种空状态。
-- 重复物品检测：保存时按名称查重（忽略大小写），弹窗「更新旧记录 / 新建记录 / 取消」；批量识别时逐条询问。
-- 编辑页基于工作副本，未保存退出不落库；编辑页/设置页有未保存修改时切换 Tab 先弹确认。
-- 搜索：关键词逐字模糊匹配（去掉空格后按字符顺序匹配，覆盖名称/地点/备注，英文忽略大小写，保留反向包含）；AI 语义搜索把整句解析为名称/地点/描述三字段精确筛选。
-- 照片最多 9 张，自动压缩（1080px 宽 / JPEG 80%）+ EXIF 方向修正，存 `filesDir/item_images/`；FileProvider + 相机运行时权限。
-- 免费模式 LLM 内置 SiliconFlow Qwen2.5-7B-Instruct；解析失败自动降级为本地按标点分割 + 正则解析，不阻塞手动填写。
-- 自定义模式预设：DeepSeek、通义千问、OpenAI、智谱AI、Moonshot、百川、MiniMax、Anthropic、Google + 自定义（Base URL / 模型 / API Key，OpenAI 兼容）。预设 Base URL 与模型版本在 `SettingsRepository.LlmPreset` 维护。
-- 各预设 API Key 独立加密存储，支持显示/隐藏。
-- 底部导航为自定义实现（固定高度，规避 M3 NavigationBar 高度测量异常）。
-- 主 Tab 左右滑动切换（首页/添加/设置），底部导航与滑动双向同步。
-- 界面语言：支持跟随系统 / 简体中文 / 繁體中文 / English。默认资源 values/ 为简体（系统语言不受支持时的回退），并维护 values-zh-rTW、values-en；选择经 `AppLanguage`（SharedPreferences）持久化，在 `SmartStorageApp`/`MainActivity.attachBaseContext` 同步应用，设置页切换后 `recreate()` 立即生效；语言与深浅主题独立、互不覆盖。只本地化显示层，用户数据与稳定标识、JSON 键、Llm 提示词不翻译。
-- 深色模式：关闭 Android 12+ 动态取色，使用固定语义色板（微信式深灰层次，见 `Color.kt`/`Theme.kt`），所有页面走 MaterialTheme.colorScheme。
-- 免费模式超时 / AI 解析失败：读取超时 25s / 连接超时 7s；模型或请求最终失败（含超时、配置缺失、鉴权/额度/限流、网络/服务端、空结果等）统一弹「AI 解析未成功（去配置 API / 稍后）」两出口引导；「稍后」= 未降级则自动本地规则降级、已降级则保留结果，返回/点外部同「稍后」；同一页面会话内选过一次「稍后」后不再重复弹框；「去配置 API」从添加/编辑页进入时保留草稿（表单/照片/批量/降级结果）并可返回继续，自动切到自定义模式并定位 AI 配置卡，不自动启用空配置、不自动重跑模型、不自动保存；免费模式界面不再展示构建时配置 SILICONFLOW_API_KEY 的开发说明；降级只影响当前任务，不持久修改 AI 模式（改模式走设置页）。
-- Star 提醒：累计添加 5 / 15 / 30 件时弹窗，「稍后提醒」24 小时后重弹。
-- Emoji 彩蛋：主要按钮点击随机 Emoji 飘动（最多 3 并发，结束自动回收）。
+## 构建与发布速查（细节见 `docs/project/08-开发环境.md`、`09-发布与版本.md`）
 
-## 权限
-| 权限 | 用途 |
-| ---- | ---- |
-| INTERNET | 大模型 HTTP 请求（普通权限） |
-| CAMERA | 拍照（运行时动态申请） |
-| WRITE_EXTERNAL_STORAGE / READ_EXTERNAL_STORAGE | 保存收款码到相册（仅 Android 12 及以下，`maxSdkVersion=32`） |
-| RECORD_AUDIO | 仅 Manifest 保留声明（语音走手机键盘自带，代码未主动申请） |
+- minSdk 26 / targetSdk 35 / compileSdk 35；Java 17；AGP 8.7.3 / Kotlin 2.0.21；单模块 `:app`。
+- Debug：`.\gradlew.bat :app:assembleDebug`；Release：`.\gradlew.bat :app:assembleRelease`（产物 `app\build\outputs\apk\release\app-release.apk`）。
+- `local.properties`（不入 Git）职责：SDK 路径、`SILICONFLOW_API_KEY`、Release 签名四键（未配签名则产出未签名 APK）；密钥严禁提交，流程见 `RELEASE_GUIDE.md`。
+- 项目路径含中文：不要给 Gradle 添加 `-Dfile.encoding=UTF-8`（会破坏中文路径下单元测试），原因已记录在 `gradle.properties`。
 
 ## 文档同步规则（强制）
-- 当我要求新增功能、修改架构、变更配置或重构代码后，**必须同步检查并更新** `README.md`（面向人类的使用说明）和 `AGENTS.md`（面向AI的项目指令）。
-- 如果改动涉及启动命令、目录结构、环境变量或核心依赖，必须同步更新上述两个文件。
+
+- 当我要求新增功能、修改架构、变更配置或重构代码后，**必须同步检查并更新** `README.md`（面向人类的使用说明）、`AGENTS.md`（面向 AI 的协作规则）与 `docs/project/` 知识库（项目事实）。
+- 如果改动涉及启动命令、目录结构、环境变量或核心依赖，必须同步更新上述文档。
 - 更新完成后，需明确告知我已同步更新了哪些文档内容。
 
 ## 版本号自动递增规则（强制）
+
 - **触发条件**：每当我通过对话要求你完成以下任一操作**并实际修改了项目文件**后，必须自动递增版本号：
   - 新增功能/模块
   - 修复 Bug
@@ -113,7 +59,7 @@ com.example.smartstorage
   - 修改 UI/资源文件
   - 更改配置文件（如 `build.gradle.kts`、`gradle.properties` 等）
   - 添加/删除依赖
-- **例外情况**：仅修改文档（如 `README.md`、`AGENTS.md`）或仅做代码注释调整时，**不触发**版本号更新。
+- **例外情况**：仅修改文档（如 `README.md`、`AGENTS.md`、`docs/`）或仅做代码注释调整时，**不触发**版本号更新。
 - **具体操作**：
   - 修改 `app/build.gradle.kts` 或 `gradle.properties` 中的 `versionCode`（整数，每次 +1）。
   - 是否同时递增 `versionName`（语义化版本）由你决定，建议至少递增补丁号（如 1.0.0 → 1.0.1）以保持可读性。
