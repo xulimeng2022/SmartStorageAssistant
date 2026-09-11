@@ -1,12 +1,15 @@
 package com.example.smartstorage.presentation.about
 
+import android.widget.Toast
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import com.example.smartstorage.R
 
 import androidx.compose.foundation.clickable
@@ -44,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.smartstorage.BuildConfig
 import com.example.smartstorage.presentation.common.EmojiIconButton
+import com.example.smartstorage.presentation.common.resolve
 
 /**
  * 关于页路由：连接 ViewModel 与纯 UI。
@@ -54,6 +58,13 @@ fun AboutRoute(
     onOpenDonate: () -> Unit = {},
     viewModel: AboutViewModel = hiltViewModel(),
 ) {
+    // 一次性消息（复制联系方式成功）：用界面 Context 按当前语言解析为 Toast
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.uiMessages.collect { message ->
+            Toast.makeText(context, message.resolve(context), Toast.LENGTH_LONG).show()
+        }
+    }
     AboutScreen(
         versionName = BuildConfig.VERSION_NAME,
         contacts = viewModel.contacts,
@@ -224,11 +235,7 @@ fun AboutScreen(
 @Composable
 private fun ContactRow(contact: ContactItem) {
     // 中文品牌/分类名按当前语言显示（QQ/GitHub 等专名保持不变）
-    val displayLabel = when (contact.label) {
-        "微信" -> stringResource(R.string.about_wechat)
-        "个人网站" -> stringResource(R.string.about_website)
-        else -> contact.label
-    }
+    val displayLabel = stringResource(contact.labelRes)
     Row(
         modifier = Modifier
             .fillMaxWidth()

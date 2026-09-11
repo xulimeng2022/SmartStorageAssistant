@@ -117,6 +117,10 @@ interface ItemDao {
     @Query("SELECT * FROM items")
     suspend fun getAllItems(): List<ItemEntity>
 
+    /** 查询全部正常物品（含图片路径），用于同步视觉索引。 */
+    @Query("SELECT * FROM items WHERE deleted_at IS NULL")
+    suspend fun getActiveItems(): List<ItemEntity>
+
     /** 物理删除全部记录（仅供覆盖导入前清空使用） */
     @Query("DELETE FROM items")
     suspend fun deleteAllItems()

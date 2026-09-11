@@ -33,6 +33,9 @@ android {
                 storePassword = keystorePassword
                 keyAlias = signingKeyAlias
                 keyPassword = signingKeyPassword
+                // 显式启用 v2 + v3 签名块：v3 支持密钥轮换，且便于 apksigner 校验签名信息
+                enableV2Signing = true
+                enableV3Signing = true
             }
         }
     }
@@ -43,8 +46,8 @@ android {
         applicationId = "com.example.smartstorage"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.1.0"
+        versionCode = 6
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -93,6 +96,11 @@ android {
     }
 }
 
+// 单元测试统一携带项目根目录，供本地化资源/硬编码扫描测试使用
+tasks.withType<Test>().configureEach {
+    systemProperty("localizationProjectRoot", rootProject.projectDir.absolutePath)
+}
+
 dependencies {
     // AndroidX 基础
     implementation(libs.androidx.core.ktx)
@@ -131,6 +139,11 @@ dependencies {
 
     // 图片加载（Coil）
     implementation(libs.coil.compose)
+
+    // 图片 AI 索引后台任务
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 
 
     // 测试

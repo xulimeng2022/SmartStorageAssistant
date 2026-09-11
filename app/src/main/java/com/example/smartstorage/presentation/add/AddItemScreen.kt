@@ -68,6 +68,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import com.example.smartstorage.presentation.common.resolve
 import androidx.compose.ui.res.stringResource
 import com.example.smartstorage.R
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -114,6 +115,14 @@ fun AddItemRoute(
     val batchDuplicatePending by viewModel.batchDuplicatePending.collectAsStateWithLifecycle()
     val parseWarning by viewModel.parseWarning.collectAsStateWithLifecycle()
     val batchNotice by viewModel.batchNotice.collectAsStateWithLifecycle()
+
+    // 一次性 UI 消息（照片上限 / 图片保存失败）：用界面 Context 按当前语言解析为 Toast
+    val messageContext = LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.uiMessages.collect { message ->
+            Toast.makeText(messageContext, message.resolve(messageContext), Toast.LENGTH_SHORT).show()
+        }
+    }
 
     // 进入页面时先重置表单状态（避免复用上次保存结果导致闪屏），
     // 编辑模式再加载现有物品数据
@@ -211,7 +220,7 @@ fun AddItemScreen(
     showBatchDialog: Boolean,
     batchDuplicateNames: Set<String>,
     batchDuplicatePending: BatchDuplicatePending?,
-    batchNotice: String?,
+    batchNotice: BatchNotice?,
     parseWarning: ParseWarningKind?,
     onBatchItemChange: (Long, String, String, String) -> Unit,
     onRemoveBatchItem: (Long) -> Unit,
@@ -271,7 +280,7 @@ fun AddItemScreen(
         if (granted) {
             launchCamera()
         } else {
-            Toast.makeText(context, "未授予相机权限，无法拍照", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.add_camera_permission_denied), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -307,7 +316,7 @@ fun AddItemScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         // 顶部栏：返回 + 标题
         TopAppBar(
-            title = { Text(if (isEditing) "编辑物品" else "添加物品") },
+            title = { Text(stringResource(if (isEditing) R.string.add_title_edit else R.string.add_title_new)) },
             navigationIcon = {
                 EmojiIconButton(
                     onClick = {
@@ -321,7 +330,7 @@ fun AddItemScreen(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回",
+                        contentDescription = stringResource(R.string.common_back),
                     )
                 }
             },
@@ -337,16 +346,16 @@ fun AddItemScreen(
         ) {
             // ===== 语音描述（手机键盘语音输入 + 大模型智能解析）=====
             Text(
-                text = "🎙️ 语音录入：点击麦克风说话，AI 自动提取物品信息\n支持批量录入（如“红色的笔在柜子里，蓝色的笔在抽屉里”）",
+                text = stringResource(R.string.add_voice_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             OutlinedTextField(
                 value = voiceDescription,
                 onValueChange = onVoiceDescriptionChange,
-                label = { Text("口语描述") },
+                label = { Text(stringResource(R.string.add_voice_label)) },
                 textStyle = inputTextStyle,
-                placeholder = { Text("例如：那个红色的、上次去日本买的杯子放在橱柜第二层") },
+                placeholder = { Text(stringResource(R.string.add_voice_placeholder)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 80.dp),
@@ -365,7 +374,7 @@ fun AddItemScreen(
                         color = LocalContentColor.current,
                     )
                     Spacer(modifier = Modifier.size(8.dp))
-                    Text("解析中…")
+                    Text(stringResource(R.string.add_parsing))
                 } else {
                     Icon(
                         imageVector = Icons.Filled.AutoAwesome,
@@ -373,7 +382,7 @@ fun AddItemScreen(
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(modifier = Modifier.size(8.dp))
-                    Text("智能解析")
+                    Text(stringResource(R.string.add_parse_action))
                 }
             }
             // 解析状态提示
@@ -420,7 +429,7 @@ fun AddItemScreen(
                     IconButton(onClick = onConsumeParseWarning) {
                         Icon(
                             imageVector = Icons.Filled.Close,
-                            contentDescription = "关闭提示",
+                            contentDescription = stringResource(R.string.add_help_close),
                             modifier = Modifier.size(16.dp),
                         )
                     }
@@ -431,9 +440,9 @@ fun AddItemScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = onNameChange,
-                label = { Text("物品名 *") },
+                label = { Text(stringResource(R.string.add_name_label)) },
                 textStyle = inputTextStyle,
-                placeholder = { Text("例如：充电器") },
+                placeholder = { Text(stringResource(R.string.add_name_placeholder)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -442,9 +451,9 @@ fun AddItemScreen(
             OutlinedTextField(
                 value = location,
                 onValueChange = onLocationChange,
-                label = { Text("存放地点") },
+                label = { Text(stringResource(R.string.add_location_label)) },
                 textStyle = inputTextStyle,
-                placeholder = { Text("例如：客厅抽屉第二层") },
+                placeholder = { Text(stringResource(R.string.add_location_placeholder)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -453,9 +462,9 @@ fun AddItemScreen(
             OutlinedTextField(
                 value = description,
                 onValueChange = onDescriptionChange,
-                label = { Text("备注") },
+                label = { Text(stringResource(R.string.add_description_label)) },
                 textStyle = inputTextStyle,
-                placeholder = { Text("补充物品的详细信息…") },
+                placeholder = { Text(stringResource(R.string.add_description_placeholder)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 120.dp),
@@ -463,7 +472,7 @@ fun AddItemScreen(
 
             // ===== 照片附件（最多 9 张）=====
             Text(
-                text = "照片附件（辅助记忆，最多 ${AddItemViewModel.MAX_IMAGES} 张）",
+                text = stringResource(R.string.add_photos_label, AddItemViewModel.MAX_IMAGES),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -497,7 +506,7 @@ fun AddItemScreen(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "添加照片",
+                                        text = stringResource(R.string.add_photo_add),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.primary,
                                     )
@@ -514,7 +523,7 @@ fun AddItemScreen(
                             ) {
                                 AsyncImage(
                                     model = File(path),
-                                    contentDescription = "物品照片",
+                                    contentDescription = stringResource(R.string.home_cd_item_photo),
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop,
                                 )
@@ -527,7 +536,7 @@ fun AddItemScreen(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Filled.Close,
-                                        contentDescription = "删除照片",
+                                        contentDescription = stringResource(R.string.add_photo_remove),
                                         modifier = Modifier.size(16.dp),
                                         tint = Color.White,
                                     )
@@ -570,7 +579,7 @@ fun AddItemScreen(
                         color = LocalContentColor.current,
                     )
                 } else {
-                    Text(if (isEditing) "保存修改" else "保存")
+                    Text(stringResource(if (isEditing) R.string.add_save_edit else R.string.add_save))
                 }
             }
         }
@@ -587,12 +596,12 @@ fun AddItemScreen(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    text = "选择图片来源",
+                    text = stringResource(R.string.add_photo_source_title),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(vertical = 8.dp),
                 )
                 ListItem(
-                    headlineContent = { Text("拍照") },
+                    headlineContent = { Text(stringResource(R.string.add_photo_take)) },
                     leadingContent = {
                         Icon(
                             imageVector = Icons.Filled.PhotoCamera,
@@ -606,7 +615,7 @@ fun AddItemScreen(
                     },
                 )
                 ListItem(
-                    headlineContent = { Text("从相册选择") },
+                    headlineContent = { Text(stringResource(R.string.add_photo_gallery)) },
                     leadingContent = {
                         Icon(
                             imageVector = Icons.Filled.Image,
@@ -638,8 +647,8 @@ fun AddItemScreen(
     if (showDiscardDialog) {
         AlertDialog(
             onDismissRequest = { showDiscardDialog = false },
-            title = { Text("放弃修改？") },
-            text = { Text("确定要放弃已修改的内容吗？") },
+            title = { Text(stringResource(R.string.discard_title)) },
+            text = { Text(stringResource(R.string.discard_text)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -647,12 +656,12 @@ fun AddItemScreen(
                         onBack()
                     },
                 ) {
-                    Text("放弃修改", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.discard_confirm), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDiscardDialog = false }) {
-                    Text("继续编辑")
+                    Text(stringResource(R.string.discard_cancel))
                 }
             },
         )
@@ -672,27 +681,33 @@ fun AddItemScreen(
 
     // 重复物品确认对话框：保存时发现同名旧记录，让用户选择更新/新建/取消
     duplicateCheckState?.let { dup ->
+        val existingLocation = dup.existingItem.location.ifBlank {
+            stringResource(R.string.common_not_provided)
+        }
         AlertDialog(
             onDismissRequest = { onDuplicateDecision(DuplicateDecision.CANCEL) },
-            title = { Text("物品已存在") },
+            title = { Text(stringResource(R.string.add_duplicate_title)) },
             text = {
                 Text(
-                    "您已有一个名为“${dup.existingItem.name}”的物品，当前存放在" +
-                        "“${dup.existingItem.location.ifBlank { "未填写" }}”。是否将其更新为新位置，还是新建一条记录？",
+                    text = stringResource(
+                        R.string.add_duplicate_message,
+                        dup.existingItem.name,
+                        existingLocation,
+                    ),
                 )
             },
             confirmButton = {
                 TextButton(onClick = { onDuplicateDecision(DuplicateDecision.UPDATE_EXISTING) }) {
-                    Text("更新旧记录")
+                    Text(stringResource(R.string.add_duplicate_update))
                 }
             },
             dismissButton = {
                 Row {
                     TextButton(onClick = { onDuplicateDecision(DuplicateDecision.INSERT_NEW) }) {
-                        Text("新建记录")
+                        Text(stringResource(R.string.add_duplicate_insert))
                     }
                     TextButton(onClick = { onDuplicateDecision(DuplicateDecision.CANCEL) }) {
-                        Text("取消")
+                        Text(stringResource(R.string.common_cancel))
                     }
                 }
             },
@@ -717,9 +732,9 @@ fun AddItemScreen(
                     .padding(bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("📦 批量添加物品", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.batch_title), style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = "识别到 ${batchItems.size} 件物品：可逐条编辑名称/地点/备注，并为每件分配照片；未勾选或删除的不会保存。\n原文已保留在“口语描述”中，可随时修改后重新解析。",
+                    text = stringResource(R.string.batch_intro, batchItems.size),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -738,8 +753,33 @@ fun AddItemScreen(
                 }
                 // 部分失败等提示
                 batchNotice?.let { notice ->
+                    val noticeText = if (notice.unknownFailure) {
+                        stringResource(R.string.notice_batch_unknown)
+                    } else {
+                        val addedText = stringResource(R.string.notice_batch_added, notice.added)
+                        val updatedText = if (notice.updated > 0) {
+                            stringResource(R.string.notice_batch_updated, notice.updated)
+                        } else {
+                            ""
+                        }
+                        val skippedText = if (notice.skipped > 0) {
+                            stringResource(R.string.notice_batch_skipped, notice.skipped)
+                        } else {
+                            ""
+                        }
+                        val failedText = if (notice.failedNames.isNotEmpty()) {
+                            stringResource(
+                                R.string.notice_batch_failed,
+                                notice.failedNames.size,
+                                notice.failedNames.joinToString("、"),
+                            )
+                        } else {
+                            ""
+                        }
+                        addedText + updatedText + skippedText + failedText
+                    }
                     Text(
-                        text = notice,
+                        text = noticeText,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -761,12 +801,12 @@ fun AddItemScreen(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
-                            text = "📎 本次添加 ${imagePaths.size} 张照片：可分配给一件或多件物品（同一张照片可分给多件）",
+                            text = stringResource(R.string.batch_photos_intro, imagePaths.size),
                             style = MaterialTheme.typography.bodySmall,
                         )
                         if (unassignedCount > 0) {
                             Text(
-                                text = "⚠ $unassignedCount 张照片未分配给任何“将保存”的物品，本次保存不会包含它们；可继续分配，或直接点“批量添加”即视为明确不保存这些照片。",
+                                text = stringResource(R.string.batch_unassigned_warning, unassignedCount),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFFE6A23C),
                             )
@@ -799,7 +839,7 @@ fun AddItemScreen(
                         .fillMaxWidth()
                         .height(48.dp),
                 ) {
-                    Text("批量添加 ${batchSelected.size} 件物品")
+                    Text(stringResource(R.string.batch_save_count, batchSelected.size))
                 }
             }
         }
@@ -834,23 +874,23 @@ fun AddItemScreen(
     batchDuplicatePending?.let { pending ->
         AlertDialog(
             onDismissRequest = { onBatchDuplicateChoice(BatchDuplicateChoice.SKIP) },
-            title = { Text("⚠️ 物品已存在") },
+            title = { Text(stringResource(R.string.batch_duplicate_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = "“${pending.newItem.name}” 已存在",
+                        text = stringResource(R.string.batch_duplicate_message, pending.newItem.name),
                         style = MaterialTheme.typography.titleMedium,
                     )
                     if (pending.existingItem.location.isNotBlank()) {
                         Text(
-                            text = "当前位置：${pending.existingItem.location}",
+                            text = stringResource(R.string.batch_current_location, pending.existingItem.location),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     if (pending.newItem.location.isNotBlank()) {
                         Text(
-                            text = "新位置：${pending.newItem.location}",
+                            text = stringResource(R.string.batch_new_location, pending.newItem.location),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -859,16 +899,16 @@ fun AddItemScreen(
             },
             confirmButton = {
                 TextButton(onClick = { onBatchDuplicateChoice(BatchDuplicateChoice.UPDATE_EXISTING) }) {
-                    Text("更新旧记录")
+                    Text(stringResource(R.string.add_duplicate_update))
                 }
             },
             dismissButton = {
                 Row {
                     TextButton(onClick = { onBatchDuplicateChoice(BatchDuplicateChoice.INSERT_NEW) }) {
-                        Text("新建记录")
+                        Text(stringResource(R.string.add_duplicate_insert))
                     }
                     TextButton(onClick = { onBatchDuplicateChoice(BatchDuplicateChoice.SKIP) }) {
-                        Text("跳过此物品")
+                        Text(stringResource(R.string.batch_skip))
                     }
                 }
             },
@@ -906,7 +946,7 @@ private fun BatchDraftCard(
         ) {
             Checkbox(checked = checked, onCheckedChange = onCheckedChange)
             Text(
-                text = draft.name.ifBlank { "（未命名）" },
+                text = draft.name.ifBlank { stringResource(R.string.batch_unnamed) },
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
@@ -914,7 +954,7 @@ private fun BatchDraftCard(
             )
             if (isDuplicate) {
                 Text(
-                    text = "⚠ 已存在",
+                    text = stringResource(R.string.batch_duplicate_badge),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(end = 4.dp),
@@ -923,7 +963,7 @@ private fun BatchDraftCard(
             IconButton(onClick = onRemove) {
                 Icon(
                     imageVector = Icons.Filled.Close,
-                    contentDescription = "删除此条目",
+                    contentDescription = stringResource(R.string.batch_remove_entry),
                     modifier = Modifier.size(18.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -932,7 +972,7 @@ private fun BatchDraftCard(
         OutlinedTextField(
             value = draft.name,
             onValueChange = onNameChange,
-            label = { Text("物品名 *") },
+            label = { Text(stringResource(R.string.add_name_label)) },
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.fillMaxWidth(),
@@ -940,7 +980,7 @@ private fun BatchDraftCard(
         OutlinedTextField(
             value = draft.location,
             onValueChange = onLocationChange,
-            label = { Text("存放地点") },
+            label = { Text(stringResource(R.string.add_location_label)) },
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.fillMaxWidth(),
@@ -948,7 +988,7 @@ private fun BatchDraftCard(
         OutlinedTextField(
             value = draft.description,
             onValueChange = onDescriptionChange,
-            label = { Text("备注") },
+            label = { Text(stringResource(R.string.add_description_label)) },
             textStyle = MaterialTheme.typography.bodyMedium,
             modifier = Modifier
                 .fillMaxWidth()
@@ -956,13 +996,13 @@ private fun BatchDraftCard(
         )
         // 已分配给这件物品的照片：点击缩略图全屏预览；右上 ✕ 取消分配
         Text(
-            text = "📷 照片（${draft.photoPaths.size}/${AddItemViewModel.MAX_IMAGES}）",
+            text = stringResource(R.string.batch_photo_count, draft.photoPaths.size, AddItemViewModel.MAX_IMAGES),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (draft.photoPaths.isEmpty()) {
             Text(
-                text = "未分配照片",
+                text = stringResource(R.string.batch_photo_unassigned),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.outline,
             )
@@ -982,7 +1022,7 @@ private fun BatchDraftCard(
                     ) {
                         AsyncImage(
                             model = File(path),
-                            contentDescription = "已分配照片",
+                            contentDescription = stringResource(R.string.batch_photo_assigned),
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop,
                         )
@@ -995,7 +1035,7 @@ private fun BatchDraftCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "取消分配此照片",
+                                contentDescription = stringResource(R.string.batch_photo_unassign),
                                 modifier = Modifier.size(14.dp),
                                 tint = Color.White,
                             )
@@ -1009,7 +1049,7 @@ private fun BatchDraftCard(
             enabled = photoPoolSize > 0,
             modifier = Modifier.align(Alignment.Start),
         ) {
-            Text("＋ 分配照片")
+            Text(stringResource(R.string.batch_photo_assign))
         }
     }
 }
@@ -1025,14 +1065,14 @@ private fun BatchPhotoAssignDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("为「${draft.name.ifBlank { "未命名" }}」分配照片") },
+        title = { Text(stringResource(R.string.batch_assign_title, draft.name.ifBlank { stringResource(R.string.batch_unnamed_plain) })) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
-                    text = "勾选要关联到这件物品的照片（可多张）；同一张照片也可同时分配给其它物品。",
+                    text = stringResource(R.string.batch_assign_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1050,14 +1090,14 @@ private fun BatchPhotoAssignDialog(
                     ) {
                         AsyncImage(
                             model = File(path),
-                            contentDescription = "照片 ${poolPaths.indexOf(path) + 1}",
+                            contentDescription = stringResource(R.string.batch_photo_index, poolPaths.indexOf(path) + 1),
                             modifier = Modifier
                                 .size(44.dp)
                                 .clip(RoundedCornerShape(6.dp)),
                             contentScale = ContentScale.Crop,
                         )
                         Text(
-                            text = "照片 ${poolPaths.indexOf(path) + 1}",
+                            text = stringResource(R.string.batch_photo_index, poolPaths.indexOf(path) + 1),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier
                                 .weight(1f)
@@ -1074,7 +1114,7 @@ private fun BatchPhotoAssignDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("完成")
+                Text(stringResource(R.string.batch_done))
             }
         },
     )

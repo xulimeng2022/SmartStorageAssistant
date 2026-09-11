@@ -6,15 +6,17 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.smartstorage.data.local.converters.Converters
+import com.example.smartstorage.data.local.dao.ImageAiIndexDao
 import com.example.smartstorage.data.local.dao.ItemDao
+import com.example.smartstorage.data.local.entity.ImageAiIndexEntity
 import com.example.smartstorage.data.local.entity.ItemEntity
 
 /**
  * 应用本地数据库。
  */
 @Database(
-    entities = [ItemEntity::class],
-    version = 4,
+    entities = [ItemEntity::class, ImageAiIndexEntity::class],
+    version = 5,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -22,6 +24,9 @@ abstract class AppDatabase : RoomDatabase() {
 
     /** 物品表 DAO。 */
     abstract fun itemDao(): ItemDao
+
+    /** 图片视觉索引 DAO。 */
+    abstract fun imageAiIndexDao(): ImageAiIndexDao
 
     companion object {
         /**
@@ -51,6 +56,38 @@ abstract class AppDatabase : RoomDatabase() {
                     "UPDATE items SET image_path = '[\"' || image_path || '\"]' " +
                         "WHERE image_path IS NOT NULL AND image_path NOT LIKE '[%'"
                 )
+            }
+        }
+
+        /**
+         * v4 → v5：新增图片视觉索引表，物品删除时级联清理。
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS image_ai_indices (
+                        image_path TEXT NOT NULL PRIMARY KEY,
+                        item_id INTEGER NOT NULL,
+                        content_hash TEXT,
+                        object_tags_json TEXT NOT NULL DEFAULT '{}',
+                        attributes_json TEXT NOT NULL DEFAULT '{}',
+                        visible_text_json TEXT NOT NULL DEFAULT '{}',
+                        description_json TEXT NOT NULL DEFAULT '{}',
+                        search_text TEXT NOT NULL DEFAULT '',
+                        confidence REAL NOT NULL DEFAULT 0,
+                        status TEXT NOT NULL,
+                        analysis_provider TEXT,
+                        analysis_model TEXT,
+                        index_version INTEGER NOT NULL DEFAULT 1,
+                        analyzed_at INTEGER,
+                        error_kind TEXT,
+                        FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_image_ai_indices_item_id ON image_ai_indices(item_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_image_ai_indices_status ON image_ai_indices(status)")
             }
         }
     }

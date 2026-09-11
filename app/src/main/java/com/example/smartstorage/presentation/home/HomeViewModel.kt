@@ -6,7 +6,14 @@ import com.example.smartstorage.data.local.prefs.TextColorConfig
 import com.example.smartstorage.data.local.prefs.ThemeRepository
 import com.example.smartstorage.data.local.prefs.AppPreferencesRepository
 import com.example.smartstorage.data.remote.llm.LlmClient
+import com.example.smartstorage.data.local.prefs.AppLanguage
 import com.example.smartstorage.data.remote.llm.LlmTimeoutException
+import com.example.smartstorage.data.remote.vision.VisionAnalyzer
+import com.example.smartstorage.data.repository.ImageAiIndexRepository
+import com.example.smartstorage.data.repository.VisualSearchEngine
+import com.example.smartstorage.data.local.prefs.ImageUnderstandingRepository
+import com.example.smartstorage.domain.model.VisualMatch
+import com.example.smartstorage.domain.model.VisualVerificationState
 import com.example.smartstorage.domain.model.Item
 import com.example.smartstorage.domain.usecase.DeleteItemUseCase
 import com.example.smartstorage.domain.usecase.ObserveActiveCountUseCase
@@ -15,6 +22,9 @@ import com.example.smartstorage.domain.usecase.RestoreItemUseCase
 import com.example.smartstorage.domain.usecase.SearchItemsByFieldsUseCase
 import com.example.smartstorage.domain.usecase.SearchItemsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
+import com.example.smartstorage.R
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -45,6 +55,10 @@ class HomeViewModel @Inject constructor(
     private val llmClient: LlmClient,
     private val appPreferencesRepository: AppPreferencesRepository,
     private val themeRepository: ThemeRepository,
+    private val imageAiIndexRepository: ImageAiIndexRepository,
+    private val visionAnalyzer: VisionAnalyzer,
+    private val imageUnderstandingRepository: ImageUnderstandingRepository,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
 
@@ -71,7 +85,76 @@ class HomeViewModel @Inject constructor(
         initialValue = emptyList(),
     )
 
-    // 是否从未添加过任何物品（用于区分“初始空状态”与“搜索无结果”）
+    /** 当前查询的本地视觉索引命中，按物品去重后保留最佳图片。 */
+    val visualMatches: StateFlow<List<VisualMatch>> = combine(
+        _searchQuery,
+        imageAiIndexRepository.observeSuccessful(),
+        observeItemsUseCase(),
+    ) { query, indices, allItems ->
+        if (query.isBlank()) {
+            emptyList()
+        } else {
+            VisualSearchEngine.match(
+                query = query,
+                indices = indices,
+                items = allItems,
+                languageCode = AppLanguage.getCode(context).ifBlank { java.util.Locale.getDefault().language },
+            ).distinctBy { it.item.id }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList(),
+    )
+
+    private val _verificationStates = MutableStateFlow<Map<String, VisualVerificationState>>(emptyMap())
+    val verificationStates: StateFlow<Map<String, VisualVerificationState>> = _verificationStates.asStateFlow()
+
+    private val _isVerifying = MutableStateFlow(false)
+    val isVerifying: StateFlow<Boolean> = _isVerifying.asStateFlow()
+
+    fun verifyVisualMatches() {
+        val query = _searchQuery.value.trim()
+        val candidates = visualMatches.value.take(MAX_VISUAL_CANDIDATES)
+        if (query.isBlank() || candidates.isEmpty() || _isVerifying.value) return
+        _isVerifying.value = true
+        viewModelScope.launch {
+            val results = _verificationStates.value.toMutableMap()
+            candidates.forEach { candidate ->
+                val bytes = runCatching { java.io.File(candidate.imagePath).readBytes() }.getOrNull()
+                if (bytes == null) {
+                    results[candidate.key] = VisualVerificationState(candidate.key, failed = true)
+                    return@forEach
+                }
+                val result = visionAnalyzer.verify(query, bytes)
+                results[candidate.key] = result.fold(
+                    onSuccess = {
+                        VisualVerificationState(
+                            candidateKey = candidate.key,
+                            level = it.level,
+                            reason = it.reason,
+                            confidence = it.confidence,
+                        )
+                    },
+                    onFailure = { VisualVerificationState(candidate.key, failed = true) },
+                )
+            }
+            _verificationStates.value = results
+            _isVerifying.value = false
+        }
+    }
+
+    val canVerifyVisualMatches: StateFlow<Boolean> = imageUnderstandingRepository.state
+        .map {
+            it.enabled && it.capability == com.example.smartstorage.data.local.prefs.VisionCapabilityStatus.SUPPORTED
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false,
+        )
+
+    /** 是否从未添加过任何物品（用于区分“初始空状态”与“搜索无结果”）。 */
     val isInitialEmpty: StateFlow<Boolean> = observeActiveCountUseCase()
         .map { it == 0 }
         .stateIn(
@@ -130,7 +213,16 @@ class HomeViewModel @Inject constructor(
         val generation = queryGeneration
         _parseState.value = SearchParseState.Parsing
         viewModelScope.launch {
-            when (val outcome = llmClient.parseSearchKeyword(raw)) {
+            when (val outcome = llmClient.parseSearchFields(raw)) {
+                is com.example.smartstorage.data.remote.llm.SearchParseOutcome.Fields -> {
+                    if (queryGeneration != generation) {
+                        _parseState.value = SearchParseState.Idle
+                        return@launch
+                    }
+                    _aiFilter.value = AiFilter(outcome.name, outcome.location, outcome.description)
+                    _searchQuery.value = raw
+                    _parseState.value = SearchParseState.Idle
+                }
                 is com.example.smartstorage.data.remote.llm.SearchParseOutcome.Keyword -> {
                     if (queryGeneration != generation) {
                         // 用户已修改输入：丢弃迟到的旧结果，不覆盖新输入
@@ -166,7 +258,11 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /** 清除 AI 三字段筛选，回到关键词搜索。 */    /** 清除 AI 三字段筛选，回到关键词搜索。 */    /** 清除 AI 三字段筛选，回到关键词搜索。 */
+    /** 清除 AI 三字段筛选，回到关键词搜索。 */
+    companion object {
+        private const val MAX_VISUAL_CANDIDATES = 5
+    }
+
     fun clearAiFilter() {
         _aiFilter.value = null
     }

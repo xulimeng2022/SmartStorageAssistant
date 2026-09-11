@@ -33,6 +33,9 @@ enum class LlmErrorKind {
 class LlmRequestException(
     val kind: LlmErrorKind,
     message: String,
+    val httpCode: Int? = null,
+    val detail: String? = null,
+    val isFreeMode: Boolean? = null,
 ) : Exception(message)
 
 /**
@@ -85,7 +88,12 @@ object LlmErrorClassifier {
     /** 从 HTTP 状态码 + 响应体文本构造类型化异常。 */
     fun exceptionFor(code: Int, body: String?): LlmRequestException {
         val kind = kindForHttp(code) ?: LlmErrorKind.UNKNOWN
-        return LlmRequestException(kind, userMessage(kind, code, body))
+        return LlmRequestException(
+            kind = kind,
+            message = userMessage(kind, code, body),
+            httpCode = code,
+            detail = summarizeBody(body),
+        )
     }
 
     /** 从响应体里提取 error/message 字段摘要（正则，避免依赖 org.json；截断且单行化）。 */

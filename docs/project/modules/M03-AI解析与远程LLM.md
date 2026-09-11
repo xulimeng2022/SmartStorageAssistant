@@ -89,3 +89,15 @@
 - 降级只影响当前任务，不持久修改 AI 模式（改模式须走设置页）。
 - 免费模式界面不再展示构建时 SILICONFLOW_API_KEY 的开发说明。
 - 批量识别逐条询问重名决策；模型结果与本地降级结果统一过 ParsedItemSanitizer。
+
+## 10. v1.2.0 视觉能力
+
+- 保留 OpenAI 兼容文本传输，新增 OpenAI 兼容多模态 image_url data URL 传输。
+- 设置页可用本地合成图片探测视觉能力；探测/分析/复核的网络调用统一在 IO 线程执行（同步 OkHttp 不得跑在主线程）。
+- 能力指纹 = Provider + 归一化 Base URL + 模型名 + 免费/自定义模式 + OpenAI 协议版本 + 探针版本；尾斜杠与首尾空白归一化，避免无谓失效。
+- 能力缓存只持久化 `SUPPORTED`；旧版遗留的负结果读取时一律视为未检测，失败原因只在设置页本次会话展示。
+- 探测失败细分：`MODEL_UNSUPPORTED`（仅当服务端明确拒绝图片输入）/ `AUTH_ERROR` / `QUOTA_ERROR` / `RATE_LIMIT` / `NETWORK_ERROR` / `TIMEOUT` / `SERVER_ERROR` / `BAD_REQUEST` / `MODEL_NOT_FOUND` / `RESPONSE_PARSE_ERROR` / `INCOMPATIBLE` / `UNKNOWN_ERROR`；401/403/429/余额/网络/超时/5xx/普通 400 不得归为“模型不支持”。
+- 探测判定优先解析三语言结构化 JSON；结构不完整但响应含合成图关键词（红/蓝/圆/方等）仍判支持；空响应判解析失败，无法证明看到图片才判 `INCOMPATIBLE`。
+- 保存 AI 配置或切换模式后旧能力缓存失效，用户下次开启始终做一次真实探测。
+- DeepSeek 推荐模型为 `deepseek-flash`；旧别名（`deepseek-v4-flash` / `deepseek-v4-flash-vision-exp`）按已保存配置继续兼容探测，不迁移、不删除 Key/Base URL/自定义模型。
+- 视觉仅使用 OpenAI 兼容接口；文本与视觉失败互不影响。免费模型更新为 Qwen/Qwen3.5-4B。

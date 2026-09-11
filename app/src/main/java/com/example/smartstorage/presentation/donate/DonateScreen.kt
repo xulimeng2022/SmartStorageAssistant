@@ -1,4 +1,6 @@
 package com.example.smartstorage.presentation.donate
+import androidx.compose.ui.res.stringResource
+import com.example.smartstorage.R
 
 import android.Manifest
 import android.content.ContentValues
@@ -82,12 +84,12 @@ fun DonateScreen(onBack: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
         // 顶部返回栏
         TopAppBar(
-            title = { Text("赞助支持") },
+            title = { Text(stringResource(R.string.donate_title)) },
             navigationIcon = {
                 EmojiIconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回",
+                        contentDescription = stringResource(R.string.common_back),
                     )
                 }
             },
@@ -102,13 +104,13 @@ fun DonateScreen(onBack: () -> Unit) {
         ) {
             // ===== 问候语 =====
             Text(
-                text = "☕ 如果这个应用对你有帮助",
+                text = stringResource(R.string.donate_intro),
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "欢迎请我喝杯咖啡，感谢支持！",
+                text = stringResource(R.string.donate_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -143,7 +145,7 @@ fun DonateScreen(onBack: () -> Unit) {
             Spacer(modifier = Modifier.height(12.dp))
             // ===== 底部提示 =====
             Text(
-                text = "💡 点击金额后，请使用对应 App 扫码即可赞助",
+                text = stringResource(R.string.donate_tip),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -151,16 +153,19 @@ fun DonateScreen(onBack: () -> Unit) {
         }
     }
 
+    val alipayQrTitle = stringResource(R.string.donate_alipay_qr)
+    val wechatQrTitle = stringResource(R.string.donate_wechat_qr)
+
     // ===== 支付方式选择弹窗 =====
     if (showPaymentChooser) {
         PaymentChooserDialog(
             onAlipaySelected = {
                 showPaymentChooser = false
-                selectedOption?.let { qrDialog = QrDialogState(it.alipayRes, "支付宝收款码") }
+                selectedOption?.let { qrDialog = QrDialogState(it.alipayRes, alipayQrTitle) }
             },
             onWechatSelected = {
                 showPaymentChooser = false
-                selectedOption?.let { qrDialog = QrDialogState(it.wechatRes, "微信收款码") }
+                selectedOption?.let { qrDialog = QrDialogState(it.wechatRes, wechatQrTitle) }
             },
             onDismiss = { showPaymentChooser = false },
         )
@@ -192,14 +197,14 @@ private fun DonateOptionCard(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = option.displayText,
+            text = "${option.emoji} ${stringResource(option.labelRes)}",
             style = MaterialTheme.typography.titleSmall,
             textAlign = TextAlign.Center,
             maxLines = 2,
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = option.amountText,
+            text = stringResource(R.string.donate_amount, option.amountValue),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -216,7 +221,7 @@ private fun PaymentChooserDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择支付方式") },
+        title = { Text(stringResource(R.string.donate_choose_payment)) },
         text = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -228,7 +233,7 @@ private fun PaymentChooserDialog(
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1677FF)),
                 ) {
-                    Text("支付宝", color = Color.White)
+                    Text(stringResource(R.string.donate_alipay), color = Color.White)
                 }
                 // 微信（品牌绿）
                 Button(
@@ -236,13 +241,13 @@ private fun PaymentChooserDialog(
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF07C160)),
                 ) {
-                    Text("微信", color = Color.White)
+                    Text(stringResource(R.string.donate_wechat), color = Color.White)
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.common_cancel))
             }
         },
     )
@@ -264,7 +269,7 @@ private fun QRCodeDialog(
         if (isGranted) {
             saveImageToGallery(context, imageRes)
         } else {
-            Toast.makeText(context, "需要存储权限才能保存图片", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.donate_permission), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -278,13 +283,13 @@ private fun QRCodeDialog(
             ) {
                 androidx.compose.foundation.Image(
                     painter = painterResource(id = imageRes),
-                    contentDescription = "收款码",
+                    contentDescription = stringResource(R.string.donate_qr_cd),
                     modifier = Modifier
                         .size(280.dp)
                         .clip(RoundedCornerShape(12.dp)),
                 )
                 Text(
-                    text = "请使用对应 App 扫码转账",
+                    text = stringResource(R.string.donate_scan_hint),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -307,10 +312,10 @@ private fun QRCodeDialog(
                         permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     }
                 }) {
-                    Text("📥 保存到相册")
+                    Text(stringResource(R.string.donate_save))
                 }
                 TextButton(onClick = onDismiss) {
-                    Text("我知道了")
+                    Text(stringResource(R.string.donate_close))
                 }
             }
         },
@@ -342,16 +347,16 @@ private fun saveImageToGallery(context: Context, drawableRes: Int) {
             } ?: false
             bitmap.recycle()
             if (saved) {
-                Toast.makeText(context, "✅ 已保存到相册，请打开支付宝/微信扫码", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.donate_saved), Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(context, "保存失败", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.donate_save_failed), Toast.LENGTH_SHORT).show()
             }
         } else {
             bitmap.recycle()
-            Toast.makeText(context, "保存失败", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.donate_save_failed), Toast.LENGTH_SHORT).show()
         }
     } catch (e: Exception) {
         e.printStackTrace()
-        Toast.makeText(context, "保存失败：${e.message}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.donate_save_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
     }
 }

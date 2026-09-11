@@ -6,7 +6,10 @@ import com.example.smartstorage.data.local.prefs.TextColorType
 import org.json.JSONObject
 
 /** 备份文件当前版本号（与 data.json 格式对应，后续兼容性判断用） */
-const val BACKUP_VERSION = "1.0"
+const val BACKUP_VERSION = "1.1"
+
+/** 兼容读取的历史备份版本。 */
+val SUPPORTED_BACKUP_VERSIONS = setOf("1.0", BACKUP_VERSION)
 
 /** 备份数据：data.json 根对象 */
 data class BackupData(
@@ -29,6 +32,23 @@ data class BackupItem(
     val updateTime: Long,
     /** 非 null 表示导出时在回收站 */
     val deletedAt: Long?,
+)
+
+/** 备份中的视觉索引，imagePath 为 ZIP 内相对路径。 */
+data class BackupAiIndex(
+    val itemId: Long,
+    val imagePath: String,
+    val contentHash: String?,
+    val objectTagsJson: String,
+    val attributesJson: String,
+    val visibleTextJson: String,
+    val descriptionJson: String,
+    val searchText: String,
+    val confidence: Double,
+    val provider: String?,
+    val model: String?,
+    val indexVersion: Int,
+    val analyzedAt: Long?,
 )
 
 /** 备份文件预览信息（导入确认对话框展示） */
