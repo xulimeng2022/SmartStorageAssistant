@@ -5,33 +5,34 @@
 
 ## Current Task
 
-- ID / Title: Phase 3 Coordination Infrastructure Bootstrap
+- ID / Title: Coordination Stable Candidate
 - Status: IN_PROGRESS
-- Risk: Low
-- Goal: 建立 Multi-Codex Workflow 与四个角色恢复快照
-- Allowed Scope: docs/coordination/WORKFLOW.md 和四个角色 State 文件
-- Acceptance: 五个文件符合已批准的 Phase 3A 设计，未修改既有 PROJECT_STATUS 和业务代码
-- Task Card: None（One-time Bootstrap Authorization）
+- Risk: Medium
+- Goal: 完成 Coordination Stable Candidate Review；经用户批准后将已验证的 Coordination Infrastructure 传播到 stable main，并继续 Baseline Resync 验证。
+- Allowed Scope: Coordination 文档验证、Git Stable Candidate Gate，以及经用户明确授权后的 main propagation；不包含业务代码修改。
+- Acceptance: Stable Candidate Review 通过；main propagation 获得用户批准；中央规则经 Stable main 传播；后续角色 Resync 单独验证。
+- Task Card: None
 
 ## Progress
 
-- Completed: Phase 3 Workflow Design Report 已批准；五个 Coordination Infrastructure 文件已创建并通过内容、链接、diff 与隔离验证
-- In Progress: 等待 Phase 3A Candidate Review
+- Completed: Ownership 已固化；Workflow / Role State Infrastructure 已固化；PROJECT_STATUS 已 Reconcile；AGENTS Coordination Entry 已完成；Coordination Finalization 状态已准备
+- In Progress: Stable Candidate Review
 
 ## Working Tree
 
-- State: Dirty
-- Changed: Phase 3A Candidate = docs/coordination/WORKFLOW.md, Coordinator.md, Data.md, AI.md, UI.md; Pre-existing = docs/project/PROJECT_STATUS.md
+- State: Clean
+- Changed: None
 
 ## Validation
 
-- Content / links / diff / worktree isolation: PASS；未 commit
+- Phase 2 / 3A / 3B / 3C documentation gates: PASS
+- Coordination Finalization candidate validation: PASS
 
 ## Last Handoff
 
-- Task / Source Branch: None
-- Commits: None
-- Summary: None
+- Task / Source Branch: Phase 3C / codex/integration
+- Commits: 33aead21e7d2c9e691729cceec79066c11967d13
+- Summary: AGENTS Multi-Codex Coordination Entry 已完成
 
 ## Blockers
 
@@ -39,4 +40,4 @@
 
 ## Next Step
 
-- 等待 Phase 3A Candidate Review
+- 执行 Coordination Stable Candidate Review；通过后等待用户批准 integration → main。
