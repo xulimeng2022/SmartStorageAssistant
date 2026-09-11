@@ -4,24 +4,24 @@
 > 写入规则：只有主控 Codex 与 Release 流程可以更新；模块 / Review / 测试 Agent 只读，发现过期信息报告主控。
 > 不承载任务管理（任务卡见 `04-任务与验收清单.md` 与 `tasks/`），不写临时日志与命令输出。
 
-- 最近更新：2026-09-12（完成 Coordination Finalization；Coordination Stable Candidate 等待 Stable Candidate Review）
+- 最近更新：2026-09-12（Coordination Stable Candidate Review 已通过；等待用户批准 codex/integration → main）
 
 ## 当前版本与阶段
 
 - 当前版本：`1.2.0`（versionCode 6，见 `app/build.gradle.kts` 当前实际配置）。
-- 当前阶段：v1.2.0 开发 / Debug 准备阶段，尚未正式发布；Multi-Codex 协调基础设施已完成 Coordination Finalization，等待 Stable Candidate Review。
+- 当前阶段：v1.2.0 开发 / Debug 准备阶段，尚未正式发布；Coordination Stable Candidate Review 已通过，当前等待用户明确批准 `codex/integration → main`。
 - Phase 3A — Coordination Infrastructure：`COMPLETE`。
 - Phase 3B — Global Status Reconciliation：`COMPLETE`。
 - Phase 3C — AGENTS Workflow Entry：`COMPLETE`。
 - Coordination Finalization：`COMPLETE`。
-- Stable Candidate Review：`PENDING`。
-- Stable main propagation：`PENDING`。
+- Stable Candidate Review：`COMPLETE / PASS`。
+- Stable main propagation：`WAITING USER APPROVAL`。
 - Data / AI / UI Baseline Resync：`NOT YET EXECUTED`。
 
 ## Baseline 状态
 
 - Frozen Baseline：`ee95f93b82e454ecebc3463e25fce51a9ec4569c`。这是四个长期 Worktree 创建时的历史共同基准。
-- Integration / Coordination Candidate：当前位于 `codex/integration`，已包含 Ownership、Workflow、Role State Infrastructure、Global Status Reconciliation、AGENTS Coordination Entry 与 Coordination Finalization；尚未进入 main，因此不是 Stable Baseline。精确 HEAD 以 Git 为准。
+- Integration / Coordination Candidate：当前位于 `codex/integration`，包含已通过 Stable Candidate Review 的 Ownership、Workflow、Role State Infrastructure、Global Status Reconciliation、AGENTS Coordination Entry 与 Coordination Finalization；尚未进入 main，因此不是 Stable Baseline。精确 HEAD 以 Git 为准。
 - Stable Baseline：正式分支为 `main`；当前尚未包含 Coordination Candidate。精确 `main HEAD` 以 Git 为准。
 
 ## Multi-Codex 协调状态
