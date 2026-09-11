@@ -22,3 +22,7 @@ Thumbs.db
 
 # 本地保留的 APK 产物副本
 app/release/
+# 本地临时备份与根目录 APK 副本
+/app-release-*.apk
+/AGENTS.md.bak-*
+/docs/project/*.bak-*
