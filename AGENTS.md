@@ -78,16 +78,30 @@
 
 ## Multi-Codex 协作原则
 
-> 中央规则只定义长期角色、权限和协作边界；详细流程放在 Skill / Task Card / 主控调度流程中。
+> 中央规则只定义长期角色、权限和协作边界；详细流程放在 WORKFLOW.md、Skill 和 Task Card 中。
+
+### Coordination Entry
+
+- 长期角色：主控（Coordinator）、Data、AI、UI；Test / Review 按任务临时启动，不建立长期 State。
+- 开始工作前按 `WORKFLOW.md` 的 Lightweight Resume 按需读取对应真相源：
+  - 项目硬规则 / Git 安全 / 用户审批门禁：`AGENTS.md`
+  - Ownership：`docs/coordination/OWNERSHIP.md`
+  - Workflow：`docs/coordination/WORKFLOW.md`
+  - 当前项目状态：`docs/project/PROJECT_STATUS.md`
+  - 角色恢复快照：主控（Coordinator）→ `docs/coordination/Coordinator.md`，Data → `docs/coordination/Data.md`，AI → `docs/coordination/AI.md`，UI → `docs/coordination/UI.md`
+  - 正式任务状态、验收与 TDD 记录：`docs/project/04-任务与验收清单.md`、`docs/project/05-单任务卡-TDD.md` 与 `docs/project/tasks/`
+  - Git HEAD / branch / commit / worktree：Git
+- 各真相源职责分离，不要求每次全文读取 WORKFLOW。
+- 同一事实在不同真相源冲突时，不自行猜测、覆盖或静默选择；停止相关修改并报告主控（Coordinator）。
 
 ### 当前阶段角色工作区
 
-- 当前阶段的长期角色工作区为 Coordinator / Integration、Data、AI、UI。Test 与 Review 当前按任务临时启动。
+- 当前阶段的长期角色工作区为主控（Coordinator）、Data、AI、UI。Test 与 Review 当前按任务临时启动。
 - 后续可根据项目架构和规模经正式决策调整角色结构，不得由 Agent 擅自新增、删除或改变长期角色职责。
 - 永久 Worktree 是角色工作空间，不是一个功能一个 Worktree。当前四个长期角色从同一冻结基线创建，UI / Data / AI 不构成父子分支关系。
 - Worktree ID、路径等运行时动态发现，不写死；Test / Review 当前不建立永久 Worktree。
 
-### Coordinator / Integration
+### 主控（Coordinator）
 
 - Coordinator 是可由新聊天接力的长期角色，不以某一个聊天窗口作为唯一状态源；状态从 Skill、项目文档、Git 状态、Task Card 与 handoff 恢复。
 - 使用独立永久 Worktree，负责拆任务、划定边界、接收模块 commit / handoff、安排 Review / Test、处理冲突与最终 Integration。
