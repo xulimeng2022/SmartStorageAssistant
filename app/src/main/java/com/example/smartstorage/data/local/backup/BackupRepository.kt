@@ -2,7 +2,9 @@ package com.example.smartstorage.data.local.backup
 
 import android.content.Context
 import android.net.Uri
+import com.example.smartstorage.data.local.dao.ImageAiIndexDao
 import com.example.smartstorage.data.local.dao.ItemDao
+import com.example.smartstorage.data.local.entity.ImageAiIndexEntity
 import com.example.smartstorage.data.local.entity.ItemEntity
 import com.example.smartstorage.data.local.prefs.ThemeRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -31,6 +33,7 @@ import javax.inject.Singleton
 class BackupRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val itemDao: ItemDao,
+    private val imageAiIndexDao: ImageAiIndexDao,
     private val themeRepository: ThemeRepository,
 ) {
 
@@ -40,7 +43,7 @@ class BackupRepository @Inject constructor(
             val items = itemDao.getAllItems()
             // 原图片绝对路径 → ZIP 内相对路径（重命名避免冲突）
             val imageEntryNames = buildImageEntryNames(items)
-            val json = buildDataJson(items, imageEntryNames)
+            val json = buildDataJson(items, imageEntryNames, imageAiIndexDao.getAll())
 
             val outputStream = context.contentResolver.openOutputStream(uri)
                 ?: throw IllegalStateException("无法打开保存位置")
@@ -71,7 +74,7 @@ class BackupRepository @Inject constructor(
             val root = JSONObject(readDataJson(uri))
             val version = root.optString("version", "")
             // 版本兼容性校验：备份版本不能高于当前支持版本
-            if (version != BACKUP_VERSION) {
+                if (version !in SUPPORTED_BACKUP_VERSIONS) {
                 throw IllegalArgumentException("备份文件版本不兼容（当前支持 $BACKUP_VERSION）")
             }
             val items = root.optJSONArray("items") ?: JSONArray()
@@ -91,11 +94,13 @@ class BackupRepository @Inject constructor(
                 val (json, imageEntries) = readZipEntries(uri)
                 val root = JSONObject(json)
                 val version = root.optString("version", "")
-                if (version != BACKUP_VERSION) {
+                if (version !in SUPPORTED_BACKUP_VERSIONS) {
                     throw IllegalArgumentException("备份文件版本不兼容（当前支持 $BACKUP_VERSION）")
                 }
                 val itemsJson = root.optJSONArray("items") ?: JSONArray()
                 val backupItems = (0 until itemsJson.length()).map { parseBackupItem(itemsJson.getJSONObject(it)) }
+                val aiIndexesJson = root.optJSONArray("aiIndexes") ?: JSONArray()
+                val backupIndexes = parseBackupIndexes(aiIndexesJson)
 
                 // 2. 覆盖模式：清空数据库并删除全部图片文件
                 if (mode == ImportMode.OVERWRITE) {
@@ -120,6 +125,7 @@ class BackupRepository @Inject constructor(
                 var imported = 0
                 var skipped = 0
                 var failed = 0
+                val importedItemIds = mutableMapOf<Long, Long>()
                 backupItems.forEach { backupItem ->
                     try {
                         if (mode == ImportMode.MERGE &&
@@ -129,7 +135,7 @@ class BackupRepository @Inject constructor(
                             return@forEach
                         }
                         val newPaths = backupItem.imagePaths.mapNotNull { imagePathMap[it] }
-                        itemDao.insert(
+                        val newItemId = itemDao.insert(
                             ItemEntity(
                                 // 覆盖模式保留原 ID；合并模式自增，避免与现有记录冲突
                                 id = if (mode == ImportMode.OVERWRITE) backupItem.id else 0L,
@@ -142,10 +148,34 @@ class BackupRepository @Inject constructor(
                                 deletedAt = backupItem.deletedAt,
                             ),
                         )
+                        importedItemIds[backupItem.id] = newItemId
                         imported++
                     } catch (e: Exception) {
                         failed++
                     }
+                }
+
+                backupIndexes.forEach { index ->
+                    val newItemId = importedItemIds[index.itemId] ?: return@forEach
+                    val newPath = imagePathMap[index.imagePath] ?: return@forEach
+                    imageAiIndexDao.upsert(
+                        ImageAiIndexEntity(
+                            imagePath = newPath,
+                            itemId = newItemId,
+                            contentHash = index.contentHash,
+                            objectTagsJson = index.objectTagsJson,
+                            attributesJson = index.attributesJson,
+                            visibleTextJson = index.visibleTextJson,
+                            descriptionJson = index.descriptionJson,
+                            searchText = index.searchText,
+                            confidence = index.confidence,
+                            status = "SUCCESS",
+                            analysisProvider = index.provider,
+                            analysisModel = index.model,
+                            indexVersion = index.indexVersion,
+                            analyzedAt = index.analyzedAt,
+                        ),
+                    )
                 }
 
                 // 5. 恢复全局文字颜色配置（备份中包含时）
@@ -163,6 +193,30 @@ class BackupRepository @Inject constructor(
         }
 
     /** 生成 原图片路径 → ZIP 内相对路径 的映射（images/item_<id>_<序号>_<哈希>.扩展名） */
+
+    /** 解析备份中的视觉索引。 */
+    private fun parseBackupIndexes(array: JSONArray): List<BackupAiIndex> =
+        (0 until array.length()).mapNotNull { index ->
+            runCatching {
+                val obj = array.getJSONObject(index)
+                BackupAiIndex(
+                    itemId = obj.optLong("itemId", 0L),
+                    imagePath = obj.optString("imagePath", ""),
+                    contentHash = obj.optString("contentHash", "").ifBlank { null },
+                    objectTagsJson = obj.optString("objectTagsJson", "{}"),
+                    attributesJson = obj.optString("attributesJson", "{}"),
+                    visibleTextJson = obj.optString("visibleTextJson", "{}"),
+                    descriptionJson = obj.optString("descriptionJson", "{}"),
+                    searchText = obj.optString("searchText", ""),
+                    confidence = obj.optDouble("confidence", 0.0),
+                    provider = obj.optString("provider", "").ifBlank { null },
+                    model = obj.optString("model", "").ifBlank { null },
+                    indexVersion = obj.optInt("indexVersion", 1),
+                    analyzedAt = if (obj.isNull("analyzedAt")) null else obj.optLong("analyzedAt"),
+                )
+            }.getOrNull()
+        }
+
     private fun buildImageEntryNames(items: List<ItemEntity>): Map<String, String> {
         val map = LinkedHashMap<String, String>()
         items.forEach { item ->
@@ -180,6 +234,7 @@ class BackupRepository @Inject constructor(
     private fun buildDataJson(
         items: List<ItemEntity>,
         imageEntryNames: Map<String, String>,
+        indexes: List<ImageAiIndexEntity>,
     ): String {
         val itemsJson = JSONArray()
         items.forEach { item ->
@@ -196,17 +251,40 @@ class BackupRepository @Inject constructor(
                     put("imagePaths", imageJson)
                     put("createTime", item.createdAt)
                     put("updateTime", item.updatedAt)
-                    // JSONObject 对 null 会移除键，用 JSONObject.NULL 保留空值语义
                     put("deletedAt", item.deletedAt ?: JSONObject.NULL)
+                },
+            )
+        }
+        val indexesJson = JSONArray()
+        val activeItemsById = items.filter { it.deletedAt == null }.associateBy { it.id }
+        indexes.forEach { index ->
+            if (index.status != "SUCCESS") return@forEach
+            if (activeItemsById[index.itemId] == null) return@forEach
+            val entryName = imageEntryNames[index.imagePath] ?: return@forEach
+            indexesJson.put(
+                JSONObject().apply {
+                    put("itemId", index.itemId)
+                    put("imagePath", entryName)
+                    put("contentHash", index.contentHash ?: JSONObject.NULL)
+                    put("objectTagsJson", index.objectTagsJson)
+                    put("attributesJson", index.attributesJson)
+                    put("visibleTextJson", index.visibleTextJson)
+                    put("descriptionJson", index.descriptionJson)
+                    put("searchText", index.searchText)
+                    put("confidence", index.confidence)
+                    put("provider", index.analysisProvider ?: JSONObject.NULL)
+                    put("model", index.analysisModel ?: JSONObject.NULL)
+                    put("indexVersion", index.indexVersion)
+                    put("analyzedAt", index.analyzedAt ?: JSONObject.NULL)
                 },
             )
         }
         return JSONObject().apply {
             put("version", BACKUP_VERSION)
             put("exportTime", System.currentTimeMillis())
-            // 备份当前全局文字颜色配置，便于导入后恢复外观
             put("textColorConfig", textColorConfigToJson(themeRepository.textColorConfig.value))
             put("items", itemsJson)
+            put("aiIndexes", indexesJson)
         }.toString()
     }
 

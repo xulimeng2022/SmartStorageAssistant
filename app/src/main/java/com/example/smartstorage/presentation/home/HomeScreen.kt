@@ -45,6 +45,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -74,7 +75,11 @@ import coil.compose.AsyncImage
 import com.example.smartstorage.domain.model.Item
 import com.example.smartstorage.presentation.common.EmojiEffect
 import com.example.smartstorage.presentation.common.EmojiIconButton
+import com.example.smartstorage.presentation.common.PhotoPreviewDialog
 import com.example.smartstorage.presentation.common.SearchTipsDialog
+import com.example.smartstorage.domain.model.VisualMatch
+import com.example.smartstorage.domain.model.VisualVerificationState
+import com.example.smartstorage.domain.model.VisionMatchLevel
 import com.example.smartstorage.presentation.common.AiParseFailedDialog
 import com.example.smartstorage.data.local.prefs.TextColorConfig
 import com.example.smartstorage.presentation.theme.textColorStyle
@@ -87,8 +92,8 @@ import java.io.File
 fun HomeRoute(
     viewModel: HomeViewModel = hiltViewModel(),
     onAddClick: () -> Unit,
-    onEditClick: (Item) -> Unit,
     onItemClick: (Item) -> Unit,
+    onEditClick: (Item) -> Unit,
     onGoToSettings: () -> Unit,
 ) {
     val items by viewModel.items.collectAsStateWithLifecycle()
@@ -97,6 +102,10 @@ fun HomeRoute(
     val parseState by viewModel.parseState.collectAsStateWithLifecycle()
     val parseFailedGuide by viewModel.parseFailedGuide.collectAsStateWithLifecycle()
     val isInitialEmpty by viewModel.isInitialEmpty.collectAsStateWithLifecycle()
+    val visualMatches by viewModel.visualMatches.collectAsStateWithLifecycle()
+    val verificationStates by viewModel.verificationStates.collectAsStateWithLifecycle()
+    val isVerifying by viewModel.isVerifying.collectAsStateWithLifecycle()
+    val canVerifyVisual by viewModel.canVerifyVisualMatches.collectAsStateWithLifecycle()
     val textColorConfig by viewModel.textColorConfig.collectAsStateWithLifecycle()
 
     HomeScreen(
@@ -106,6 +115,10 @@ fun HomeRoute(
         parseState = parseState,
         parseFailedGuide = parseFailedGuide,
         isInitialEmpty = isInitialEmpty,
+        visualMatches = visualMatches,
+        verificationStates = verificationStates,
+        isVerifying = isVerifying,
+        canVerifyVisual = canVerifyVisual,
         onUndoDelete = viewModel::undoDelete,
         onConsumeUndo = viewModel::consumeUndo,
         onSearchQueryChange = viewModel::onSearchQueryChange,
@@ -119,6 +132,7 @@ fun HomeRoute(
         onItemClick = onItemClick,
         onDeleteClick = viewModel::delete,
         textColorConfig = textColorConfig,
+        onVerifyVisual = viewModel::verifyVisualMatches,
     )
 }
 
@@ -134,7 +148,11 @@ fun HomeScreen(
     searchQuery: String,
     parseState: SearchParseState,
     isInitialEmpty: Boolean,
+    visualMatches: List<VisualMatch>,
     textColorConfig: TextColorConfig,
+    verificationStates: Map<String, VisualVerificationState>,
+    isVerifying: Boolean,
+    canVerifyVisual: Boolean,
     onUndoDelete: () -> Unit,
     onConsumeUndo: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
@@ -146,6 +164,7 @@ fun HomeScreen(
     onParseFailedGuideLater: () -> Unit,
     onGoToSettings: () -> Unit,
     onAddClick: () -> Unit,
+    onVerifyVisual: () -> Unit,
     onItemClick: (Item) -> Unit,
     onDeleteClick: (Item) -> Unit,
 ) {
@@ -160,6 +179,7 @@ fun HomeScreen(
     var showSearchTips by remember { mutableStateOf(false) }
     var tipsShownThisLaunch by rememberSaveable { mutableStateOf(false) }
     var doNotRemindTips by remember { mutableStateOf(false) }
+    var visualPreview by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
 
     // 首次聚焦搜索条时弹出“搜索小贴士”（未禁用且本启动未弹过才弹）
     fun maybeShowSearchTips() {
@@ -325,6 +345,29 @@ fun HomeScreen(
         when {
             // 有物品：正常列表
             items.isNotEmpty() -> {
+                if (visualMatches.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (canVerifyVisual) {
+                            TextButton(onClick = onVerifyVisual, enabled = !isVerifying) {
+                                Text(
+                                    if (isVerifying) stringResource(R.string.vision_verifying)
+                                    else stringResource(R.string.vision_verify_action),
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = stringResource(R.string.vision_ai_badge),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -333,11 +376,18 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(items, key = { it.id }) { item ->
+                        val visual = visualMatches.firstOrNull { it.item.id == item.id }
                         ItemCard(
                             item = item,
+                            visual = visual,
+                            verification = visual?.let { verificationStates[it.key] },
                             textColorConfig = textColorConfig,
                             onClick = { onItemClick(item) },
                             onDelete = { onDeleteClick(item) },
+                            onOpenVisualPhoto = { match ->
+                                val index = match.item.imagePaths.indexOf(match.imagePath).coerceAtLeast(0)
+                                visualPreview = match.item.imagePaths to index
+                            },
                         )
                     }
                 }
@@ -373,6 +423,10 @@ fun HomeScreen(
     }
 
     // 搜索小贴士弹窗（居中；勾选“不再提示”后写入设置，可到设置页重新开启）
+    visualPreview?.let { (paths, index) ->
+        PhotoPreviewDialog(imagePaths = paths, initialIndex = index, onDismiss = { visualPreview = null })
+    }
+
     if (showSearchTips) {
         SearchTipsDialog(
             doNotRemind = doNotRemindTips,
@@ -392,9 +446,12 @@ fun HomeScreen(
 @Composable
 private fun ItemCard(
     item: Item,
+    visual: VisualMatch?,
+    verification: VisualVerificationState?,
     textColorConfig: TextColorConfig,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    onOpenVisualPhoto: (VisualMatch) -> Unit,
 ) {
     Card(
         onClick = onClick,
@@ -416,7 +473,7 @@ private fun ItemCard(
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center,
             ) {
-                val thumbPath = item.imagePath
+                val thumbPath = visual?.imagePath ?: item.imagePath
                 if (!thumbPath.isNullOrBlank()) {
                     AsyncImage(
                         model = File(thumbPath),

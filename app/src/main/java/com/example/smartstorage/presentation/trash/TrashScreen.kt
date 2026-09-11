@@ -1,4 +1,6 @@
 package com.example.smartstorage.presentation.trash
+import androidx.compose.ui.res.stringResource
+import com.example.smartstorage.R
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,12 +71,12 @@ fun TrashScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         // 顶部栏：返回 + 清空回收站
         TopAppBar(
-            title = { Text("回收站") },
+            title = { Text(stringResource(R.string.trash)) },
             navigationIcon = {
                 EmojiIconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回",
+                        contentDescription = stringResource(R.string.common_back),
                     )
                 }
             },
@@ -83,7 +85,7 @@ fun TrashScreen(
                     onClick = { showEmptyConfirm = true },
                     enabled = trashItems.isNotEmpty(),
                 ) {
-                    Text("清空回收站", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.trash_empty_action), color = MaterialTheme.colorScheme.error)
                 }
             },
         )
@@ -103,12 +105,12 @@ fun TrashScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "回收站空空如也",
+                        text = stringResource(R.string.trash_empty_title),
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "被删除的物品会先进入这里，可恢复或永久删除",
+                        text = stringResource(R.string.trash_empty_message),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -136,8 +138,8 @@ fun TrashScreen(
     pendingPermanentDelete?.let { item ->
         AlertDialog(
             onDismissRequest = { pendingPermanentDelete = null },
-            title = { Text("永久删除") },
-            text = { Text("确定要永久删除「${item.name}」吗？此操作不可恢复，照片也会一并删除。") },
+            title = { Text(stringResource(R.string.common_permanent)) },
+            text = { Text(stringResource(R.string.trash_permanent_message, item.name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -145,12 +147,12 @@ fun TrashScreen(
                         pendingPermanentDelete = null
                     },
                 ) {
-                    Text("永久删除", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.common_permanent), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingPermanentDelete = null }) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
         )
@@ -160,8 +162,8 @@ fun TrashScreen(
     if (showEmptyConfirm) {
         AlertDialog(
             onDismissRequest = { showEmptyConfirm = false },
-            title = { Text("清空回收站") },
-            text = { Text("确定要永久删除回收站中的所有物品吗？此操作不可恢复。") },
+            title = { Text(stringResource(R.string.trash_empty_action)) },
+            text = { Text(stringResource(R.string.trash_clear_confirm)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -169,12 +171,12 @@ fun TrashScreen(
                         showEmptyConfirm = false
                     },
                 ) {
-                    Text("清空", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.trash_clear_action), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEmptyConfirm = false }) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
         )
@@ -200,7 +202,7 @@ private fun TrashCard(
             if (!thumbPath.isNullOrBlank()) {
                 AsyncImage(
                     model = File(thumbPath),
-                    contentDescription = "物品照片",
+                    contentDescription = stringResource(R.string.home_cd_item_photo),
                     modifier = Modifier
                         .size(60.dp)
                         .clip(RoundedCornerShape(8.dp)),
@@ -222,12 +224,12 @@ private fun TrashCard(
                 )
                 if (item.location.isNotBlank()) {
                     Text(
-                        text = "存放地点：${item.location}",
+                        text = stringResource(R.string.trash_location_format, item.location),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
                 Text(
-                    text = "删除时间：${formatTime(item.deletedAt ?: 0L)}",
+                    text = stringResource(R.string.trash_deleted_at_format, formatTime(item.deletedAt ?: 0L)),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -237,7 +239,7 @@ private fun TrashCard(
             EmojiIconButton(onClick = onRestore) {
                 Icon(
                     imageVector = Icons.Filled.Restore,
-                    contentDescription = "恢复",
+                    contentDescription = stringResource(R.string.trash_restore),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -245,7 +247,7 @@ private fun TrashCard(
             EmojiIconButton(onClick = onPermanentDelete) {
                 Icon(
                     imageVector = Icons.Filled.DeleteForever,
-                    contentDescription = "永久删除",
+                    contentDescription = stringResource(R.string.common_permanent),
                     tint = MaterialTheme.colorScheme.error,
                 )
             }

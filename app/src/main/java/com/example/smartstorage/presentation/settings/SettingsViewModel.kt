@@ -1,5 +1,9 @@
 package com.example.smartstorage.presentation.settings
 
+import com.example.smartstorage.R
+import com.example.smartstorage.presentation.common.UiMessage
+import com.example.smartstorage.presentation.common.toFailureUiMessage
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.net.Uri
@@ -9,7 +13,16 @@ import com.example.smartstorage.data.local.backup.ImportMode
 import com.example.smartstorage.data.local.prefs.AiConfig
 import com.example.smartstorage.data.local.prefs.AppPreferencesRepository
 import com.example.smartstorage.data.local.prefs.LlmPreset
+import com.example.smartstorage.data.local.prefs.ImageIndexJobState
+import com.example.smartstorage.data.local.prefs.ImageUnderstandingRepository
+import com.example.smartstorage.data.local.prefs.ImageUnderstandingState
 import com.example.smartstorage.data.local.prefs.SettingsRepository
+import com.example.smartstorage.data.local.prefs.VisionCapabilityStatus
+import com.example.smartstorage.data.remote.vision.ImageIndexingCoordinator
+import com.example.smartstorage.data.remote.vision.VisionAnalyzer
+import com.example.smartstorage.data.remote.vision.VisionProbeResult
+import com.example.smartstorage.data.repository.ImageIndexProgress
+import com.example.smartstorage.data.repository.ImageAiIndexRepository
 import com.example.smartstorage.data.local.prefs.TextColorConfig
 import com.example.smartstorage.data.local.prefs.ThemeMode
 import com.example.smartstorage.data.local.prefs.ThemeRepository
@@ -41,6 +54,10 @@ class SettingsViewModel @Inject constructor(
     private val appPreferencesRepository: AppPreferencesRepository,
     private val themeRepository: ThemeRepository,
     private val backupRepository: BackupRepository,
+    private val imageUnderstandingRepository: ImageUnderstandingRepository,
+    private val imageIndexingCoordinator: ImageIndexingCoordinator,
+    private val imageAiIndexRepository: ImageAiIndexRepository,
+    private val visionAnalyzer: VisionAnalyzer,
 ) : ViewModel() {
 
     // ===== AI 智能解析配置（工作副本）=====
@@ -74,9 +91,9 @@ class SettingsViewModel @Inject constructor(
             )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    // 保存成功后的 Snackbar 消息（消费后置空）
-    private val _saveMessage = MutableStateFlow<String?>(null)
-    val saveMessage: StateFlow<String?> = _saveMessage.asStateFlow()
+    // 保存成功后的 Snackbar 消息（消费后置空）；只存资源 ID + 参数，由设置页按当前语言解析
+    private val _saveMessage = MutableStateFlow<UiMessage?>(null)
+    val saveMessage: StateFlow<UiMessage?> = _saveMessage.asStateFlow()
 
     // ===== 外观设置：主题模式（跟随系统 / 浅色 / 深色）=====
     private val _themeMode = MutableStateFlow(ThemeMode.FOLLOW_SYSTEM)
@@ -123,6 +140,85 @@ class SettingsViewModel @Inject constructor(
     private fun modelsOf(presetType: String): List<String> =
         LlmPreset.entries.firstOrNull { it.label == presetType }?.models ?: emptyList()
 
+    val visionState: StateFlow<ImageUnderstandingState> = imageUnderstandingRepository.state
+    val visionProgress: StateFlow<ImageIndexProgress> = imageAiIndexRepository.observeProgress()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ImageIndexProgress())
+
+    private val _showVisionPrivacyDialog = MutableStateFlow(false)
+    val showVisionPrivacyDialog: StateFlow<Boolean> = _showVisionPrivacyDialog.asStateFlow()
+
+    private val _visionActionState = MutableStateFlow<VisionActionState>(VisionActionState.Idle)
+    val visionActionState: StateFlow<VisionActionState> = _visionActionState.asStateFlow()
+
+    fun requestVisionToggle(enabled: Boolean) {
+        if (enabled) {
+            _showVisionPrivacyDialog.value = true
+        } else {
+            viewModelScope.launch {
+                imageUnderstandingRepository.setEnabled(false)
+                imageIndexingCoordinator.cancel()
+            }
+        }
+    }
+
+    fun dismissVisionPrivacyDialog() {
+        _showVisionPrivacyDialog.value = false
+    }
+
+    fun confirmEnableVision() {
+        _showVisionPrivacyDialog.value = false
+        _visionActionState.value = VisionActionState.Probing
+        viewModelScope.launch {
+            val config = visionAnalyzer.currentConfig()
+            when (val result = visionAnalyzer.probe(config)) {
+                VisionProbeResult.SUPPORTED -> {
+                    imageUnderstandingRepository.saveCapability(config.fingerprint, VisionCapabilityStatus.SUPPORTED)
+                    imageUnderstandingRepository.setEnabled(true)
+                    _visionActionState.value = VisionActionState.Idle
+                }
+                else -> {
+                    // 失败只保留本次会话提示，不持久化负缓存：用户下次开启仍会做一次真实探测
+                    imageUnderstandingRepository.invalidateCapability()
+                    imageUnderstandingRepository.setEnabled(false)
+                    val message = result.toFailureUiMessage()
+                    _visionActionState.value = if (message == null) {
+                        VisionActionState.Idle
+                    } else {
+                        VisionActionState.Failed(message)
+                    }
+                }
+            }
+        }
+    }
+
+    fun consumeVisionActionState() {
+        _visionActionState.value = VisionActionState.Idle
+    }
+
+    fun startHistoryIndexing() {
+        viewModelScope.launch { imageIndexingCoordinator.startHistory() }
+    }
+
+    fun pauseHistoryIndexing() {
+        viewModelScope.launch { imageIndexingCoordinator.pause() }
+    }
+
+    fun resumeHistoryIndexing() {
+        viewModelScope.launch { imageIndexingCoordinator.resume() }
+    }
+
+    fun cancelHistoryIndexing() {
+        viewModelScope.launch { imageIndexingCoordinator.cancel() }
+    }
+
+    fun retryFailedIndexing() {
+        viewModelScope.launch { imageIndexingCoordinator.retryFailed() }
+    }
+
+    fun clearAllImageIndexes() {
+        viewModelScope.launch { imageIndexingCoordinator.clearAll() }
+    }
+
     // ===== 外观设置操作 =====
 
     /** 切换主题模式：立即持久化，全局即时生效，无需重启 App */
@@ -165,11 +261,14 @@ class SettingsViewModel @Inject constructor(
                 _modelList.value = modelsOf(config.presetType)
                 _mode.value = mode
                 settingsRepository.saveMode(mode)
+                // 免费/自定义模式变化会换掉实际请求的 Provider 与模型：旧视觉能力缓存立即失效
+                imageUnderstandingRepository.invalidateCapability()
             }
         } else {
             _mode.value = mode
             viewModelScope.launch {
                 settingsRepository.saveMode(mode)
+                imageUnderstandingRepository.invalidateCapability()
             }
         }
     }
@@ -214,7 +313,7 @@ class SettingsViewModel @Inject constructor(
     fun saveAiConfig() {
         val state = _editState.value
         if (state.baseUrl.isBlank() || state.modelName.isBlank() || state.apiKey.isBlank()) {
-            _saveMessage.value = "请填写完整的接口地址、模型版本和 API Key"
+            _saveMessage.value = UiMessage.Res(R.string.settings_ai_config_incomplete)
             return
         }
         viewModelScope.launch {
@@ -234,7 +333,9 @@ class SettingsViewModel @Inject constructor(
             )
             // 保存成功后同步原始快照：此后退出不再提示
             _original.value = _editState.value
-            _saveMessage.value = "AI 智能解析配置已保存"
+            // Base URL / 模型 / Key 变化后旧视觉能力缓存不再可信，需用户重新探测
+            imageUnderstandingRepository.invalidateCapability()
+            _saveMessage.value = UiMessage.Res(R.string.settings_ai_config_saved)
         }
     }
 
@@ -280,22 +381,24 @@ class SettingsViewModel @Inject constructor(
     // 导出文件名输入对话框
     private val _showExportNameDialog = MutableStateFlow(false)
     val showExportNameDialog: StateFlow<Boolean> = _showExportNameDialog.asStateFlow()
-    private val _defaultExportName = MutableStateFlow("")
-    val defaultExportName: StateFlow<String> = _defaultExportName.asStateFlow()
+
+    // 只保存时间戳：默认文件名由设置页用字符串资源按当前语言拼接（避免缓存旧语言文案）
+    private val _defaultExportTimestamp = MutableStateFlow("")
+    val defaultExportTimestamp: StateFlow<String> = _defaultExportTimestamp.asStateFlow()
 
     // 待导入备份信息（非 null 时显示导入确认对话框）
     private val _pendingImportInfo = MutableStateFlow<BackupInfo?>(null)
     val pendingImportInfo: StateFlow<BackupInfo?> = _pendingImportInfo.asStateFlow()
     private var pendingImportUri: Uri? = null
 
-    // 备份操作结果消息（Snackbar 展示）
-    private val _backupMessage = MutableStateFlow<String?>(null)
-    val backupMessage: StateFlow<String?> = _backupMessage.asStateFlow()
+    // 备份操作结果消息（Snackbar 展示）；只存资源 ID + 参数，由设置页按当前语言解析
+    private val _backupMessage = MutableStateFlow<UiMessage?>(null)
+    val backupMessage: StateFlow<UiMessage?> = _backupMessage.asStateFlow()
 
     /** 点击「导出数据」：弹出文件名输入对话框（默认带时间戳） */
     fun onExportClick() {
         val time = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        _defaultExportName.value = "智能收纳助手_备份_$time.zip"
+        _defaultExportTimestamp.value = time
         _showExportNameDialog.value = true
     }
 
@@ -305,17 +408,23 @@ class SettingsViewModel @Inject constructor(
     }
 
     /** 确认导出：写入用户选择的保存位置 */
-    fun onExportNameConfirmed(fileName: String, saveUri: Uri?) {
+    fun onExportNameConfirmed(saveUri: Uri?) {
         _showExportNameDialog.value = false
         val uri = saveUri ?: return
         _backupBusy.value = true
         viewModelScope.launch {
             backupRepository.exportData(uri)
                 .onSuccess { result ->
-                    _backupMessage.value = "导出成功，共导出 ${result.itemCount} 件物品"
+                    _backupMessage.value = UiMessage.Res(
+                        R.string.settings_backup_export_success,
+                        listOf(result.itemCount),
+                    )
                 }
                 .onFailure { e ->
-                    _backupMessage.value = "导出失败：${e.message ?: "未知错误"}"
+                    _backupMessage.value = UiMessage.Res(
+                        R.string.settings_backup_export_failed,
+                        listOf(UiMessage.Res(R.string.settings_backup_unknown_error)),
+                    )
                 }
             _backupBusy.value = false
         }
@@ -331,7 +440,10 @@ class SettingsViewModel @Inject constructor(
                     _pendingImportInfo.value = info
                 }
                 .onFailure { e ->
-                    _backupMessage.value = "导入失败：${e.message ?: "备份文件无效或版本不兼容"}"
+                    _backupMessage.value = UiMessage.Res(
+                        R.string.settings_backup_import_failed,
+                        listOf(UiMessage.Res(R.string.settings_backup_invalid)),
+                    )
                 }
             _backupBusy.value = false
         }
@@ -352,12 +464,25 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             backupRepository.importData(uri, mode)
                 .onSuccess { result ->
-                    val modeText = if (mode == ImportMode.OVERWRITE) "覆盖导入" else "合并导入"
-                    _backupMessage.value =
-                        "导入成功（$modeText）：共导入 ${result.importedItems} 件，跳过 ${result.skippedItems} 件"
+                    val modeRes = if (mode == ImportMode.OVERWRITE) {
+                        R.string.import_mode_overwrite
+                    } else {
+                        R.string.import_mode_merge
+                    }
+                    _backupMessage.value = UiMessage.Res(
+                        R.string.settings_backup_import_success,
+                        listOf(
+                            UiMessage.Res(modeRes),
+                            result.importedItems,
+                            result.skippedItems,
+                        ),
+                    )
                 }
                 .onFailure { e ->
-                    _backupMessage.value = "导入失败：${e.message ?: "未知错误"}"
+                    _backupMessage.value = UiMessage.Res(
+                        R.string.settings_backup_import_failed,
+                        listOf(UiMessage.Res(R.string.settings_backup_unknown_error)),
+                    )
                 }
             _backupBusy.value = false
         }
@@ -386,3 +511,15 @@ data class SettingsEditState(
     /** API Key 是否明文显示（仅 UI，不计入内容变更）*/
     val apiKeyVisible: Boolean = false,
 )
+
+/** 设置页 AI 图片理解操作状态（失败携带显示层资源消息，由设置页按当前语言解析）。 */
+sealed interface VisionActionState {
+    /** 空闲。 */
+    data object Idle : VisionActionState
+
+    /** 正在用合成图探测视觉能力。 */
+    data object Probing : VisionActionState
+
+    /** 探测失败：展示可操作提示，用户关闭后回到 [Idle]。 */
+    data class Failed(val message: UiMessage) : VisionActionState
+}

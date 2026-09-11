@@ -1,8 +1,8 @@
 package com.example.smartstorage.presentation.detail
 
-import android.content.Context
+import com.example.smartstorage.R
+
 import android.net.Uri
-import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.smartstorage.data.local.image.ImageStorage
@@ -13,11 +13,14 @@ import com.example.smartstorage.domain.usecase.DeleteItemUseCase
 import com.example.smartstorage.domain.usecase.ObserveItemByIdUseCase
 import com.example.smartstorage.domain.usecase.UpdateItemUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
+import com.example.smartstorage.presentation.common.UiMessage
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
@@ -31,9 +34,12 @@ class ItemDetailViewModel @Inject constructor(
     private val updateItemUseCase: UpdateItemUseCase,
     private val deleteItemUseCase: DeleteItemUseCase,
     private val imageStorage: ImageStorage,
-    @ApplicationContext private val context: Context,
     private val themeRepository: ThemeRepository,
 ) : ViewModel() {
+
+    // 一次性 UI 消息（照片上限、图片保存失败）：由详情页用界面 Context 按当前语言解析
+    private val _uiMessages = Channel<UiMessage>(Channel.BUFFERED)
+    val uiMessages: Flow<UiMessage> = _uiMessages.receiveAsFlow()
 
 
     // 全局文字颜色配置（订阅 ThemeRepository 实时流：设置页改色后详情页立即生效）
@@ -105,7 +111,7 @@ class ItemDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val current = _item.value ?: return@launch
             if (current.imagePaths.size >= MAX_IMAGES) {
-                Toast.makeText(context, "最多添加 $MAX_IMAGES 张照片", Toast.LENGTH_SHORT).show()
+                _uiMessages.trySend(UiMessage.Res(R.string.add_toast_max_photos, listOf(MAX_IMAGES)))
                 return@launch
             }
             _addingPhoto.value = true
@@ -116,7 +122,7 @@ class ItemDetailViewModel @Inject constructor(
                     runCatching { imageStorage.saveFromUri(uri) }.getOrNull()
                 }
                 if (newPaths.isEmpty()) {
-                    Toast.makeText(context, "图片保存失败，请重试", Toast.LENGTH_SHORT).show()
+                    _uiMessages.trySend(UiMessage.Res(R.string.add_toast_img_save_failed))
                     return@launch
                 }
                 // 以最新数据追加，避免期间其他操作被覆盖
@@ -132,7 +138,7 @@ class ItemDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val current = _item.value ?: return@launch
             if (current.imagePaths.size >= MAX_IMAGES) {
-                Toast.makeText(context, "最多添加 $MAX_IMAGES 张照片", Toast.LENGTH_SHORT).show()
+                _uiMessages.trySend(UiMessage.Res(R.string.add_toast_max_photos, listOf(MAX_IMAGES)))
                 return@launch
             }
             runCatching { save() }
@@ -144,7 +150,7 @@ class ItemDetailViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    Toast.makeText(context, "图片保存失败：${e.message ?: "未知错误"}", Toast.LENGTH_SHORT).show()
+                    _uiMessages.trySend(UiMessage.Res(R.string.add_toast_img_save_failed))
                 }
         }
     }

@@ -1,15 +1,10 @@
 package com.example.smartstorage.data.remote.llm
 
-import android.content.Context
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
-import android.widget.Toast
 import com.example.smartstorage.data.local.prefs.AiConfig
 import com.example.smartstorage.data.local.prefs.FreeModel
 import com.example.smartstorage.data.local.prefs.SettingsRepository
 import com.example.smartstorage.domain.model.ParsedItem
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -32,17 +27,21 @@ enum class ParseSource {
     LOCAL_FALLBACK,
 }
 
-/** 批量解析结果：物品列表 + 来源 + 失败/降级原因（warning 非空表示模型路径未走通）。 */
+/** 批量解析结果：物品列表 + 来源 + 失败/降级原因（warning 非 null 表示模型路径未走通）。 */
 data class ParseItemsResult(
     val items: List<ParsedItem>,
     val source: ParseSource,
-    val warning: String?,
+    /** 类型化的失败原因，由显示层映射为当前语言文案；null 表示模型解析成功。 */
+    val warning: LlmErrorKind?,
 )
 
 /** 首页“智能解析”的结果：区分成功提取与明确模型失败（超时/配置缺失/请求错误/空结果）。 */
 sealed interface SearchParseOutcome {
     /** 提取到可用的搜索关键词。 */
     data class Keyword(val text: String) : SearchParseOutcome
+
+    /** AI 语义搜索解析出的名称/地点/描述三字段。 */
+    data class Fields(val name: String, val location: String, val description: String) : SearchParseOutcome
 
     /** 明确模型/请求失败（不把“无法提取”与“服务失败”混为一谈）。 */
     data class Failed(val timedOut: Boolean) : SearchParseOutcome
@@ -68,10 +67,7 @@ private data class LlmCallResult(
 class LlmClient @Inject constructor(
     private val transport: LlmTransport,
     private val settingsRepository: SettingsRepository,
-    @ApplicationContext private val context: Context,
 ) {
-
-    private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
         /** 批量解析使用更大的输出上限，避免多物品 JSON 数组被截断。 */
@@ -114,13 +110,13 @@ class LlmClient @Inject constructor(
      */
     suspend fun parseItems(rawText: String): ParseItemsResult = withContext(Dispatchers.IO) {
         var source = ParseSource.MODEL
-        var warning: String? = null
+        var warning: LlmErrorKind? = null
         val modelItems: List<ParsedItem> = try {
             val call = chatCompletionCore(buildBatchSystemPrompt(), rawText, maxTokens = BATCH_MAX_TOKENS)
             if (call.error != null) {
-                // 模型调用失败：回退本地并记录原因
+                // 模型调用失败：回退本地并记录类型化原因（显示层按当前语言渲染）
                 source = ParseSource.LOCAL_FALLBACK
-                warning = call.error.message
+                warning = call.error.kind
                 emptyList()
             } else {
                 val sanitized = ParsedItemSanitizer.sanitizeAll(
@@ -129,7 +125,7 @@ class LlmClient @Inject constructor(
                 if (sanitized.isEmpty()) {
                     // 模型返回成功但没解析出有效字段：同样回退本地并说明
                     source = ParseSource.LOCAL_FALLBACK
-                    warning = "模型未返回有效结果"
+                    warning = LlmErrorKind.UNKNOWN
                     emptyList()
                 } else {
                     sanitized
@@ -140,11 +136,11 @@ class LlmClient @Inject constructor(
             throw e
         } catch (e: LlmRequestException) {
             source = ParseSource.LOCAL_FALLBACK
-            warning = e.message
+            warning = e.kind
             emptyList()
         } catch (e: Exception) {
             source = ParseSource.LOCAL_FALLBACK
-            warning = e.message ?: "未知错误"
+            warning = LlmErrorKind.UNKNOWN
             emptyList()
         }
         if (modelItems.isNotEmpty()) {
@@ -219,7 +215,31 @@ class LlmClient @Inject constructor(
         }
     }
 
-    /** 去掉模型输出中可能带的首尾引号。 */    /** 去掉模型输出中可能带的首尾引号。 */
+    /** 将整句搜索意图解析为名称/地点/描述三字段，用于原有 AI 语义搜索。 */
+    suspend fun parseSearchFields(rawText: String): SearchParseOutcome = withContext(Dispatchers.IO) {
+        val systemPrompt = """
+            你是物品搜索解析助手。请把用户想找的物品描述解析为名称、地点、描述三个字段。
+            只返回 JSON：{"name":"","location":"","description":""}。
+            无法确定的字段返回空字符串，不要编造用户未表达的地点。
+        """.trimIndent()
+        try {
+            val result = chatCompletionCore(systemPrompt, rawText)
+            if (result.error != null) {
+                SearchParseOutcome.Failed(timedOut = false)
+            } else {
+                val parsed = result.content?.let(::parseJsonContent)
+                if (parsed == null) {
+                    SearchParseOutcome.Failed(timedOut = false)
+                } else {
+                    SearchParseOutcome.Fields(parsed.name, parsed.location, parsed.description)
+                }
+            }
+        } catch (e: LlmTimeoutException) {
+            SearchParseOutcome.Failed(timedOut = true)
+        }
+    }
+
+    /** 去掉模型输出中可能带的首尾引号。 */
     private fun stripQuotes(text: String): String = text
         .removePrefix("\"")
         .removeSuffix("\"")
@@ -228,20 +248,16 @@ class LlmClient @Inject constructor(
         .trim()
 
     /**
-     * 对外便捷入口（单条解析 / 搜索用）：调用 [chatCompletionCore]，
-     * 失败时 Toast 提示并返回 null；免费模式超时抛 [LlmTimeoutException]。
+     * 对外便捷入口（单条解析用）：调用 [chatCompletionCore]，失败返回 null。
+     *
+     * 数据层不再直接展示错误（无 Toast / getString）：失败与降级由 ViewModel
+     * 依据类型化结果映射为当前语言文案。免费模式超时抛 [LlmTimeoutException]。
      */
     private suspend fun chatCompletion(
         systemPrompt: String,
         userText: String,
         maxTokens: Int = 256,
-    ): String? {
-        val result = chatCompletionCore(systemPrompt, userText, maxTokens)
-        if (result.error != null) {
-            showToast("AI 解析失败：${result.error.message}")
-        }
-        return result.content
-    }
+    ): String? = chatCompletionCore(systemPrompt, userText, maxTokens).content
 
     /**
      * 核心请求：读取配置、发起 chat/completions、分类错误并对可重试错误做有界重试。
@@ -266,7 +282,14 @@ class LlmClient @Inject constructor(
             } else {
                 "AI 解析配置不完整，请到设置页填写 Base URL、模型版本和 API Key"
             }
-            return LlmCallResult(null, LlmRequestException(LlmErrorKind.MISSING_CONFIG, message))
+            return LlmCallResult(
+                null,
+                LlmRequestException(
+                    kind = LlmErrorKind.MISSING_CONFIG,
+                    message = message,
+                    isFreeMode = isFreeMode,
+                ),
+            )
         }
 
         var attempt = 0
@@ -317,13 +340,6 @@ class LlmClient @Inject constructor(
             }
             if (!attemptResult.first) return attemptResult.second
             delay(RETRY_BACKOFF_MILLIS)
-        }
-    }
-
-    /** 主线程弹出 Toast。 */
-    private fun showToast(message: String) {
-        mainHandler.post {
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
     }
 

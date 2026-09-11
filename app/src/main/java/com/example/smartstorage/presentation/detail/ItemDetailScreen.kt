@@ -1,4 +1,6 @@
 package com.example.smartstorage.presentation.detail
+import androidx.compose.ui.res.stringResource
+import com.example.smartstorage.R
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -70,6 +72,7 @@ import com.example.smartstorage.domain.model.Item
 import com.example.smartstorage.presentation.common.EmojiEffect
 import com.example.smartstorage.presentation.common.EmojiIconButton
 import com.example.smartstorage.presentation.common.PhotoPreviewDialog
+import com.example.smartstorage.presentation.common.resolve
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
@@ -105,6 +108,13 @@ fun ItemDetailScreen(
     var cameraTempFile by remember { mutableStateOf<File?>(null) }
     val context = LocalContext.current
 
+    // 一次性 UI 消息（照片上限 / 图片保存失败）：用界面 Context 按当前语言解析为 Toast
+    LaunchedEffect(Unit) {
+        viewModel.uiMessages.collect { message ->
+            Toast.makeText(context, message.resolve(context), Toast.LENGTH_SHORT).show()
+        }
+    }
+
     val takePictureLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture(),
     ) { success -> if (success) cameraTempFile?.let(viewModel::addPhoto) }
@@ -120,7 +130,7 @@ fun ItemDetailScreen(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         if (granted) launchCamera() else {
-            Toast.makeText(context, "未授予相机权限，无法拍照", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.add_camera_permission_denied), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -165,12 +175,12 @@ fun ItemDetailScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("物品详情") },
+            title = { Text(stringResource(R.string.detail_title)) },
             navigationIcon = {
                 EmojiIconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回",
+                        contentDescription = stringResource(R.string.common_back),
                     )
                 }
             },
@@ -178,14 +188,14 @@ fun ItemDetailScreen(
                 EmojiIconButton(onClick = { onEdit(current) }) {
                     Icon(
                         imageVector = Icons.Filled.Edit,
-                        contentDescription = "编辑",
+                        contentDescription = stringResource(R.string.detail_edit),
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 }
                 EmojiIconButton(onClick = { showDeleteConfirm = true }) {
                     Icon(
                         imageVector = Icons.Filled.Delete,
-                        contentDescription = "删除",
+                        contentDescription = stringResource(R.string.common_delete),
                         tint = MaterialTheme.colorScheme.error,
                     )
                 }
@@ -208,7 +218,7 @@ fun ItemDetailScreen(
                         Box {
                             AsyncImage(
                                 model = File(path),
-                                contentDescription = "物品照片",
+                                contentDescription = stringResource(R.string.home_cd_item_photo),
                                 modifier = Modifier
                                     .width(220.dp)
                                     .height(170.dp)
@@ -235,7 +245,7 @@ fun ItemDetailScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Close,
-                                    contentDescription = "删除照片",
+                                    contentDescription = stringResource(R.string.detail_remove_photo),
                                     modifier = Modifier.size(16.dp),
                                     tint = Color.White,
                                 )
@@ -270,7 +280,7 @@ fun ItemDetailScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "点击添加照片",
+                            text = stringResource(R.string.detail_add_photo_hint),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -289,7 +299,7 @@ fun ItemDetailScreen(
                         strokeWidth = 2.dp,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("正在添加…")
+                    Text(stringResource(R.string.detail_adding))
                 } else {
                     Icon(
                         imageVector = Icons.Filled.Add,
@@ -297,7 +307,7 @@ fun ItemDetailScreen(
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("添加照片")
+                    Text(stringResource(R.string.detail_add_photo))
                 }
             }
 
@@ -347,12 +357,12 @@ fun ItemDetailScreen(
             Divider(modifier = Modifier.padding(vertical = 4.dp))
 
             Text(
-                text = "创建时间：${formatTime(current.createdAt)}",
+                text = stringResource(R.string.detail_created_at, formatTime(current.createdAt)),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "最后修改：${formatTime(current.updatedAt)}",
+                text = stringResource(R.string.detail_updated_at, formatTime(current.updatedAt)),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -382,12 +392,12 @@ fun ItemDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    text = "选择图片来源",
+                    text = stringResource(R.string.add_photo_source_title),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(vertical = 8.dp),
                 )
                 ListItem(
-                    headlineContent = { Text("拍照") },
+                    headlineContent = { Text(stringResource(R.string.add_photo_take)) },
                     leadingContent = {
                         Icon(
                             imageVector = Icons.Filled.PhotoCamera,
@@ -401,7 +411,7 @@ fun ItemDetailScreen(
                     },
                 )
                 ListItem(
-                    headlineContent = { Text("从相册选择") },
+                    headlineContent = { Text(stringResource(R.string.add_photo_gallery)) },
                     leadingContent = {
                         Icon(
                             imageVector = Icons.Filled.Image,
@@ -422,8 +432,8 @@ fun ItemDetailScreen(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("删除物品") },
-            text = { Text("确定要删除「${current.name}」吗？将移入回收站，可在设置页的回收站中恢复。") },
+            title = { Text(stringResource(R.string.detail_delete_title)) },
+            text = { Text(stringResource(R.string.detail_delete_message, current.name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -431,12 +441,12 @@ fun ItemDetailScreen(
                         viewModel.delete(onDeleted = onBack)
                     },
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
         )

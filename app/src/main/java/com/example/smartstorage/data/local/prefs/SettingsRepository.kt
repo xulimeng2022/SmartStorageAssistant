@@ -1,5 +1,9 @@
 package com.example.smartstorage.data.local.prefs
 
+import com.example.smartstorage.R
+
+import androidx.annotation.StringRes
+
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -59,13 +63,13 @@ data class AiConfig(
  */
 object FreeModel {
     /** 展示名称（用于设置页提示）。 */
-    const val LABEL = "硅基流动 Qwen2.5-7B-Instruct"
+    const val LABEL = "SiliconFlow Qwen3.5-4B"
 
     /** 接口地址（OpenAI 兼容）。 */
     const val BASE_URL = "https://api.siliconflow.cn/v1"
 
     /** 模型名称。 */
-    const val MODEL = "Qwen/Qwen2.5-7B-Instruct"
+    const val MODEL = "Qwen/Qwen3.5-4B"
 
     /** API Key（本地构建时从 local.properties 的 SILICONFLOW_API_KEY 注入）。 */
     val API_KEY: String get() = BuildConfig.SILICONFLOW_API_KEY
@@ -74,18 +78,28 @@ object FreeModel {
 /**
  * 大模型预设映射表。
  */
-enum class LlmPreset(val label: String, val baseUrl: String, val models: List<String>) {
-    DEEPSEEK("DeepSeek", "https://api.deepseek.com/v1", listOf("deepseek-v4-pro", "deepseek-v4-flash")),
-    QWEN("通义千问", "https://dashscope.aliyuncs.com/compatible-mode/v1", listOf("qwen3.8-max", "qwen3.8-2.4t-a95b", "qwen3.7-max")),
-    OPENAI("OpenAI", "https://api.openai.com/v1", listOf("gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna")),
-    ZHIPU("智谱AI", "https://open.bigmodel.cn/api/paas/v4", listOf("glm-5.3", "glm-5.2")),
-    MOONSHOT("Moonshot", "https://api.moonshot.cn/v1", listOf("kimi-k3-max", "kimi-k3")),
-    BAICHUAN("百川", "https://api.baichuan-ai.com/v1", listOf("Baichuan3-Turbo", "Baichuan4")),
-    MINIMAX("MiniMax", "https://api.minimax.chat/v1", listOf("abab6.5s-chat", "abab7-chat")),
-    ANTHROPIC("Anthropic", "https://api.anthropic.com/v1", listOf("claude-fable-5", "claude-opus-4-7-high", "claude-sonnet-5")),
-    GEMINI("Google", "https://generativelanguage.googleapis.com/v1beta", listOf("gemini-3.7-flash-high", "gemini-3.6-flash")),
-    CUSTOM("自定义", "", emptyList()),
-    ;
+enum class LlmPreset(
+    val label: String,
+    @StringRes val displayNameRes: Int,
+    val baseUrl: String,
+    val models: List<String>,
+    val isVerified: Boolean = true,
+) {
+    DEEPSEEK("DeepSeek", R.string.provider_deepseek, "https://api.deepseek.com/v1", listOf("deepseek-flash", "deepseek-v4-pro")),
+    QWEN("通义千问", R.string.provider_qwen, "https://dashscope.aliyuncs.com/compatible-mode/v1", listOf("qwen3.8-max", "qwen3.8-flash", "qwen3.7-plus")),
+    OPENAI("OpenAI", R.string.provider_openai, "https://api.openai.com/v1", listOf("gpt-6-astra", "gpt-5.6-terra", "gpt-5.6-luna")),
+    ZHIPU("智谱AI", R.string.provider_zhipu, "https://open.bigmodel.cn/api/paas/v4", listOf("glm-5.3", "glm-5.3-flash", "glm-5.2")),
+    MOONSHOT("Moonshot", R.string.provider_moonshot, "https://api.moonshot.cn/v1", listOf("kimi-k3", "kimi-k2.7-code-highspeed", "kimi-k2.6")),
+    BAICHUAN("百川", R.string.provider_baichuan, "https://api.baichuan-ai.com/v1", listOf("Baichuan3-Turbo", "Baichuan4"), isVerified = false),
+    MINIMAX("MiniMax", R.string.provider_minimax, "https://api.minimax.cn/v1", listOf("MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.5")),
+    ANTHROPIC("Anthropic", R.string.provider_anthropic, "https://api.anthropic.com/v1", listOf("claude-fable-5-1", "claude-opus-5", "claude-sonnet-5")),
+    GEMINI("Google", R.string.provider_google, "https://generativelanguage.googleapis.com/v1beta/openai/", listOf("gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.1-pro")),
+    XAI("xAI", R.string.provider_xai, "https://api.x.ai/v1", listOf("grok-4.6", "grok-4.20")),
+    MISTRAL("Mistral", R.string.provider_mistral, "https://api.mistral.ai/v1", listOf("mistral-medium-3-5", "mistral-small-2603", "mistral-large-3", "ministral-3-14b")),
+    GROQ("Groq", R.string.provider_groq, "https://api.groq.com/openai/v1", listOf("openai/gpt-oss-120b", "qwen/qwen3.8-27b", "meta-llama/llama-4-maverick-17b-128e-instruct")),
+    COHERE("Cohere", R.string.provider_cohere, "https://api.cohere.ai/compatibility/v1", listOf("command-a-plus-05-2026", "command-a-vision-07-2025", "command-a-reasoning-08-2025")),
+    PERPLEXITY("Perplexity", R.string.provider_perplexity, "https://api.perplexity.ai", listOf("sonar-pro", "sonar-reasoning-pro", "sonar-deep-research")),
+    CUSTOM("自定义", R.string.provider_custom, "", emptyList()),;
 
     /** 默认模型（列表第一个；自定义为空字符串）。 */
     val model: String get() = models.firstOrNull() ?: ""

@@ -1,21 +1,25 @@
 package com.example.smartstorage.data.local.prefs
 
+import androidx.annotation.StringRes
+
+import com.example.smartstorage.R
+
 /**
  * 文字颜色类型：默认（跟随主题）/ 纯色 / 渐变。
  */
-enum class TextColorType(val label: String) {
-    DEFAULT("默认"),
-    SOLID("纯色"),
-    GRADIENT("渐变"),
+enum class TextColorType(@StringRes val labelRes: Int) {
+    DEFAULT(R.string.text_color_default),
+    SOLID(R.string.text_color_solid),
+    GRADIENT(R.string.text_color_gradient),
 }
 
 /**
  * 渐变方向：水平 / 垂直 / 对角（45°）。
  */
-enum class GradientDirection(val label: String) {
-    HORIZONTAL("水平"),
-    VERTICAL("垂直"),
-    DIAGONAL("对角"),
+enum class GradientDirection(@StringRes val labelRes: Int) {
+    HORIZONTAL(R.string.gradient_horizontal),
+    VERTICAL(R.string.gradient_vertical),
+    DIAGONAL(R.string.gradient_diagonal),
 }
 
 /**

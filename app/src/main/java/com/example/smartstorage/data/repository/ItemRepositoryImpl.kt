@@ -1,7 +1,10 @@
 package com.example.smartstorage.data.repository
 
+import androidx.room.withTransaction
+import com.example.smartstorage.data.local.AppDatabase
 import com.example.smartstorage.data.local.dao.ItemDao
 import com.example.smartstorage.data.local.image.ImageStorage
+import com.example.smartstorage.data.remote.vision.ImageIndexingCoordinator
 import com.example.smartstorage.data.mapper.toDomain
 import com.example.smartstorage.data.mapper.toEntity
 import com.example.smartstorage.domain.model.Item
@@ -17,7 +20,10 @@ import javax.inject.Singleton
 @Singleton
 class ItemRepositoryImpl @Inject constructor(
     private val itemDao: ItemDao,
+    private val database: AppDatabase,
     private val imageStorage: ImageStorage,
+    private val imageAiIndexRepository: ImageAiIndexRepository,
+    private val imageIndexingCoordinator: ImageIndexingCoordinator,
 ) : ItemRepository {
 
     override fun observeItems(): Flow<List<Item>> =
@@ -77,6 +83,9 @@ class ItemRepositoryImpl @Inject constructor(
         itemDao.getTrashedItems().forEach { entity ->
             entity.imagePaths.forEach { imageStorage.deleteImage(it) }
         }
-        itemDao.permanentDeleteAll()
+        database.withTransaction {
+            itemDao.getTrashedItems().forEach { imageAiIndexRepository.deleteItem(it.id) }
+            itemDao.permanentDeleteAll()
+        }
     }
 }

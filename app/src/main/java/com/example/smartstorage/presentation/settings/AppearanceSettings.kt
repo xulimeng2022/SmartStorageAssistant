@@ -69,19 +69,19 @@ internal const val APPEARANCE_ITEM_INDEX = 1
 
 /** 纯色预设：沿用原「输入文字颜色」的 5 种颜色（名称用于下方小字标注） */
 private val solidPresets = listOf(
-    Color(0xFF111111) to "深黑",
-    Color(0xFF0D47A1) to "深蓝",
-    Color(0xFF424242) to "深灰",
-    Color(0xFF1B5E20) to "墨绿",
-    Color(0xFF4E342E) to "深棕",
+    Color(0xFF111111) to R.string.color_black,
+    Color(0xFF0D47A1) to R.string.color_blue,
+    Color(0xFF424242) to R.string.color_grey,
+    Color(0xFF1B5E20) to R.string.color_green,
+    Color(0xFF4E342E) to R.string.color_brown,
 )
 
 /** 渐变预设：红→橙、蓝→紫、绿→青、黑→灰 */
 private val gradientPresets = listOf(
-    Color(0xFFE53935) to Color(0xFFFB8C00),
-    Color(0xFF1E88E5) to Color(0xFF8E24AA),
-    Color(0xFF43A047) to Color(0xFF00ACC1),
-    Color(0xFF212121) to Color(0xFF757575),
+    Triple(Color(0xFFE53935), Color(0xFFFB8C00), R.string.gradient_red_orange),
+    Triple(Color(0xFF1E88E5), Color(0xFF8E24AA), R.string.gradient_blue_purple),
+    Triple(Color(0xFF43A047), Color(0xFF00ACC1), R.string.gradient_green_cyan),
+    Triple(Color(0xFF212121), Color(0xFF757575), R.string.gradient_black_grey),
 )
 
 /** ARGB Int 转无符号 Long（供 TextColorConfig 存储） */
@@ -161,7 +161,7 @@ fun AppearanceSettingsGroup(
                                             count = ThemeMode.entries.size,
                                         ),
                                     ) {
-                                        Text(mode.label)
+                                        Text(stringResource(mode.labelRes))
                                     }
                                 }
                             }
@@ -253,7 +253,7 @@ private fun TextColorDrawerContent(
                         count = TextColorType.entries.size,
                     ),
                 ) {
-                    Text(type.label)
+                    Text(stringResource(type.labelRes))
                 }
             }
         }
@@ -287,7 +287,7 @@ private fun SolidColorContent(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        solidPresets.forEach { (color, name) ->
+        solidPresets.forEach { (color, nameRes) ->
             val selected = config.solidColor == argbLong(color)
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
@@ -315,7 +315,7 @@ private fun SolidColorContent(
                 )
                 Spacer(modifier = Modifier.size(2.dp))
                 Text(
-                    text = localizedPresetName(name),
+                    text = stringResource(nameRes),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -353,7 +353,7 @@ private fun GradientColorContent(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        gradientPresets.forEach { (start, end) ->
+        gradientPresets.forEach { (start, end, nameRes) ->
             val selected = config.gradientStart == argbLong(start) &&
                 config.gradientEnd == argbLong(end)
             Box(
@@ -398,7 +398,7 @@ private fun GradientColorContent(
                     count = GradientDirection.entries.size,
                 ),
             ) {
-                Text(direction.label)
+                Text(stringResource(direction.labelRes))
             }
         }
     }
@@ -438,19 +438,4 @@ private fun GradientColorContent(
             )
         },
     )
-}
-
-/** 预设颜色/渐变显示名按当前语言渲染（数据里保存稳定中文名，仅用于 UI 展示）。 */
-@Composable
-private fun localizedPresetName(name: String): String = when (name) {
-    "深黑" -> stringResource(R.string.color_black)
-    "深蓝" -> stringResource(R.string.color_blue)
-    "深灰" -> stringResource(R.string.color_grey)
-    "墨绿" -> stringResource(R.string.color_green)
-    "深棕" -> stringResource(R.string.color_brown)
-    "红→橙" -> stringResource(R.string.gradient_red_orange)
-    "蓝→紫" -> stringResource(R.string.gradient_blue_purple)
-    "绿→青" -> stringResource(R.string.gradient_green_cyan)
-    "黑→灰" -> stringResource(R.string.gradient_black_grey)
-    else -> name
 }

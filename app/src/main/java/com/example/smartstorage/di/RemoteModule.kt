@@ -2,6 +2,8 @@ package com.example.smartstorage.di
 
 import com.example.smartstorage.data.remote.llm.LlmTransport
 import com.example.smartstorage.data.remote.llm.OkHttpLlmTransport
+import com.example.smartstorage.data.remote.vision.OkHttpVisionTransport
+import com.example.smartstorage.data.remote.vision.VisionTransport
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -37,4 +39,9 @@ object RemoteModule {
     @Provides
     @Singleton
     fun provideLlmTransport(client: OkHttpClient): LlmTransport = OkHttpLlmTransport(client)
+
+    /** OpenAI 兼容视觉传输实现。 */
+    @Provides
+    @Singleton
+    fun provideVisionTransport(client: OkHttpClient): VisionTransport = OkHttpVisionTransport(client)
 }

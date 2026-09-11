@@ -3,6 +3,7 @@ package com.example.smartstorage.di
 import android.content.Context
 import androidx.room.Room
 import com.example.smartstorage.data.local.AppDatabase
+import com.example.smartstorage.data.local.dao.ImageAiIndexDao
 import com.example.smartstorage.data.local.dao.ItemDao
 import dagger.Module
 import dagger.Provides
@@ -39,4 +40,8 @@ object DatabaseModule {
     /** 提供物品表 DAO。 */
     @Provides
     fun provideItemDao(database: AppDatabase): ItemDao = database.itemDao()
+
+    /** 提供图片视觉索引 DAO。 */
+    @Provides
+    fun provideImageAiIndexDao(database: AppDatabase): ImageAiIndexDao = database.imageAiIndexDao()
 }

@@ -60,6 +60,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -94,6 +95,8 @@ import com.example.smartstorage.data.local.prefs.LlmPreset
 import com.example.smartstorage.presentation.common.AnimatedButton
 import com.example.smartstorage.presentation.common.EmojiIconButton
 import com.example.smartstorage.presentation.common.SearchTipsDialog
+import com.example.smartstorage.presentation.common.UiMessage
+import com.example.smartstorage.presentation.common.resolve
 import com.example.smartstorage.presentation.theme.textColorStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -132,14 +135,21 @@ fun SettingsScreen(
     // 数据备份与恢复状态
     val backupBusy by viewModel.backupBusy.collectAsStateWithLifecycle()
     val showExportNameDialog by viewModel.showExportNameDialog.collectAsStateWithLifecycle()
-    val defaultExportName by viewModel.defaultExportName.collectAsStateWithLifecycle()
+    val defaultExportTimestamp by viewModel.defaultExportTimestamp.collectAsStateWithLifecycle()
     val pendingImportInfo by viewModel.pendingImportInfo.collectAsStateWithLifecycle()
     val backupMessage by viewModel.backupMessage.collectAsStateWithLifecycle()
+    val visionState by viewModel.visionState.collectAsStateWithLifecycle()
+    val visionProgress by viewModel.visionProgress.collectAsStateWithLifecycle()
+    val showVisionPrivacy by viewModel.showVisionPrivacyDialog.collectAsStateWithLifecycle()
+    val visionActionState by viewModel.visionActionState.collectAsStateWithLifecycle()
+
+    // 默认导出文件名按当前语言实时拼接（ViewModel 只保留时间戳，避免缓存旧语言文案）
+    val defaultExportName = stringResource(R.string.settings_backup_default_name, defaultExportTimestamp)
 
     // 导出：系统「保存位置」选择器（CreateDocument，仅限 zip）
     val createDocumentLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip"),
-    ) { uri -> viewModel.onExportNameConfirmed(viewModel.defaultExportName.value, uri) }
+    ) { uri -> viewModel.onExportNameConfirmed(uri) }
     // 导入：系统文件选择器（OpenDocument，选择 zip 备份文件）
     val openDocumentLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -154,10 +164,13 @@ fun SettingsScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // 消息在显示层用界面 Context 解析：语言切换后新消息立即使用新语言
+    val messageContext = LocalContext.current
+
     // 备份结果消息 → Snackbar
     LaunchedEffect(backupMessage) {
         backupMessage?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showSnackbar(it.resolve(messageContext))
             viewModel.consumeBackupMessage()
         }
     }
@@ -194,7 +207,7 @@ fun SettingsScreen(
     // 保存成功/提示消息 → Snackbar
     LaunchedEffect(saveMessage) {
         saveMessage?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showSnackbar(it.resolve(messageContext))
             viewModel.consumeSaveMessage()
         }
     }
@@ -342,7 +355,12 @@ fun SettingsScreen(
                                                 FilterChip(
                                                     selected = editState.presetType == preset.label,
                                                     onClick = { viewModel.onPresetSelect(preset) },
-                                                    label = { Text(preset.label) },
+                                                    label = {
+                                                        Text(
+                                                            stringResource(preset.displayNameRes) +
+                                                                if (preset.isVerified) "" else " · " + stringResource(R.string.vision_model_unverified),
+                                                        )
+                                                    },
                                                     colors = FilterChipDefaults.filterChipColors(
                                                         selectedContainerColor = MaterialTheme.colorScheme.primary,
                                                         selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
@@ -455,7 +473,7 @@ fun SettingsScreen(
                                 // 免费模式：内置免费模型，无需任何配置
                                 if (mode == AiConfig.MODE_FREE) {
                                     Text(
-                                        text = stringResource(R.string.free_current, FreeModel.LABEL),
+                                        text = stringResource(R.string.free_current, stringResource(R.string.free_model_name)),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.primary,
                                     )
@@ -470,7 +488,31 @@ fun SettingsScreen(
                     }
                 }
 
-                // ===== 分组 3：数据管理（回收站 / 导出数据预留）=====
+                // ===== 分组 3：AI 图片理解与视觉找物 =====
+                item(key = "vision") {
+                    VisionSettingsCard(
+                        enabled = visionState.enabled,
+                        capability = visionState.capability,
+                        actionState = visionActionState,
+                        jobState = visionState.jobState,
+                        progress = visionProgress,
+                        currentModel = if (mode == AiConfig.MODE_FREE) {
+                            stringResource(R.string.free_model_name)
+                        } else {
+                            editState.modelName
+                        },
+                        onToggle = viewModel::requestVisionToggle,
+                        onStartHistory = viewModel::startHistoryIndexing,
+                        onPause = viewModel::pauseHistoryIndexing,
+                        onResume = viewModel::resumeHistoryIndexing,
+                        onCancel = viewModel::cancelHistoryIndexing,
+                        onRetryFailed = viewModel::retryFailedIndexing,
+                        onClearIndexes = viewModel::clearAllImageIndexes,
+                        onConsumeAction = viewModel::consumeVisionActionState,
+                    )
+                }
+
+                // ===== 分组 4：数据管理（回收站 / 导出数据预留）=====
                 item(key = "data") {
                     SettingsGroup(
                         title = stringResource(R.string.data_group),
@@ -567,17 +609,8 @@ fun SettingsScreen(
     if (showHelpDialog) {
         AlertDialog(
             onDismissRequest = { showHelpDialog = false },
-            title = { Text("如何配置 AI 智能解析？") },
-            text = {
-                Text(
-                    "0. 免费模式内置硅基流动 Qwen2.5-7B-Instruct（完全免费）：免费模式内置免费模型，无需任何配置；若模型暂时不可用，可切换到自定义模式并填写自己的接入商与 API Key 后重试。自定义模式可填写任意 OpenAI 兼容接口。\n\n" +
-                        "1. 点击上方预设按钮（如 DeepSeek、OpenAI 等），会自动填入该供应商的接口地址与默认模型版本。\n\n" +
-                        "2. 可在「模型版本」下拉框中选择具体模型；每个预设的 API Key 独立保存，切换预设会自动恢复对应的 Key。\n\n" +
-                        "3. 填写该供应商的 API Key 后，点击「保存配置」。\n\n" +
-                        "4. 配置完成后，在「添加物品」页的口语描述框输入或语音录入，即可自动解析为物品名、地点和备注。" +
-                        "5. 支持批量识别：一次输入多条描述（用逗号、句号或分号分隔），AI 会自动拆分为多条物品并逐个确认添加。",
-                )
-            },
+            title = { Text(stringResource(R.string.settings_ai_help_title)) },
+            text = { Text(stringResource(R.string.settings_ai_help_body, stringResource(R.string.free_model_name))) },
             confirmButton = {
                 TextButton(onClick = { showHelpDialog = false }) {
                     Text(stringResource(R.string.common_ok))
@@ -590,14 +623,8 @@ fun SettingsScreen(
     if (showDataHelpDialog) {
         AlertDialog(
             onDismissRequest = { showDataHelpDialog = false },
-            title = { Text("📦 数据备份与恢复教程") },
-            text = {
-                Text(
-                    "📤 导出数据：\n点击「导出数据」，选择保存位置，即可将所有物品（含图片）备份为一个 ZIP 文件。\n\n" +
-                        "📥 导入数据：\n点击「导入数据」，选择之前备份的 ZIP 文件，选择「覆盖」或「合并」模式即可恢复数据。\n\n" +
-                        "💡 建议定期导出备份，避免数据丢失！",
-                )
-            },
+            title = { Text(stringResource(R.string.settings_backup_help_title)) },
+            text = { Text(stringResource(R.string.settings_backup_help_body)) },
             confirmButton = {
                 TextButton(onClick = { showDataHelpDialog = false }) {
                     Text(stringResource(R.string.common_ok))
@@ -635,10 +662,10 @@ fun SettingsScreen(
         var fileName by remember { mutableStateOf(defaultExportName) }
         AlertDialog(
             onDismissRequest = viewModel::onExportNameDismiss,
-            title = { Text("导出数据") },
+            title = { Text(stringResource(R.string.export_data)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("请输入备份文件名：", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.export_name_prompt), style = MaterialTheme.typography.bodyMedium)
                     OutlinedTextField(
                         value = fileName,
                         onValueChange = { fileName = it },
@@ -660,7 +687,7 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = viewModel::onExportNameDismiss) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
         )
@@ -670,7 +697,7 @@ fun SettingsScreen(
     pendingImportInfo?.let { info ->
         AlertDialog(
             onDismissRequest = viewModel::onImportDismiss,
-            title = { Text("导入数据") },
+            title = { Text(stringResource(R.string.import_data)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.backup_export_time, formatBackupTime(info.exportTime)), style = MaterialTheme.typography.bodyMedium)
@@ -690,7 +717,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = viewModel::onImportDismiss) {
-                    Text("取消")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
         )
@@ -756,6 +783,24 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showLanguageDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+        )
+    }
+
+    if (showVisionPrivacy) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissVisionPrivacyDialog,
+            title = { Text(stringResource(R.string.vision_privacy_title)) },
+            text = { Text(stringResource(R.string.vision_privacy_body)) },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmEnableVision) {
+                    Text(stringResource(R.string.vision_confirm_enable))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissVisionPrivacyDialog) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },
@@ -918,4 +963,141 @@ private fun currentLanguageLabel(): String = when (AppLanguage.getCode(LocalCont
     "zh-rTW" -> stringResource(R.string.lang_tw)
     "en" -> stringResource(R.string.lang_en)
     else -> stringResource(R.string.lang_follow_system)
+}
+
+/** AI 图片理解设置卡片：隐私开关、能力状态与历史索引任务。 */
+@Composable
+private fun VisionSettingsCard(
+    enabled: Boolean,
+    capability: com.example.smartstorage.data.local.prefs.VisionCapabilityStatus,
+    actionState: VisionActionState,
+    jobState: com.example.smartstorage.data.local.prefs.ImageIndexJobState,
+    progress: com.example.smartstorage.data.repository.ImageIndexProgress,
+    currentModel: String,
+    onToggle: (Boolean) -> Unit,
+    onStartHistory: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onCancel: () -> Unit,
+    onRetryFailed: () -> Unit,
+    onClearIndexes: () -> Unit,
+    onConsumeAction: () -> Unit,
+) {
+    var showClearConfirm by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val statusText = when (capability) {
+        com.example.smartstorage.data.local.prefs.VisionCapabilityStatus.SUPPORTED -> stringResource(R.string.vision_status_supported)
+        com.example.smartstorage.data.local.prefs.VisionCapabilityStatus.UNSUPPORTED -> stringResource(R.string.vision_status_unsupported)
+        com.example.smartstorage.data.local.prefs.VisionCapabilityStatus.INCOMPATIBLE -> stringResource(R.string.vision_status_incompatible)
+        com.example.smartstorage.data.local.prefs.VisionCapabilityStatus.ERROR -> stringResource(R.string.vision_status_error)
+        else -> stringResource(R.string.vision_status_unknown)
+    }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.vision_group_title),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 4.dp),
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.vision_toggle_title), fontWeight = FontWeight.Medium)
+                        Text(
+                            text = stringResource(R.string.vision_toggle_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = enabled, onCheckedChange = onToggle)
+                }
+                Text(stringResource(R.string.vision_current_model, currentModel), style = MaterialTheme.typography.bodySmall)
+                Text(
+                    text = if (actionState == VisionActionState.Probing) stringResource(R.string.vision_probing) else statusText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (capability == com.example.smartstorage.data.local.prefs.VisionCapabilityStatus.SUPPORTED) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+                if (enabled && capability == com.example.smartstorage.data.local.prefs.VisionCapabilityStatus.SUPPORTED) {
+                    val total = progress.total
+                    val finished = progress.finished
+                    if (total > 0) {
+                        LinearProgressIndicator(
+                            progress = { if (total == 0) 0f else finished.toFloat() / total.toFloat() },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    Text(
+                        text = if (total > 0) stringResource(R.string.vision_history_progress, finished, total) else stringResource(R.string.vision_history_idle),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (progress.failed > 0) {
+                        Text(
+                            text = stringResource(R.string.vision_history_failed_count, progress.failed),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        when (jobState) {
+                            com.example.smartstorage.data.local.prefs.ImageIndexJobState.ACTIVE -> {
+                                TextButton(onClick = onPause) { Text(stringResource(R.string.vision_history_pause)) }
+                                TextButton(onClick = onCancel) { Text(stringResource(R.string.vision_history_cancel)) }
+                            }
+                            com.example.smartstorage.data.local.prefs.ImageIndexJobState.PAUSED -> {
+                                TextButton(onClick = onResume) { Text(stringResource(R.string.vision_history_continue)) }
+                                TextButton(onClick = onCancel) { Text(stringResource(R.string.vision_history_cancel)) }
+                            }
+                            else -> {
+                                TextButton(onClick = onStartHistory) { Text(stringResource(R.string.vision_history_start)) }
+                            }
+                        }
+                        if (progress.failed > 0) {
+                            TextButton(onClick = onRetryFailed) { Text(stringResource(R.string.vision_history_retry_failed)) }
+                        }
+                    }
+                    if (progress.total > 0) {
+                        TextButton(onClick = { showClearConfirm = true }) {
+                            Text(stringResource(R.string.vision_history_clear), color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (showClearConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirm = false },
+            title = { Text(stringResource(R.string.vision_history_clear_title)) },
+            text = { Text(stringResource(R.string.vision_history_clear_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearConfirm = false
+                    onClearIndexes()
+                }) { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirm = false }) { Text(stringResource(R.string.common_cancel)) }
+            },
+        )
+    }
+    // 探测失败：按失败类型展示可操作提示（鉴权/网络/额度/限流/服务端/参数/模型/解析等）
+    val failureMessage: UiMessage? = (actionState as? VisionActionState.Failed)?.message
+    if (failureMessage != null) {
+        AlertDialog(
+            onDismissRequest = onConsumeAction,
+            title = { Text(stringResource(R.string.vision_toggle_title)) },
+            text = { Text(failureMessage.resolve(context)) },
+            confirmButton = { TextButton(onClick = onConsumeAction) { Text(stringResource(R.string.common_ok)) } },
+        )
+    }
 }

@@ -1,8 +1,6 @@
 package com.example.smartstorage.presentation.add
 
-import android.content.Context
 import android.net.Uri
-import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -25,12 +23,15 @@ import com.example.smartstorage.domain.usecase.BatchAddOutcome
 import com.example.smartstorage.domain.usecase.GetItemByNameUseCase
 import com.example.smartstorage.domain.usecase.UpdateItemUseCase
 import com.example.smartstorage.R
+import com.example.smartstorage.presentation.common.UiMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -105,9 +106,12 @@ class AddItemViewModel @Inject constructor(
     private val themeRepository: ThemeRepository,
     private val starMilestoneRepository: StarMilestoneRepository,
     private val imageStorage: ImageStorage,
-    @ApplicationContext private val context: Context,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
+    // 一次性 UI 消息（照片上限、图片保存失败等）：由 Compose 层用界面 Context 按当前语言解析
+    private val _uiMessages = Channel<UiMessage>(Channel.BUFFERED)
+    val uiMessages: Flow<UiMessage> = _uiMessages.receiveAsFlow()
 
     /** 最多可添加的照片数量。 */
     companion object {
@@ -188,9 +192,9 @@ class AddItemViewModel @Inject constructor(
     // 是否正在执行批量保存（防重复点击）
     private var _batchRunning = false
 
-    // 批量弹窗内的提示文本（如部分保存失败时的说明）
-    private val _batchNotice = MutableStateFlow<String?>(null)
-    val batchNotice: StateFlow<String?> = _batchNotice.asStateFlow()
+    // 批量弹窗内的提示数据（如部分保存失败时的计数与失败名单），文案由弹窗按当前语言拼接
+    private val _batchNotice = MutableStateFlow<BatchNotice?>(null)
+    val batchNotice: StateFlow<BatchNotice?> = _batchNotice.asStateFlow()
 
     // 本会话内批量保存已以“原路径”直存、被某条记录引用的草稿照片路径；
     // 部分失败重试时作为 alreadyClaimedPaths 传入，避免重试条目与已成功条目共享同一照片文件
@@ -352,7 +356,7 @@ class AddItemViewModel @Inject constructor(
     private fun appendImage(newPath: String) {
         val current = _editState.value.currentImagePaths
         if (current.size >= MAX_IMAGES) {
-            Toast.makeText(context, context.getString(R.string.add_toast_max_photos, MAX_IMAGES), Toast.LENGTH_SHORT).show()
+            _uiMessages.trySend(UiMessage.Res(R.string.add_toast_max_photos, listOf(MAX_IMAGES)))
             return
         }
         updateState { it.copy(currentImagePaths = it.currentImagePaths + newPath) }
@@ -364,7 +368,7 @@ class AddItemViewModel @Inject constructor(
             runCatching { imageStorage.saveFromUri(uri) }
                 .onSuccess { appendImage(it) }
                 .onFailure { e ->
-                    Toast.makeText(context, context.getString(R.string.add_toast_img_save_failed), Toast.LENGTH_SHORT).show()
+                    _uiMessages.trySend(UiMessage.Res(R.string.add_toast_img_save_failed))
                 }
         }
     }
@@ -375,7 +379,7 @@ class AddItemViewModel @Inject constructor(
             runCatching { imageStorage.saveFromFile(file) }
                 .onSuccess { appendImage(it) }
                 .onFailure { e ->
-                    Toast.makeText(context, context.getString(R.string.add_toast_img_save_failed), Toast.LENGTH_SHORT).show()
+                    _uiMessages.trySend(UiMessage.Res(R.string.add_toast_img_save_failed))
                 }
         }
     }
@@ -535,7 +539,7 @@ class AddItemViewModel @Inject constructor(
     fun toggleBatchItemPhoto(uid: Long, photoPath: String, assign: Boolean) {
         val draft = _batchItems.value.firstOrNull { it.uid == uid } ?: return
         if (assign && photoPath !in draft.photoPaths && draft.photoPaths.size >= MAX_IMAGES) {
-            Toast.makeText(context, context.getString(R.string.add_toast_batch_max_photos, MAX_IMAGES), Toast.LENGTH_SHORT).show()
+            _uiMessages.trySend(UiMessage.Res(R.string.add_toast_batch_max_photos, listOf(MAX_IMAGES)))
             return
         }
         _batchItems.value = BatchDraftOps.setPhoto(_batchItems.value, uid, photoPath, assign)
@@ -610,7 +614,7 @@ class AddItemViewModel @Inject constructor(
                 }
             }.onFailure { e ->
                 // 整体异常（极少见）：保留原列表，重开弹窗并提示
-                _batchNotice.value = context.getString(R.string.notice_batch_unknown)
+                _batchNotice.value = BatchNotice(unknownFailure = true)
                 _showBatchDialog.value = true
                 _saveState.value = SaveState.Idle
             }
@@ -618,19 +622,17 @@ class AddItemViewModel @Inject constructor(
         }
     }
 
-    /** 拼接批量保存失败提示（按当前语言取资源；失败名单为用户输入的物品名，不翻译）。 */
-    private fun buildBatchFailureNotice(outcome: BatchAddOutcome, drafts: List<BatchDraftItem>): String {
-        val sb = StringBuilder()
-        sb.append(context.getString(R.string.notice_batch_added, outcome.added))
-        if (outcome.updated > 0) sb.append(context.getString(R.string.notice_batch_updated, outcome.updated))
-        if (outcome.skipped > 0) sb.append(context.getString(R.string.notice_batch_skipped, outcome.skipped))
+    /** 汇总批量保存失败结果（计数 + 失败名单；名单为用户输入的物品名，不翻译）。 */
+    private fun buildBatchFailureNotice(outcome: BatchAddOutcome, drafts: List<BatchDraftItem>): BatchNotice {
         val failedNames = outcome.failedUids
             .mapNotNull { uid -> drafts.firstOrNull { it.uid == uid }?.name?.trim() }
             .filter { it.isNotEmpty() }
-        if (failedNames.isNotEmpty()) {
-            sb.append(context.getString(R.string.notice_batch_failed, failedNames.size, failedNames.joinToString("、")))
-        }
-        return sb.toString()
+        return BatchNotice(
+            added = outcome.added,
+            updated = outcome.updated,
+            skipped = outcome.skipped,
+            failedNames = failedNames,
+        )
     }
 
     /** 新增成功后累计历史添加数并检查 Star 里程碑（added 为本次成功新增件数）。 */
@@ -844,6 +846,19 @@ enum class ParseWarningKind {
     MODEL_FAIL_LOCAL_SINGLE,
     MODEL_FAIL_LOCAL_MULTI,
 }
+
+/**
+ * 批量保存结果提示数据：只携带计数与失败名单，文案由批量弹窗按当前语言拼接。
+ *
+ * @param unknownFailure 整体异常（未拿到逐条结果）时置 true，显示通用失败提示。
+ */
+data class BatchNotice(
+    val added: Int = 0,
+    val updated: Int = 0,
+    val skipped: Int = 0,
+    val failedNames: List<String> = emptyList(),
+    val unknownFailure: Boolean = false,
+)
 
 /** 保存流程状态。 */
 sealed interface SaveState {
