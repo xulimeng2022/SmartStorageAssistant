@@ -1,7 +1,7 @@
 # T-010 Recovery / Backup / Team Migration
 
-> Formal Task baseline。Candidate Review 与 Focused Re-review 已通过，当前为 READY / 待开始。
-> 本文件不代表 Backup、Team Migration 或 Disaster Simulation 已完成。
+> Formal Task baseline。Candidate Review 与 Focused Re-review 已通过，当前正式进入 IN_PROGRESS。
+> Current Phase: Git Bundle Creation / Local Recovery Source Validation。
 
 ## Formal Task Metadata
 
@@ -11,8 +11,9 @@
 - Owner: 主控（Coordinator）
 - Risk: High
 - Source Branch: `codex/integration`
-- Commit / Commit Range: T-010 Candidate Commit Gate checkpoint; exact hash is Git HEAD after commit
-- Status: `READY / 待开始`
+- Commit / Commit Range: T-010 activation checkpoint; exact hash is current Git HEAD; Bundle is created from this activation checkpoint
+- Status: `IN_PROGRESS`
+- Current Phase: Git Bundle Creation / Local Recovery Source Validation
 - Initial Protected Baseline: `c2faa5fe0fbb97233df2095e5e5a405bafa81017`
 - Baseline Semantics: T-010 启动时的保护检查点，不是永久 Current Baseline
 - Contract Change: No
@@ -29,15 +30,16 @@
 
 ### Formal Lifecycle
 
-当前状态：`READY / 待开始`。
+当前状态：`IN_PROGRESS`。
 
 - Candidate Review: PASS
 - Focused Re-review: PASS
-- Implementation: NOT STARTED
-- External Actions: NOT AUTHORIZED
-- Bundle / Fetch / Push / Simulation / Test: NOT RUN
+- Implementation: IN PROGRESS
+- External Actions: AUTHORIZED FOR GIT BUNDLE CREATION + VALIDATION ONLY
+- Bundle: NOT YET CREATED AT ACTIVATION
+- Fetch / Push / Team Migration / Disaster Simulation / Test: NOT RUN
 
-Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 Git，不代表 Recovery capability 已完成，也不授权任何 External Action。
+Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 Git；当前授权仅覆盖 activation、一个 Bundle、verify/list-heads、临时恢复验证和清理。
 
 ## 任务边界
 
@@ -152,7 +154,8 @@ Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 
 | 验证项 | 结果 | 证据 |
 | --- | --- | --- |
 | Candidate static review | PASS | 初始 Candidate Review 为 FAIL；Minimal Repair 后 Focused Re-review 为 PASS |
-| Git Bundle | NOT RUN | 未获授权创建 Bundle |
+| Bundle Authorization | AUTHORIZED | User-approved T-010 Git Bundle Creation + Validation Phase |
+| Git Bundle | NOT RUN AT ACTIVATION | Activation checkpoint 先于 Bundle Creation |
 | Bundle Verify | NOT RUN | 无 Bundle |
 | Temporary Clone | NOT RUN | 当前 Candidate 阶段不执行恢复模拟 |
 | Fetch | NOT RUN | 未获用户授权 |
@@ -192,10 +195,11 @@ Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 
 - 2026-09-12：执行 Minimal Repair，范围仅为 Formal Task structure 与 Environment Recovery Inventory。
 - 2026-09-12：Focused Candidate Re-review executed；结果为 PASS。
 - 2026-09-12：Candidate Commit Gate preflight PASS；状态转换为 READY / 待开始，实施尚未开始。
+- 2026-09-12：Git Bundle Creation + Validation 获得用户明确授权；执行 lifecycle activation，状态转为 IN_PROGRESS。
 
 ## Safety Gates
 
-以下动作均需要独立 User Gate，不得从本次 Candidate 创建授权中自动推导：
+以下动作均需要独立 User Gate；当前仅 Git Bundle Creation + Validation 已获本次用户授权：
 
 - `git fetch`
 - 创建 Git Bundle
@@ -204,12 +208,13 @@ Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 
 
 ## 完成结论
 
-- Status: `READY / 待开始`
+- Status: `IN_PROGRESS`
+- Current Phase: Git Bundle Creation / Local Recovery Source Validation
 - Formal Task: ESTABLISHED
 - Recovery Runbook: ESTABLISHED / VALIDATION PENDING
-- 正式 Task 实施：NOT STARTED
-- Backup / Fetch / Push / Simulation：NOT RUN
-- External Actions: NOT AUTHORIZED
+- Bundle: NOT YET CREATED AT ACTIVATION
+- Fetch / Push / Team Migration / Disaster Simulation：NOT RUN
+- External Actions: AUTHORIZED ONLY FOR THIS BUNDLE GATE
 - Test：NOT RUN
 - Implementation Review：NOT RUN
 - 当前不满足 DONE 条件。
