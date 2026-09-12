@@ -4,33 +4,34 @@
 > 写入规则：只有主控 Codex 与 Release 流程可以更新；模块 / Review / 测试 Agent 只读，发现过期信息报告主控。
 > 不承载任务管理（任务卡见 `04-任务与验收清单.md` 与 `tasks/`），不写临时日志与命令输出。
 
-- 最近更新：2026-09-12（Coordination Stable Candidate Review 已通过；等待用户批准 codex/integration → main）
+- 最近更新：2026-09-12（Stable main propagation 已完成；下一阶段为 Data / AI / UI Baseline Resync 与 Lightweight Resume 验证）
 
 ## 当前版本与阶段
 
 - 当前版本：`1.2.0`（versionCode 6，见 `app/build.gradle.kts` 当前实际配置）。
-- 当前阶段：v1.2.0 开发 / Debug 准备阶段，尚未正式发布；Coordination Stable Candidate Review 已通过，当前等待用户明确批准 `codex/integration → main`。
+- 当前阶段：v1.2.0 开发 / Debug 准备阶段，尚未正式发布；Coordination Infrastructure 已通过 Stable Candidate Review 并成功传播到 stable main；下一阶段为 Data / AI / UI Baseline Resync 与 Lightweight Resume 验证。
 - Phase 3A — Coordination Infrastructure：`COMPLETE`。
 - Phase 3B — Global Status Reconciliation：`COMPLETE`。
 - Phase 3C — AGENTS Workflow Entry：`COMPLETE`。
 - Coordination Finalization：`COMPLETE`。
 - Stable Candidate Review：`COMPLETE / PASS`。
-- Stable main propagation：`WAITING USER APPROVAL`。
+- Stable main propagation：`COMPLETE / PASS`。
+- v1.2.0 Preservation：`PASS`。
 - Data / AI / UI Baseline Resync：`NOT YET EXECUTED`。
 
 ## Baseline 状态
 
 - Frozen Baseline：`ee95f93b82e454ecebc3463e25fce51a9ec4569c`。这是四个长期 Worktree 创建时的历史共同基准。
-- Integration / Coordination Candidate：当前位于 `codex/integration`，包含已通过 Stable Candidate Review 的 Ownership、Workflow、Role State Infrastructure、Global Status Reconciliation、AGENTS Coordination Entry 与 Coordination Finalization；尚未进入 main，因此不是 Stable Baseline。精确 HEAD 以 Git 为准。
-- Stable Baseline：正式分支为 `main`；当前尚未包含 Coordination Candidate。精确 `main HEAD` 以 Git 为准。
+- Integration / Coordination：已审核 Coordination Candidate 已成功 fast-forward 进入 main；后续分支精确 HEAD / ahead / behind 以 Git 为准。
+- Stable Baseline：`main` 已包含通过审核的 Coordination Infrastructure，并成为当前新的 Stable Baseline；精确 HEAD 以 Git 为准。
 
 ## Multi-Codex 协调状态
 
 - 永久角色 Worktree：主控（Coordinator）、Data、AI、UI 均已建立；Test / Review 仍按任务临时启动，不建立永久 Worktree。
 - 长期分支：主控 `codex/integration`、Data `codex/data`、AI `codex/ai`、UI `codex/ui`。
-- Ownership：已固化，唯一真相源为 [OWNERSHIP](../coordination/OWNERSHIP.md)；Remaining Pending Ownership 为 `None`。
-- Workflow：已固化，唯一主要真相源为 [WORKFLOW](../coordination/WORKFLOW.md)。
-- Role State infrastructure：已建立；Coordinator / Data / AI / UI 当前恢复快照已进入 Coordination Candidate。
+- Ownership：已固化并进入 Stable main，唯一真相源为 [OWNERSHIP](../coordination/OWNERSHIP.md)；Remaining Pending Ownership 为 `None`。
+- Workflow：已固化并进入 Stable main，唯一主要真相源为 [WORKFLOW](../coordination/WORKFLOW.md)。
+- Role State infrastructure：已建立并进入 Stable main；Coordinator / Data / AI / UI 恢复快照机制已可用。
 - Single Writer：`DEFINED`。
 - Cross-module Request：`DEFINED`。
 - Lightweight Resume：`DEFINED`。
@@ -39,7 +40,7 @@
 - Baseline Resync：`DEFINED / NOT YET EXECUTED`。
 - Central Rule Propagation：`NOT YET COMPLETED`。
 - Coordinator Recovery：`STATE FINALIZED / RESUME VALIDATION PENDING`。
-- Multi-Codex Overall Readiness：尚未正式 `READY`；需先完成 Coordination Infrastructure 进入 Stable main，并执行 Data / AI / UI 的安全 Baseline Resync。
+- Multi-Codex Overall Readiness：尚未正式 `READY`；Stable main 已包含 Coordination Infrastructure，但仍需完成 Data / AI / UI 的安全 Baseline Resync 与 Lightweight Resume 验证。
 - Legacy Worktrees `10ba` / `baee`：已隔离保留，等待后续单独审计。
 
 ## 测试与构建状态

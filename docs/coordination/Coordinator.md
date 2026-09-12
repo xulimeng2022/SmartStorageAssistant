@@ -5,18 +5,18 @@
 
 ## Current Task
 
-- ID / Title: Stable main propagation
+- ID / Title: Baseline Resync Coordination
 - Status: IN_PROGRESS
 - Risk: Medium
-- Goal: 在用户明确批准后，将已通过 Stable Candidate Review 的 Coordination Candidate 以受控 Git fast-forward 方式传播到 main；随后验证新的 Stable Baseline，并进入 Data / AI / UI Baseline Resync。
-- Allowed Scope: 只读 Git topology / scope recheck；用户明确授权后的 `codex/integration → main`；main propagation 后验证；后续 Baseline Resync 调度。不包含业务代码修改、未授权 merge、module-to-module merge、release、push、reset / rebase / force。
-- Acceptance: Stable Candidate Review 已 PASS；用户明确批准 main propagation；main 通过 ff-only 更新到已审核 Coordination Candidate；更新后验证 main 成为新的 Stable Baseline；Data / AI / UI Resync 在后续单独 Gate 中执行；Coordinator Resume Validation 后续单独验证。
+- Goal: 在不破坏各长期角色现有任务和 Git 状态的前提下，将新的 Stable main 安全传播到 Data / AI / UI，并验证各角色 Lightweight Resume 与中央规则恢复能力。
+- Allowed Scope: Resync Preconditions 检查；Data / AI / UI 状态检查；用户授权后的 Baseline Resync 调度；Lightweight Resume 验证；Readiness 汇总。不包含跨模块业务代码修改、module-to-module merge、reset / rebase / force、release 或 push。
+- Acceptance: Stable main 已包含已审核 Coordination Infrastructure；Data / AI / UI 在各自安全 Gate 通过后 fast-forward 到 stable main；不覆盖任何未提交工作或未集成任务；各长期角色完成首次 Lightweight Resume 验证；Central Rule Propagation 得到验证；Coordinator Recovery 完成实际 Resume 验证；最终评估 Multi-Codex Overall Readiness。
 - Task Card: None
 
 ## Progress
 
-- Completed: Coordination Infrastructure 已完成；Stable Candidate Review = PASS；Main FF-only feasibility = PASS；Data / AI / UI Resync Preconditions = READY
-- In Progress: 等待用户明确批准 `codex/integration → main`
+- Completed: Coordination Infrastructure complete；Stable Candidate Review PASS；Stable main propagation PASS；v1.2.0 Preservation PASS；main propagation 后 Git / legacy preservation validation PASS
+- In Progress: 准备 Data / AI / UI Baseline Resync
 
 ## Working Tree
 
@@ -28,14 +28,17 @@
 - Phase 2 / 3A / 3B / 3C documentation gates: PASS
 - Coordination Finalization: PASS
 - Coordination Stable Candidate Review: PASS
-- Main FF-only feasibility: PASS
-- Module Resync Preconditions: READY
+- Stable main propagation: PASS
+- Main / integration propagation validation: PASS
+- v1.2.0 Preservation: PASS
+- 10ba preservation: PASS
+- baee preservation: PASS
 
 ## Last Handoff
 
-- Task / Source Branch: Coordination Stable Candidate Review / codex/integration
-- Commits: None
-- Summary: Stable Candidate Review PASS；无 blocker；main FF-only feasibility PASS；等待用户 main propagation 授权。
+- Task / Source Branch: Stable main propagation / codex/integration → main
+- Commits: 5736c0cd98f7f8c3cf5b7f0677814090ec87e3c1
+- Summary: 已审核 Coordination Stable Candidate 已通过 ff-only 安全传播到 local main；v1.2.0 与 legacy Worktrees Preservation PASS。
 
 ## Blockers
 
@@ -43,4 +46,4 @@
 
 ## Next Step
 
-- 等待用户明确批准 `codex/integration → main`；获批后先做轻量 topology / scope recheck，再执行 ff-only propagation。
+- 在开始任何 Data / AI / UI Baseline Resync 前，确认当前 Stable main 已包含最新协调状态 checkpoint，并完成对应安全 Gate 与所需用户授权；随后按 WORKFLOW 执行角色 Resync。
