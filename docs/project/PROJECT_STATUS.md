@@ -4,12 +4,12 @@
 > 写入规则：只有主控 Codex 与 Release 流程可以更新；模块 / Review / 测试 Agent 只读，发现过期信息报告主控。
 > 不承载任务管理（任务卡见 `04-任务与验收清单.md` 与 `tasks/`），不写临时日志与命令输出。
 
-- 最近更新：2026-09-12（完成 Baseline Resync、四角色 Resume 验证与 Role State Finalization；T-009 Final Readiness checkpoint 定义 Multi-Codex Overall Readiness = READY）
+- 最近更新：2026-09-12（完成 T-010 Recovery / Backup / Team Migration；Git / Multi-Codex Recovery 已验证，main propagation 尚未执行）
 
 ## 当前版本与阶段
 
 - 当前版本：`1.2.0`（versionCode 6，见 `app/build.gradle.kts` 当前实际配置）。
-- 当前阶段：v1.2.0 开发 / Debug 准备阶段，尚未正式发布；Coordination Infrastructure、Baseline Resync、四角色 Lightweight Resume 与 Role State reconciliation 均已完成，T-009 Final Readiness checkpoint 作为最终治理基准。
+- 当前阶段：v1.2.0 开发 / Debug 准备阶段，尚未正式发布；Multi-Codex 协作基础设施与 T-010 Git Recovery 能力已完成并验证，T-010 仍在 `codex/integration`，尚未传播到 main。
 - Phase 3A — Coordination Infrastructure：`COMPLETE`。
 - Phase 3B — Global Status Reconciliation：`COMPLETE`。
 - Phase 3C — AGENTS Workflow Entry：`COMPLETE`。
@@ -47,7 +47,11 @@
 - Coordinator Recovery：`VALIDATED`。
 - Data / AI / UI Recovery：`VALIDATED`。
 - Multi-Codex Overall Readiness：`READY`；T-009 Final Readiness checkpoint 是该状态的治理基准，具体分支是否已应用 checkpoint 由 Git 事实决定。
-- Legacy Worktrees `10ba` / `baee`：已隔离保留，等待后续单独审计。
+- T-010 Recovery / Backup / Team Migration：`DONE / 已验收 @ codex/integration`。
+- Git Recovery：`VALIDATED`；Off-device Git Bundle：`AVAILABLE`；Remote Recovery Model B：`AVAILABLE`；Team Migration / Multi-Codex Recovery：`VALIDATED`。
+- Full Machine Recovery：`NOT VERIFIED`；Legacy dirty recovery：`PENDING SEPARATE DECISION`。
+- Stable main propagation、Final Remote Sync、Data / AI / UI Baseline Resync：`PENDING`。
+- Legacy Worktrees `10ba` / `baee`：保持隔离，未修改 dirty 数据。
 
 ## 测试与构建状态
 

@@ -1,7 +1,7 @@
 # T-010 Recovery / Backup / Team Migration
 
-> Formal Task baseline。Candidate Review 与 Focused Re-review 已通过，当前正式进入 IN_PROGRESS。
-> Current Phase: Coordinator Integration Gate。
+> Formal Task complete。Candidate Review、Focused Re-review、Independent Test、Independent Review 与 Coordinator Integration Gate 均已通过。
+> Current Phase: DONE / COMPLETE。
 
 ## Formal Task Metadata
 
@@ -11,9 +11,9 @@
 - Owner: 主控（Coordinator）
 - Risk: High
 - Source Branch: `codex/integration`
-- Commit / Commit Range: T-010 activation checkpoint; exact hash is current Git HEAD; Bundle is created from this activation checkpoint
-- Status: `READY_FOR_INTEGRATION`
-- Current Phase: Coordinator Integration Gate
+- Commit / Commit Range: T-010 finalization checkpoint; exact hash is current Git HEAD after closure commit
+- Status: `DONE`
+- Current Phase: DONE / COMPLETE
 - Initial Protected Baseline: `c2faa5fe0fbb97233df2095e5e5a405bafa81017`
 - Baseline Semantics: T-010 启动时的保护检查点，不是永久 Current Baseline
 - Contract Change: No
@@ -30,7 +30,7 @@
 
 ### Formal Lifecycle
 
-当前状态：`READY_FOR_INTEGRATION`。
+当前状态：`DONE`。
 
 - Candidate Review: PASS
 - Focused Re-review: PASS
@@ -41,9 +41,9 @@
 - Team Migration Simulation: PASS
 - Independent Test: PASS
 - Independent Review: PASS
-- Coordinator Integration Gate: PENDING
+- Coordinator Integration Gate: PASS
 
-Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Coordinator Integration Gate。
+All lifecycle gates through Coordinator Integration Gate 已通过；T-010 已满足 DONE 条件。
 
 ## 任务边界
 
@@ -167,7 +167,8 @@ Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Coordinato
 | Push | PASS | main / integration / data / ai / ui 已推送并逐一验证 |
 | Team Migration Simulation | PASS | Remote-only clone、four role branches、four Worktrees、Coordinator/Module recovery 全部通过 |
 | Independent Test | PASS | Initial Test FAIL（stale RECOVERY current-state mirror）；Minimal Repair `a2877f5`；Targeted Re-test PASS |
-| Independent Review | PASS | Acceptance SATISFIED；Test Evidence ACCEPTED；Recovery Evidence SUFFICIENT；Truth Source / Lifecycle Consistency PASS；BLOCKER/ImportANT None |
+| Independent Review | PASS | Acceptance SATISFIED；Test Evidence ACCEPTED；Recovery Evidence SUFFICIENT；Truth Source / Lifecycle Consistency PASS；BLOCKER/IMPORTANT None |
+| Coordinator Integration Gate | PASS | Candidate identity、scope isolation、main ancestry、truth source、recovery boundary、Secret boundary 全部通过 |
 
 ### 4. Bundle Recovery Evidence
 
@@ -247,12 +248,13 @@ Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Coordinato
 - 2026-09-12：Remote Recovery Model B 建立；main、integration、data、ai、ui 逐一推送并 verified。
 - 2026-09-12：仅从 GitHub Remote clone；four role branches / Worktrees / Coordinator / Module Recovery PASS。
 - 2026-09-12：Team Migration Simulation 临时目录已删除；下一阶段独立 Test / Review。
-- 2026-09-12：Independent Test PASS；Minimal Repair \2877f5\ 后 Targeted Re-test PASS。
+- 2026-09-12：Independent Test PASS；Minimal Repair `a2877f5` 后 Targeted Re-test PASS。
 - 2026-09-12：Independent Review PASS；进入 Coordinator Integration Gate。
+- 2026-09-12：Coordinator Integration Gate PASS；scope isolation、main ancestry、truth source、recovery boundary 与 Secret boundary 全部通过。
 
 ## Safety Gates
 
-以下动作均需要独立 User Gate；当前仅 Git Bundle Creation + Validation 已获本次用户授权：
+以下动作均需要独立 User Gate；已完成的授权不会自动扩展到未来动作：
 
 - `git fetch`
 - 创建 Git Bundle
@@ -261,10 +263,10 @@ Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Coordinato
 
 ## 完成结论
 
-- Status: `READY_FOR_INTEGRATION`
-- Current Phase: Coordinator Integration Gate
+- Status: `DONE`
+- Current Phase: DONE / COMPLETE
 - Formal Task: ESTABLISHED
-- Recovery Runbook: ESTABLISHED / VALIDATION PENDING
+- Recovery Runbook: ESTABLISHED / VALIDATED
 - Git Bundle Recovery Source: VALIDATED
 - Off-device Git Recovery: AVAILABLE
 - Remote Recovery Model B: VERIFIED
@@ -274,5 +276,5 @@ Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Coordinato
 - External Actions: NO FURTHER EXTERNAL ACTION AUTHORIZED
 - Independent Test: PASS
 - Independent Review: PASS
-- Coordinator Integration Gate: PENDING
-- 当前等待 Coordinator Integration Gate；尚未设置 DONE。
+- Coordinator Integration Gate: PASS
+- T-010 已满足 DONE 条件；main propagation、remote final sync 与 module resync 不属于本 Gate。
