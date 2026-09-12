@@ -1,7 +1,7 @@
 # T-010 Recovery / Backup / Team Migration
 
 > Formal Task baseline。Candidate Review 与 Focused Re-review 已通过，当前正式进入 IN_PROGRESS。
-> Current Phase: Git Bundle Creation / Local Recovery Source Validation。
+> Current Phase: Remote Truth Verification / Remote Backup Decision。
 
 ## Formal Task Metadata
 
@@ -13,7 +13,7 @@
 - Source Branch: `codex/integration`
 - Commit / Commit Range: T-010 activation checkpoint; exact hash is current Git HEAD; Bundle is created from this activation checkpoint
 - Status: `IN_PROGRESS`
-- Current Phase: Git Bundle Creation / Local Recovery Source Validation
+- Current Phase: Remote Truth Verification / Remote Backup Decision
 - Initial Protected Baseline: `c2faa5fe0fbb97233df2095e5e5a405bafa81017`
 - Baseline Semantics: T-010 启动时的保护检查点，不是永久 Current Baseline
 - Contract Change: No
@@ -35,11 +35,11 @@
 - Candidate Review: PASS
 - Focused Re-review: PASS
 - Implementation: IN PROGRESS
-- External Actions: AUTHORIZED FOR GIT BUNDLE CREATION + VALIDATION ONLY
-- Bundle: NOT YET CREATED AT ACTIVATION
+- External Actions: BUNDLE GATE COMPLETE; FETCH / PUSH STILL REQUIRE AUTHORIZATION
+- Git Bundle Recovery Source: VALIDATED
 - Fetch / Push / Team Migration / Disaster Simulation / Test: NOT RUN
 
-Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 Git；当前授权仅覆盖 activation、一个 Bundle、verify/list-heads、临时恢复验证和清理。
+Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 Git；当前 Bundle Gate 已完成，但 Remote Truth 与 Push 仍未授权。
 
 ## 任务边界
 
@@ -154,10 +154,10 @@ Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 
 | 验证项 | 结果 | 证据 |
 | --- | --- | --- |
 | Candidate static review | PASS | 初始 Candidate Review 为 FAIL；Minimal Repair 后 Focused Re-review 为 PASS |
-| Bundle Authorization | AUTHORIZED | User-approved T-010 Git Bundle Creation + Validation Phase |
-| Git Bundle | NOT RUN AT ACTIVATION | Activation checkpoint 先于 Bundle Creation |
-| Bundle Verify | NOT RUN | 无 Bundle |
-| Temporary Clone | NOT RUN | 当前 Candidate 阶段不执行恢复模拟 |
+| Bundle Authorization | COMPLETE | User-approved T-010 Git Bundle Creation + Validation Phase |
+| Git Bundle | PASS | Bundle 已创建并保留在 E 盘 |
+| Bundle Verify | PASS | `git bundle verify` exit 0；complete history |
+| Temporary Clone | PASS | 仅从 Bundle clone；fsck、refs、commits、project truth files 均通过 |
 | Fetch | NOT RUN | 未获用户授权 |
 | Remote Truth | NOT VERIFIED | 尚未 fetch |
 | Push | NOT RUN | 未获用户授权 |
@@ -165,7 +165,21 @@ Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 
 | Test | NOT RUN | Test 角色尚未执行 |
 | Review | CANDIDATE PASS / IMPLEMENTATION REVIEW NOT RUN | Candidate Review 与 Focused Re-review PASS；实施后的独立 Review 尚未开始 |
 
-### 4. 未来验证方式
+### 4. Bundle Recovery Evidence
+
+- Path: `E:\SmartStorageAssistant\Backups\smart-storage-T010-76408b1-20260912-145033.bundle`
+- Size: `5,425,079 bytes`
+- SHA-256: `795161C9D25399D32670573AB41C7253B30974D16320F5B7A86F73AD9B56D366`
+- Classification: `OFF-DEVICE / PRIVATE SOURCE ARCHIVE`
+- History completeness: `COMPLETE`
+- Branches: 8
+- Tags: 3
+- Missing refs: None
+- Temporary clone cleanup: COMPLETE
+- Bundle retained: Yes
+- Legacy dirty data: `NOT PROTECTED BY GIT BUNDLE`；10ba `5 modified / 4 untracked`，baee `1 modified / 2 untracked`
+
+### 5. 未来验证方式
 
 | 验证项 | 未来责任 | 证据要求 |
 | --- | --- | --- |
@@ -196,6 +210,9 @@ Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 
 - 2026-09-12：Focused Candidate Re-review executed；结果为 PASS。
 - 2026-09-12：Candidate Commit Gate preflight PASS；状态转换为 READY / 待开始，实施尚未开始。
 - 2026-09-12：Git Bundle Creation + Validation 获得用户明确授权；执行 lifecycle activation，状态转为 IN_PROGRESS。
+- 2026-09-12：创建 off-device Git Bundle；`bundle verify` 与 `list-heads` PASS。
+- 2026-09-12：仅从 Bundle 执行 temporary clone；refs、commits、project truth files 与恢复状态 PASS。
+- 2026-09-12：删除临时 clone，保留 Bundle；当前阶段推进为 Remote Truth Verification / Remote Backup Decision。
 
 ## Safety Gates
 
@@ -209,12 +226,13 @@ Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 
 ## 完成结论
 
 - Status: `IN_PROGRESS`
-- Current Phase: Git Bundle Creation / Local Recovery Source Validation
+- Current Phase: Remote Truth Verification / Remote Backup Decision
 - Formal Task: ESTABLISHED
 - Recovery Runbook: ESTABLISHED / VALIDATION PENDING
-- Bundle: NOT YET CREATED AT ACTIVATION
+- Git Bundle Recovery Source: VALIDATED
+- Off-device Git Recovery: AVAILABLE
 - Fetch / Push / Team Migration / Disaster Simulation：NOT RUN
-- External Actions: AUTHORIZED ONLY FOR THIS BUNDLE GATE
+- External Actions: FETCH / PUSH REQUIRE SEPARATE AUTHORIZATION
 - Test：NOT RUN
 - Implementation Review：NOT RUN
 - 当前不满足 DONE 条件。
