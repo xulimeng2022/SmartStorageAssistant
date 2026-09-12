@@ -6,17 +6,17 @@
 ## Current Task
 
 - ID / Title: T-010 Recovery / Backup / Team Migration
-- Status: IN_PROGRESS
+- Status: READY_FOR_INTEGRATION
 - Risk: High
-- Goal: 完成 Independent Test 与 Review，并准备 Coordinator Integration Gate
-- Allowed Scope: 记录 Simulation evidence；等待独立 Test / Review；不执行额外 Remote 或 Production 变更
-- Acceptance: Simulation PASS 已记录；Independent Test 与 Review 完成后再进入 Integration Gate
+- Goal: 完成 T-010 Coordinator Integration Gate
+- Allowed Scope: 只读集成验收、Task / Role State finalization；不执行 main propagation、Remote Push 或 module resync
+- Acceptance: Independent Test / Review PASS；scope、truth source 与 recovery boundary 全部通过
 - Task Card: `docs/project/tasks/T-010-recovery-backup-team-migration.md`
 
 ## Progress
 
-- Completed: T-009 Final Readiness Reconciliation DONE；Final Consistency Gate PASS；Multi-Codex Operational Readiness READY；T-010 Candidate Review / Focused Re-review PASS；Git Bundle Recovery Source VALIDATED；Remote Truth Fetch PASS；Remote Recovery Model B VERIFIED；Team Migration Simulation PASS
-- In Progress: Independent Test / Review
+- Completed: T-009 Final Readiness Reconciliation DONE；Final Consistency Gate PASS；Multi-Codex Operational Readiness READY；T-010 Candidate Review / Focused Re-review PASS；Git Bundle Recovery Source VALIDATED；Remote Truth Fetch PASS；Remote Recovery Model B VERIFIED；Team Migration Simulation PASS；Independent Test PASS；Independent Review PASS
+- In Progress: Coordinator Integration Gate
 
 ## Working Tree
 
@@ -35,13 +35,16 @@
 - Remote Recovery Model B: VERIFIED
 - Push: COMPLETE / VERIFIED
 - Team Migration Simulation: PASS
+- Independent Test: PASS
+- Independent Review: PASS
+- Coordinator Integration Gate: PENDING
 - Full Machine Recovery: NOT VERIFIED
 
 ## Last Handoff
 
-- Task / Source Branch: T-010 Team Migration Simulation Evidence / codex/integration
+- Task / Source Branch: T-010 Test / Review Closure / codex/integration
 - Commits: Evidence checkpoint is current HEAD after commit
-- Summary: Remote-only Team Migration Simulation PASS；四角色 branches / Worktrees、Coordinator / Module Recovery 均可从 GitHub Remote 恢复。
+- Summary: Independent Test / Review PASS；T-010 已进入 Coordinator Integration Gate。
 
 ## Blockers
 
@@ -49,4 +52,4 @@
 
 ## Next Step
 
-- 执行 Independent Test；随后进入 Review，最后交回 Coordinator Integration Gate。
+- 执行只读 Coordinator Integration Gate；通过后收口 DONE / IDLE。

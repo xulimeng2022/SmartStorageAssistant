@@ -1,7 +1,7 @@
 # T-010 Recovery / Backup / Team Migration
 
 > Formal Task baseline。Candidate Review 与 Focused Re-review 已通过，当前正式进入 IN_PROGRESS。
-> Current Phase: Independent Test / Review。
+> Current Phase: Coordinator Integration Gate。
 
 ## Formal Task Metadata
 
@@ -12,8 +12,8 @@
 - Risk: High
 - Source Branch: `codex/integration`
 - Commit / Commit Range: T-010 activation checkpoint; exact hash is current Git HEAD; Bundle is created from this activation checkpoint
-- Status: `IN_PROGRESS`
-- Current Phase: Independent Test / Review
+- Status: `READY_FOR_INTEGRATION`
+- Current Phase: Coordinator Integration Gate
 - Initial Protected Baseline: `c2faa5fe0fbb97233df2095e5e5a405bafa81017`
 - Baseline Semantics: T-010 启动时的保护检查点，不是永久 Current Baseline
 - Contract Change: No
@@ -30,18 +30,20 @@
 
 ### Formal Lifecycle
 
-当前状态：`IN_PROGRESS`。
+当前状态：`READY_FOR_INTEGRATION`。
 
 - Candidate Review: PASS
 - Focused Re-review: PASS
-- Implementation: IN PROGRESS
+- Implementation: COMPLETE / INTEGRATED IN CODEX/INTEGRATION
 - External Actions: REMOTE PUSH + TEAM MIGRATION SIMULATION COMPLETE; NO FURTHER EXTERNAL ACTION AUTHORIZED
 - Git Bundle Recovery Source: VALIDATED
 - Remote Recovery Model B: VERIFIED
 - Team Migration Simulation: PASS
-- Independent Test / Review: NOT RUN
+- Independent Test: PASS
+- Independent Review: PASS
+- Coordinator Integration Gate: PENDING
 
-Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Independent Test / Review。
+Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Coordinator Integration Gate。
 
 ## 任务边界
 
@@ -164,8 +166,8 @@ Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Independen
 | Remote Truth | VERIFIED FOR FETCHED TIPS | FETCH_HEAD 确认 main / codex/release-v1.1.0 |
 | Push | PASS | main / integration / data / ai / ui 已推送并逐一验证 |
 | Team Migration Simulation | PASS | Remote-only clone、four role branches、four Worktrees、Coordinator/Module recovery 全部通过 |
-| Test | NOT RUN | Test 角色尚未执行 |
-| Review | CANDIDATE PASS / IMPLEMENTATION REVIEW NOT RUN | Candidate Review 与 Focused Re-review PASS；实施后的独立 Review 尚未开始 |
+| Independent Test | PASS | Initial Test FAIL（stale RECOVERY current-state mirror）；Minimal Repair `a2877f5`；Targeted Re-test PASS |
+| Independent Review | PASS | Acceptance SATISFIED；Test Evidence ACCEPTED；Recovery Evidence SUFFICIENT；Truth Source / Lifecycle Consistency PASS；BLOCKER/ImportANT None |
 
 ### 4. Bundle Recovery Evidence
 
@@ -245,7 +247,8 @@ Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Independen
 - 2026-09-12：Remote Recovery Model B 建立；main、integration、data、ai、ui 逐一推送并 verified。
 - 2026-09-12：仅从 GitHub Remote clone；four role branches / Worktrees / Coordinator / Module Recovery PASS。
 - 2026-09-12：Team Migration Simulation 临时目录已删除；下一阶段独立 Test / Review。
-- 2026-09-12：当前阶段推进为 Independent Test / Review。
+- 2026-09-12：Independent Test PASS；Minimal Repair \2877f5\ 后 Targeted Re-test PASS。
+- 2026-09-12：Independent Review PASS；进入 Coordinator Integration Gate。
 
 ## Safety Gates
 
@@ -258,8 +261,8 @@ Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Independen
 
 ## 完成结论
 
-- Status: `IN_PROGRESS`
-- Current Phase: Independent Test / Review
+- Status: `READY_FOR_INTEGRATION`
+- Current Phase: Coordinator Integration Gate
 - Formal Task: ESTABLISHED
 - Recovery Runbook: ESTABLISHED / VALIDATION PENDING
 - Git Bundle Recovery Source: VALIDATED
@@ -269,6 +272,7 @@ Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Independen
 - Team Migration Simulation: PASS
 - Full Machine Recovery: NOT VERIFIED
 - External Actions: NO FURTHER EXTERNAL ACTION AUTHORIZED
-- Test：NOT RUN
-- Implementation Review：NOT RUN
-- 当前不满足 DONE 条件。
+- Independent Test: PASS
+- Independent Review: PASS
+- Coordinator Integration Gate: PENDING
+- 当前等待 Coordinator Integration Gate；尚未设置 DONE。
