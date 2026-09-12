@@ -1,7 +1,7 @@
 # T-010 Recovery / Backup / Team Migration
 
 > Formal Task baseline。Candidate Review 与 Focused Re-review 已通过，当前正式进入 IN_PROGRESS。
-> Current Phase: Team Migration / Disaster Recovery Simulation。
+> Current Phase: Independent Test / Review。
 
 ## Formal Task Metadata
 
@@ -13,7 +13,7 @@
 - Source Branch: `codex/integration`
 - Commit / Commit Range: T-010 activation checkpoint; exact hash is current Git HEAD; Bundle is created from this activation checkpoint
 - Status: `IN_PROGRESS`
-- Current Phase: Team Migration / Disaster Recovery Simulation
+- Current Phase: Independent Test / Review
 - Initial Protected Baseline: `c2faa5fe0fbb97233df2095e5e5a405bafa81017`
 - Baseline Semantics: T-010 启动时的保护检查点，不是永久 Current Baseline
 - Contract Change: No
@@ -35,12 +35,13 @@
 - Candidate Review: PASS
 - Focused Re-review: PASS
 - Implementation: IN PROGRESS
-- External Actions: REMOTE BACKUP PUSH COMPLETE; TEAM MIGRATION SIMULATION PENDING
+- External Actions: REMOTE PUSH + TEAM MIGRATION SIMULATION COMPLETE; NO FURTHER EXTERNAL ACTION AUTHORIZED
 - Git Bundle Recovery Source: VALIDATED
 - Remote Recovery Model B: VERIFIED
-- Team Migration / Disaster Simulation / Test: NOT RUN
+- Team Migration Simulation: PASS
+- Independent Test / Review: NOT RUN
 
-Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Team Migration / Disaster Recovery Simulation。
+Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Independent Test / Review。
 
 ## 任务边界
 
@@ -162,7 +163,7 @@ Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Team Migra
 | Fetch | PASS | `git fetch origin --no-tags` exit 0；local branches preserved |
 | Remote Truth | VERIFIED FOR FETCHED TIPS | FETCH_HEAD 确认 main / codex/release-v1.1.0 |
 | Push | PASS | main / integration / data / ai / ui 已推送并逐一验证 |
-| Team Migration Simulation | NOT RUN | 后续独立 Gate |
+| Team Migration Simulation | PASS | Remote-only clone、four role branches、four Worktrees、Coordinator/Module recovery 全部通过 |
 | Test | NOT RUN | Test 角色尚未执行 |
 | Review | CANDIDATE PASS / IMPLEMENTATION REVIEW NOT RUN | Candidate Review 与 Focused Re-review PASS；实施后的独立 Review 尚未开始 |
 
@@ -192,7 +193,21 @@ Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Team Migra
 - Local refs preserved: Yes
 - Working Tree preserved: Yes
 - Force: No
-### 6. 未来验证方式
+### 6. Team Migration Simulation Evidence
+
+- Remote Recovery Model B: PASS
+- Team A → Team B Remote Clone: PASS
+- Four Role Branch Recovery: PASS
+- Four Worktree Reconstruction: PASS
+- Coordinator Chat-loss Recovery: PASS
+- Module Chat-loss Recovery: PASS
+- AGENTS / Workflow / Ownership Recovery: PASS
+- No Old Chat Dependency: PASS
+- Archify Hard Dependency: NO
+- Obsidian Hard Dependency: NO
+- Full Machine Recovery: NOT VERIFIED
+- Legacy dirty protection: PENDING SEPARATE DECISION
+### 7. 未来验证方式
 
 | 验证项 | 未来责任 | 证据要求 |
 | --- | --- | --- |
@@ -228,7 +243,9 @@ Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Team Migra
 - 2026-09-12：删除临时 clone，保留 Bundle。
 - 2026-09-12：Remote Truth Fetch 与 Public Remote Sanitization PASS。
 - 2026-09-12：Remote Recovery Model B 建立；main、integration、data、ai、ui 逐一推送并 verified。
-- 2026-09-12：当前阶段推进为 Team Migration / Disaster Recovery Simulation。
+- 2026-09-12：仅从 GitHub Remote clone；four role branches / Worktrees / Coordinator / Module Recovery PASS。
+- 2026-09-12：Team Migration Simulation 临时目录已删除；下一阶段独立 Test / Review。
+- 2026-09-12：当前阶段推进为 Independent Test / Review。
 
 ## Safety Gates
 
@@ -242,15 +259,16 @@ Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Team Migra
 ## 完成结论
 
 - Status: `IN_PROGRESS`
-- Current Phase: Team Migration / Disaster Recovery Simulation
+- Current Phase: Independent Test / Review
 - Formal Task: ESTABLISHED
 - Recovery Runbook: ESTABLISHED / VALIDATION PENDING
 - Git Bundle Recovery Source: VALIDATED
 - Off-device Git Recovery: AVAILABLE
 - Remote Recovery Model B: VERIFIED
 - GitHub main / integration / data / ai / ui: AVAILABLE / VERIFIED
-- Team Migration Simulation / Disaster Simulation: NOT RUN
-- External Actions: REMOTE BACKUP PUSH COMPLETE; SIMULATION AUTHORIZED
+- Team Migration Simulation: PASS
+- Full Machine Recovery: NOT VERIFIED
+- External Actions: NO FURTHER EXTERNAL ACTION AUTHORIZED
 - Test：NOT RUN
 - Implementation Review：NOT RUN
 - 当前不满足 DONE 条件。

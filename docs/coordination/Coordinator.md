@@ -8,15 +8,15 @@
 - ID / Title: T-010 Recovery / Backup / Team Migration
 - Status: IN_PROGRESS
 - Risk: High
-- Goal: 从 GitHub Remote 独立模拟 Team A → Team B 恢复并重建四角色 Worktree
-- Allowed Scope: 记录 Remote evidence；推送 integration evidence checkpoint；在纯英文临时目录执行 Remote-only Team Migration Simulation
-- Acceptance: Remote-only clone、four role branches、four Worktrees、Coordinator/Module Recovery 与 Repository truth discovery 全部通过
+- Goal: 完成 Independent Test 与 Review，并准备 Coordinator Integration Gate
+- Allowed Scope: 记录 Simulation evidence；等待独立 Test / Review；不执行额外 Remote 或 Production 变更
+- Acceptance: Simulation PASS 已记录；Independent Test 与 Review 完成后再进入 Integration Gate
 - Task Card: `docs/project/tasks/T-010-recovery-backup-team-migration.md`
 
 ## Progress
 
-- Completed: T-009 Final Readiness Reconciliation DONE；Final Consistency Gate PASS；Multi-Codex Operational Readiness READY；T-010 Candidate Review / Focused Re-review PASS；Git Bundle Recovery Source VALIDATED；Remote Truth Fetch PASS；Remote Recovery Model B VERIFIED
-- In Progress: Team Migration / Disaster Recovery Simulation
+- Completed: T-009 Final Readiness Reconciliation DONE；Final Consistency Gate PASS；Multi-Codex Operational Readiness READY；T-010 Candidate Review / Focused Re-review PASS；Git Bundle Recovery Source VALIDATED；Remote Truth Fetch PASS；Remote Recovery Model B VERIFIED；Team Migration Simulation PASS
+- In Progress: Independent Test / Review
 
 ## Working Tree
 
@@ -34,17 +34,19 @@
 - Remote Truth: VERIFIED FOR FETCHED TIPS
 - Remote Recovery Model B: VERIFIED
 - Push: COMPLETE / VERIFIED
+- Team Migration Simulation: PASS
+- Full Machine Recovery: NOT VERIFIED
 
 ## Last Handoff
 
-- Task / Source Branch: T-010 Bundle Validation Evidence / codex/integration
+- Task / Source Branch: T-010 Team Migration Simulation Evidence / codex/integration
 - Commits: Evidence checkpoint is current HEAD after commit
-- Summary: Remote Recovery Model B 已建立，五个 recovery refs 均已验证；开始 Team Migration Simulation。
+- Summary: Remote-only Team Migration Simulation PASS；四角色 branches / Worktrees、Coordinator / Module Recovery 均可从 GitHub Remote 恢复。
 
 ## Blockers
 
-- None for Git Remote Recovery；Non-Git recovery remains outside this simulation
+- None for Git Multi-Codex Recovery；Full Machine Recovery remains unverified
 
 ## Next Step
 
-- 只从 GitHub Remote clone 到纯英文临时目录，恢复四角色 branches / Worktrees 并验证无旧 Chat 依赖。
+- 执行 Independent Test；随后进入 Review，最后交回 Coordinator Integration Gate。
