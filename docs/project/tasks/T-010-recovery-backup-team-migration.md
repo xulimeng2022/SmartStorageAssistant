@@ -1,0 +1,215 @@
+# T-010 Recovery / Backup / Team Migration
+
+> Formal Task baseline。Candidate Review 与 Focused Re-review 已通过，当前为 READY / 待开始。
+> 本文件不代表 Backup、Team Migration 或 Disaster Simulation 已完成。
+
+## Formal Task Metadata
+
+- Task ID: T-010
+- Title: Recovery / Backup / Team Migration
+- Type: Formal Task
+- Owner: 主控（Coordinator）
+- Risk: High
+- Source Branch: `codex/integration`
+- Commit / Commit Range: T-010 Candidate Commit Gate checkpoint; exact hash is Git HEAD after commit
+- Status: `READY / 待开始`
+- Initial Protected Baseline: `c2faa5fe0fbb97233df2095e5e5a405bafa81017`
+- Baseline Semantics: T-010 启动时的保护检查点，不是永久 Current Baseline
+- Contract Change: No
+- Cross-module Request: None
+- Execution Order: Candidate Review / Formal Task establishment → Initial Git baseline protection gate → Git Bundle authorization → Bundle creation + verify → temporary clone recovery validation → Remote truth verification gate → user-authorized fetch if approved → evaluate remote state → user-authorized push if needed → Recovery / Team Migration simulation → Test → Review → Coordinator Integration Gate → Stable main propagation → final lifecycle closure
+- Handoff Target: Coordinator Integration Gate（Test / Review 后交回主控集成）
+- Test Required: Yes
+- Review Required: Yes
+- User Gate Required: Yes
+- Business code changes: Prohibited
+- Runtime changes: None
+- Build Runtime changes: None
+- Release / Version changes: None
+
+### Formal Lifecycle
+
+当前状态：`READY / 待开始`。
+
+- Candidate Review: PASS
+- Focused Re-review: PASS
+- Implementation: NOT STARTED
+- External Actions: NOT AUTHORIZED
+- Bundle / Fetch / Push / Simulation / Test: NOT RUN
+
+Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 Git，不代表 Recovery capability 已完成，也不授权任何 External Action。
+
+## 任务边界
+
+- 所属范围：Multi-Codex Coordination / Recovery / Backup / Team Migration
+- 目标行为：建立最小灾备与跨 Team 恢复能力，使旧 Chat、Team、Worktree 或本机环境失效后，可以通过 Repository、Git、Recovery Runbook 和可安全恢复的环境配置重新恢复 Coordinator、Data、AI、UI。
+- 本任务不做：Health Check、Archify Freshness、Obsidian Knowledge Promotion、Room Migration 修复、Ownership 修改、四树重构、业务开发、Release 或版本号修改。
+- 前置依赖：Phase A Planning Review PASS；Git / Worktree 基线已确认；T-009 保持 DONE。
+
+## Scope
+
+### A. Repository Recovery
+
+- 识别可验证 Recovery Source。
+- 读取 Git refs、Project State、Task、Role State 和 Handoff 后确定目标恢复 Commit。
+- 恢复 Repository、Branch、refs 与 Worktree。
+- 验证项目 AGENTS、Workflow、Ownership 和 Role State。
+
+### B. Coordinator Recovery
+
+- 旧 Coordinator Chat 丢失后，仅依赖 Repository 和 Git 恢复角色、边界、当前任务与下一步。
+- 输出标准 Recovery Report，不把旧 Chat 作为恢复依赖。
+
+### C. Module Recovery
+
+- Data / AI / UI 可分别通过 Branch、Role State、Current Task、Ownership、相关代码和 Git Resume。
+- 不要求模块 Agent 默认读取整个 Repository。
+
+### D. Team Migration
+
+- 覆盖 Team A → Team B 场景。
+- 环境恢复范围包括 Global AGENTS、Codex Config、Skills、Plugins、MCP、CC Switch、Model Provider、Obsidian、Archify 和 Secret placeholders。
+- 只提供恢复协议，不在本 Candidate 阶段执行迁移。
+
+### E. Disaster Recovery 基础验证
+
+- 未来只在临时目录执行 Repository restore、expected HEAD、Branch refs、Worktree reconstruction、AGENTS、Role State 和 Coordinator Resume 验证。
+- 不得使用正式 Worktree 做破坏测试。
+
+## Out of Scope / Known Existing Risk
+
+### 明确排除
+
+- Room v5 Migration 修复
+- DatabaseModule 修改
+- destructive fallback 修改
+- Project Health Check
+- Archify Freshness 实现或 refresh
+- Obsidian Knowledge Promotion 或写入
+- Ownership 修改
+- 四树重构
+- Business Code、Release、Version 修改
+
+### Known Existing Risk
+
+- `AppDatabase.kt` 当前 version 为 5。
+- `MIGRATION_4_5` 已定义，但 `DatabaseModule.kt` 未注册。
+- 当前仍启用了 destructive fallback。
+- `M01-本地数据与仓库.md` 与 `02-系统架构.md` 对 Room v5 的描述可能失真。
+- 该风险仅记录，不在本任务中修复，未来应进入独立 High Risk / Data Safety Task。
+
+## 验收示例
+
+### Case A — Coordinator Chat Lost
+
+- Given：旧 Coordinator Chat 不可访问，Repository 正常。
+- When：新 Coordinator 按 RECOVERY 执行 Resume。
+- Then：能识别 Role；确认 Branch / HEAD；读取 Project State / Task / Handoff；输出下一步；不依赖旧 Chat。
+
+### Case B — Worktree Lost
+
+- Given：Role Branch 仍存在，对应 Worktree 丢失。
+- When：恢复者执行 Worktree Reconstruction Protocol。
+- Then：Runbook 指导验证 ref / registry / destination；只在授权后重建；不使用 destructive reset；恢复后 Branch、HEAD 和 Role State 正确。
+
+### Case C — Team Migration
+
+- Given：旧 Team / Project / Chat 全不可用，但有有效 Recovery Source。
+- When：按 Team A → Team B 恢复流程执行。
+- Then：可恢复 Repository；可恢复四角色；可重新连接外部环境；不要求读取旧 Chat。
+
+### Case D — Obsidian Unavailable
+
+- Given：Repository 与 Git 已恢复，但 Obsidian 暂不可用。
+- When：继续执行 Coordinator / Module Resume。
+- Then：项目仍可继续开发；只损失长期知识增强；不把 Obsidian 变成 hard dependency。
+
+### Case E — Archify Unavailable
+
+- Given：Repository 与 Git 已恢复，但 Archify 暂不可用。
+- When：继续恢复或开发。
+- Then：Code / Git 仍为真相；架构图可稍后重新生成；不阻塞 Recovery。
+
+上述示例是 Acceptance / planned validation，当前均未标记 PASS。
+
+## TDD / 验证记录
+
+### 1. 失败测试
+
+- TDD: Not applicable to documentation changes.
+- Protocol / Recovery validation replaces code-level TDD.
+- 当前尚未执行恢复验证，因此没有失败测试或恢复测试 PASS。
+
+### 2. 最小实现
+
+- 拟新增：`docs/coordination/RECOVERY.md`
+- 拟修改：`docs/coordination/WORKFLOW.md` 的最短 Recovery 入口
+- 拟登记：`docs/project/04-任务与验收清单.md`、`docs/project/tasks/README.md`
+- 不新增：第二套 Task System、Recovery Database、自动化平台或服务端组件
+
+### 3. 当前验证结果
+
+| 验证项 | 结果 | 证据 |
+| --- | --- | --- |
+| Candidate static review | PASS | 初始 Candidate Review 为 FAIL；Minimal Repair 后 Focused Re-review 为 PASS |
+| Git Bundle | NOT RUN | 未获授权创建 Bundle |
+| Bundle Verify | NOT RUN | 无 Bundle |
+| Temporary Clone | NOT RUN | 当前 Candidate 阶段不执行恢复模拟 |
+| Fetch | NOT RUN | 未获用户授权 |
+| Remote Truth | NOT VERIFIED | 尚未 fetch |
+| Push | NOT RUN | 未获用户授权 |
+| Team Migration Simulation | NOT RUN | 后续独立 Gate |
+| Test | NOT RUN | Test 角色尚未执行 |
+| Review | CANDIDATE PASS / IMPLEMENTATION REVIEW NOT RUN | Candidate Review 与 Focused Re-review PASS；实施后的独立 Review 尚未开始 |
+
+### 4. 未来验证方式
+
+| 验证项 | 未来责任 | 证据要求 |
+| --- | --- | --- |
+| Repository restore | Test | 临时目录 clone / fetch 后提交身份一致 |
+| Expected HEAD / refs | Test | `rev-parse` 与 Branch refs 对照 |
+| Worktree reconstruction | Test | 临时路径创建并验证 Branch / HEAD / status |
+| Coordinator Resume | Test | 无旧 Chat 条件下输出恢复报告 |
+| Secret safety | Review | Repository diff 无 Secret 实际值 |
+| Architecture preservation | Review | Ownership、Worktree、业务代码无变化 |
+
+## 未来实施验收条件
+
+- Recovery Runbook 存在，且覆盖 Repository、Coordinator、Module、Worktree、Team Migration 和环境恢复。
+- Remote / Bundle / Full Clone 三类 Recovery Source 均有适用边界和验证方法。
+- linked Worktree 不被描述为完整 Git backup。
+- 记录 main `.git` 单点风险及至少一种安全备份策略。
+- Secret boundary 清晰，Repository 不包含任何 Secret 实际值。
+- 临时目录的独立灾备模拟通过，且不依赖旧 Chat。
+- 不改变现有 Ownership、Workflow 主体、业务 Runtime 或版本号。
+- v1.2.0 保持未发布。
+
+## 实施日志（短期）
+
+- 2026-09-12：Phase A Read-only Audit completed。
+- 2026-09-12：T-010 Candidate created。
+- 2026-09-12：第一次 Candidate Review executed；结果为 FAIL。
+- 2026-09-12：执行 Minimal Repair，范围仅为 Formal Task structure 与 Environment Recovery Inventory。
+- 2026-09-12：Focused Candidate Re-review executed；结果为 PASS。
+- 2026-09-12：Candidate Commit Gate preflight PASS；状态转换为 READY / 待开始，实施尚未开始。
+
+## Safety Gates
+
+以下动作均需要独立 User Gate，不得从本次 Candidate 创建授权中自动推导：
+
+- `git fetch`
+- 创建 Git Bundle
+- 任意 `git push`
+- 任何正式 Worktree reconstruct / remove / repair / relocate / reset / clean / force / delete / history rewrite
+
+## 完成结论
+
+- Status: `READY / 待开始`
+- Formal Task: ESTABLISHED
+- Recovery Runbook: ESTABLISHED / VALIDATION PENDING
+- 正式 Task 实施：NOT STARTED
+- Backup / Fetch / Push / Simulation：NOT RUN
+- External Actions: NOT AUTHORIZED
+- Test：NOT RUN
+- Implementation Review：NOT RUN
+- 当前不满足 DONE 条件。

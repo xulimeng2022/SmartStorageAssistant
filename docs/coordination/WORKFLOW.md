@@ -71,6 +71,10 @@ git status
 - 不得因为新 Chat 重装 JDK / SDK、重下 Gradle、清 Gradle cache、大规模 clean、重新 clone、重新创建项目或重建已有环境。
 - 只有实际确认缺失、损坏或版本不匹配后，才采取对应修复。
 
+### Recovery Escalation
+
+Machine / Team / Worktree disaster recovery and environment reconstruction follow [RECOVERY.md](RECOVERY.md). Normal Lightweight Resume remains the default for new chats; RECOVERY applies only when ordinary Resume is insufficient.
+
 ## 4. Role State 生命周期
 
 - Role State 文件为：`Coordinator.md`、`Data.md`、`AI.md`、`UI.md`。
