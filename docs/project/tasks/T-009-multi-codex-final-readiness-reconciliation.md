@@ -40,23 +40,35 @@
   - `docs/coordination/UI.md`
 - Reason: Final readiness Role State reconciliation after verified Baseline Resync and Lightweight Resume
 - Long-term Owner unchanged: Yes
+- Long-term Ownership changed: No
 - Concurrent role-owner writes prohibited during this window: Yes
 - Authorization lifetime: T-009 Final Readiness checkpoint only
 - Auto-expiry: after T-009 final checkpoint completion
+- Authorization Status: `EXPIRED / COMPLETED`
+- Expiry condition: satisfied
+- No further write authority granted
 
 ## 验证记录
 
 | 验证项 | 结果 | 证据 |
 | --- | --- | --- |
-| Baseline Resync | 已完成 | Data / AI / UI 分支已 ff-only 对齐 stable main 且 clean |
-| 四角色首次 Resume | PASS WITH STATE LAG | 四个独立只读 Resume 报告 |
+| Baseline Resync | PASS | Data / AI / UI 已对齐 Stable main 且 clean |
+| Central Rule Git Propagation | PASS | 中央规则已通过 Stable main 传播至长期角色 |
+| Four-role Lightweight Resume | PASS | 四个独立只读 Resume 报告；State Lag 已收口 |
+| Role State Finalization | PASS | Data / AI / UI 稳定恢复快照已完成 |
+| Final Readiness checkpoint | PASS | Git / Resume / State reconciliation evidence recorded |
+| Five-branch final alignment | PASS | main / integration / Data / AI / UI 全部对齐 |
+| Final checkpoint application | PASS | Final Readiness checkpoint 已应用于全部长期分支 |
+| Final Consistency Gate | PASS | 工作流、Role State、清理状态与保留条件全部一致 |
+| Multi-Codex Operational Readiness | READY | 可恢复、可路由、可集成、可按 Gate 继续工作 |
 | v1.2.0 Preservation | PASS | 无业务 / Runtime / Build Runtime / 版本号变化 |
-| Role State Finalization | COMPLETE / PASS | Data / AI / UI 稳定恢复快照已收口 |
-| Final Readiness checkpoint | COMPLETE IN T-009 FINAL CHECKPOINT | Git / Resume / State reconciliation evidence recorded |
+| Legacy Isolation | PASS | 10ba / baee 保持隔离保留 |
 
 ## 完成结论
 
-- 状态：进行中
-- 交付结果：待最终状态收口 Candidate 审核
-- 需要回写的长期事实：`PROJECT_STATUS.md`、角色恢复快照
-- 后续任务：待 Final Readiness Gate 通过后关闭；业务开发另行立项
+- 状态：DONE / 已验收
+- 交付结果：Multi-Codex Final Readiness Reconciliation 已完成；Operational Readiness = READY
+- Final Consistency Gate：PASS
+- 已知 State Lag：None
+- 需要回写的长期事实：无新增；任务状态已同步至 04、tasks/README 与 Coordinator Role State
+- 后续任务：后续业务开发按现有 Multi-Codex Workflow 另行创建 Formal / Lightweight Task
