@@ -1,7 +1,7 @@
 # T-010 Recovery / Backup / Team Migration
 
 > Formal Task baseline。Candidate Review 与 Focused Re-review 已通过，当前正式进入 IN_PROGRESS。
-> Current Phase: Remote Truth Verification / Remote Backup Decision。
+> Current Phase: Team Migration / Disaster Recovery Simulation。
 
 ## Formal Task Metadata
 
@@ -13,7 +13,7 @@
 - Source Branch: `codex/integration`
 - Commit / Commit Range: T-010 activation checkpoint; exact hash is current Git HEAD; Bundle is created from this activation checkpoint
 - Status: `IN_PROGRESS`
-- Current Phase: Remote Truth Verification / Remote Backup Decision
+- Current Phase: Team Migration / Disaster Recovery Simulation
 - Initial Protected Baseline: `c2faa5fe0fbb97233df2095e5e5a405bafa81017`
 - Baseline Semantics: T-010 启动时的保护检查点，不是永久 Current Baseline
 - Contract Change: No
@@ -35,11 +35,12 @@
 - Candidate Review: PASS
 - Focused Re-review: PASS
 - Implementation: IN PROGRESS
-- External Actions: BUNDLE GATE COMPLETE; FETCH / PUSH STILL REQUIRE AUTHORIZATION
+- External Actions: REMOTE BACKUP PUSH COMPLETE; TEAM MIGRATION SIMULATION PENDING
 - Git Bundle Recovery Source: VALIDATED
-- Fetch / Push / Team Migration / Disaster Simulation / Test: NOT RUN
+- Remote Recovery Model B: VERIFIED
+- Team Migration / Disaster Simulation / Test: NOT RUN
 
-Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 Git；当前 Bundle Gate 已完成，但 Remote Truth 与 Push 仍未授权。
+Candidate Review 与 Remote Recovery Model B 已验证；当前进入 Team Migration / Disaster Recovery Simulation。
 
 ## 任务边界
 
@@ -158,9 +159,9 @@ Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 
 | Git Bundle | PASS | Bundle 已创建并保留在 E 盘 |
 | Bundle Verify | PASS | `git bundle verify` exit 0；complete history |
 | Temporary Clone | PASS | 仅从 Bundle clone；fsck、refs、commits、project truth files 均通过 |
-| Fetch | NOT RUN | 未获用户授权 |
-| Remote Truth | NOT VERIFIED | 尚未 fetch |
-| Push | NOT RUN | 未获用户授权 |
+| Fetch | PASS | `git fetch origin --no-tags` exit 0；local branches preserved |
+| Remote Truth | VERIFIED FOR FETCHED TIPS | FETCH_HEAD 确认 main / codex/release-v1.1.0 |
+| Push | PASS | main / integration / data / ai / ui 已推送并逐一验证 |
 | Team Migration Simulation | NOT RUN | 后续独立 Gate |
 | Test | NOT RUN | Test 角色尚未执行 |
 | Review | CANDIDATE PASS / IMPLEMENTATION REVIEW NOT RUN | Candidate Review 与 Focused Re-review PASS；实施后的独立 Review 尚未开始 |
@@ -179,7 +180,19 @@ Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 
 - Bundle retained: Yes
 - Legacy dirty data: `NOT PROTECTED BY GIT BUNDLE`；10ba `5 modified / 4 untracked`，baee `1 modified / 2 untracked`
 
-### 5. 未来验证方式
+### 5. Remote Recovery Evidence
+
+- Remote Recovery Model: B
+- GitHub main: AVAILABLE / VERIFIED → `c2faa5fe0fbb97233df2095e5e5a405bafa81017`
+- GitHub Coordinator: AVAILABLE / VERIFIED → `2973e0a40ebb1723668ce3b9168c69fe55d3743a`
+- GitHub Data: AVAILABLE / VERIFIED → `c2faa5fe0fbb97233df2095e5e5a405bafa81017`
+- GitHub AI: AVAILABLE / VERIFIED → `c2faa5fe0fbb97233df2095e5e5a405bafa81017`
+- GitHub UI: AVAILABLE / VERIFIED → `c2faa5fe0fbb97233df2095e5e5a405bafa81017`
+- Post-push `ls-remote`: PASS
+- Local refs preserved: Yes
+- Working Tree preserved: Yes
+- Force: No
+### 6. 未来验证方式
 
 | 验证项 | 未来责任 | 证据要求 |
 | --- | --- | --- |
@@ -212,7 +225,10 @@ Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 
 - 2026-09-12：Git Bundle Creation + Validation 获得用户明确授权；执行 lifecycle activation，状态转为 IN_PROGRESS。
 - 2026-09-12：创建 off-device Git Bundle；`bundle verify` 与 `list-heads` PASS。
 - 2026-09-12：仅从 Bundle 执行 temporary clone；refs、commits、project truth files 与恢复状态 PASS。
-- 2026-09-12：删除临时 clone，保留 Bundle；当前阶段推进为 Remote Truth Verification / Remote Backup Decision。
+- 2026-09-12：删除临时 clone，保留 Bundle。
+- 2026-09-12：Remote Truth Fetch 与 Public Remote Sanitization PASS。
+- 2026-09-12：Remote Recovery Model B 建立；main、integration、data、ai、ui 逐一推送并 verified。
+- 2026-09-12：当前阶段推进为 Team Migration / Disaster Recovery Simulation。
 
 ## Safety Gates
 
@@ -226,13 +242,15 @@ Candidate Review PASS 只证明 Task 定义与 Recovery Runbook 可以正式落 
 ## 完成结论
 
 - Status: `IN_PROGRESS`
-- Current Phase: Remote Truth Verification / Remote Backup Decision
+- Current Phase: Team Migration / Disaster Recovery Simulation
 - Formal Task: ESTABLISHED
 - Recovery Runbook: ESTABLISHED / VALIDATION PENDING
 - Git Bundle Recovery Source: VALIDATED
 - Off-device Git Recovery: AVAILABLE
-- Fetch / Push / Team Migration / Disaster Simulation：NOT RUN
-- External Actions: FETCH / PUSH REQUIRE SEPARATE AUTHORIZATION
+- Remote Recovery Model B: VERIFIED
+- GitHub main / integration / data / ai / ui: AVAILABLE / VERIFIED
+- Team Migration Simulation / Disaster Simulation: NOT RUN
+- External Actions: REMOTE BACKUP PUSH COMPLETE; SIMULATION AUTHORIZED
 - Test：NOT RUN
 - Implementation Review：NOT RUN
 - 当前不满足 DONE 条件。

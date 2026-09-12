@@ -8,15 +8,15 @@
 - ID / Title: T-010 Recovery / Backup / Team Migration
 - Status: IN_PROGRESS
 - Risk: High
-- Goal: 验证 Remote Truth 并准备远程备份决策
-- Allowed Scope: 只读 Remote 配置审计与 Fetch 计划；不执行 fetch / push
-- Acceptance: Remote truth 有独立 user Gate；Push 决策在 Fetch 后另行授权
+- Goal: 从 GitHub Remote 独立模拟 Team A → Team B 恢复并重建四角色 Worktree
+- Allowed Scope: 记录 Remote evidence；推送 integration evidence checkpoint；在纯英文临时目录执行 Remote-only Team Migration Simulation
+- Acceptance: Remote-only clone、four role branches、four Worktrees、Coordinator/Module Recovery 与 Repository truth discovery 全部通过
 - Task Card: `docs/project/tasks/T-010-recovery-backup-team-migration.md`
 
 ## Progress
 
-- Completed: T-009 Final Readiness Reconciliation DONE；Final Consistency Gate PASS；Multi-Codex Operational Readiness READY；T-010 Candidate Review / Focused Re-review PASS；Git Bundle Recovery Source VALIDATED
-- In Progress: Remote Truth Verification / Remote Backup Decision
+- Completed: T-009 Final Readiness Reconciliation DONE；Final Consistency Gate PASS；Multi-Codex Operational Readiness READY；T-010 Candidate Review / Focused Re-review PASS；Git Bundle Recovery Source VALIDATED；Remote Truth Fetch PASS；Remote Recovery Model B VERIFIED
+- In Progress: Team Migration / Disaster Recovery Simulation
 
 ## Working Tree
 
@@ -31,19 +31,20 @@
 - T-010 Focused Re-review: PASS
 - Git Bundle: VALIDATED
 - Bundle Verify / list-heads / Temporary Clone: PASS
-- Remote Truth: NOT VERIFIED
-- Fetch / Push: NOT AUTHORIZED
+- Remote Truth: VERIFIED FOR FETCHED TIPS
+- Remote Recovery Model B: VERIFIED
+- Push: COMPLETE / VERIFIED
 
 ## Last Handoff
 
 - Task / Source Branch: T-010 Bundle Validation Evidence / codex/integration
 - Commits: Evidence checkpoint is current HEAD after commit
-- Summary: Off-device Git Bundle 已创建、完整验证并从临时 clone 恢复；Remote Truth 尚未验证。
+- Summary: Remote Recovery Model B 已建立，五个 recovery refs 均已验证；开始 Team Migration Simulation。
 
 ## Blockers
 
-- Fetch requires explicit user authorization
+- None for Git Remote Recovery；Non-Git recovery remains outside this simulation
 
 ## Next Step
 
-- 执行 T-010 Remote Truth Verification Gate；只更新 `refs/remotes/origin/*`，不修改 local branches、Working Tree 或远端。
+- 只从 GitHub Remote clone 到纯英文临时目录，恢复四角色 branches / Worktrees 并验证无旧 Chat 依赖。
