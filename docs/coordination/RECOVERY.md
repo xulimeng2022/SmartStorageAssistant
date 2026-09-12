@@ -1,6 +1,6 @@
 # Multi-Codex Recovery Runbook
 
-> Candidate only。本文件定义恢复协议，不代表已经完成 Remote 保护、Git Bundle、Team Migration 或 Disaster Simulation。
+> 本文件只定义恢复协议、边界和验证方法，不保存项目当前恢复状态的副本。
 > 本文不是第二份 Workflow。正常新 Chat 继续使用 [WORKFLOW.md](WORKFLOW.md) 的 Lightweight Resume；只有普通 Resume 无法完成时，才使用本 Runbook。
 
 ## 1. 目的与边界
@@ -120,7 +120,15 @@ verify refs
 verify expected commit
 ```
 
-只有完整验证通过，才能称为有效备份。当前没有创建 Bundle。
+只有按照上述流程完成当前验证，才能把对应 artifact 称为有效备份。本 Runbook 不静态声明当前是否存在可用 Git Bundle。恢复时必须：
+
+1. 查看 Active Formal Task 和 Recovery Evidence；
+2. 检查实际 Bundle artifact 是否存在；
+3. 若记录 SHA-256，则重新计算并比对；
+4. 执行 `git bundle verify`；
+5. 必要时执行临时恢复验证。
+
+只有当前证据支持时，才可认定 Bundle 为有效 Recovery Source。
 
 ### Full Git Clone / Backup
 
@@ -441,7 +449,7 @@ Secret 需要在新环境单独重新注入、重新认证或从加密存储恢�
 
 ## 15. 未来验证程序
 
-本 Runbook 尚未执行灾备模拟。未来授权后：
+执行恢复能力验证时，必须：
 
 - 只在临时目录运行。
 - 使用已验证的 Remote、Bundle 或 Full Clone。
@@ -464,12 +472,29 @@ Secret 需要在新环境单独重新注入、重新认证或从加密存储恢�
 - 无法确认用户授权
 - Recovery Source 未验证
 
-## 17. 当前状态
+## 17. Current Recovery State Authority
 
-- Recovery Runbook: `CANDIDATE`
-- Remote truth: `NOT VERIFIED IN THIS PHASE`
-- Fetch: `NOT PERFORMED`
-- Push: `NOT PERFORMED`
-- Bundle: `NOT CREATED`
-- Disaster Simulation: `NOT RUN`
-- Recovery capability: `PROTOCOL DEFINED, VALIDATION PENDING`
+本 Runbook 不保存项目当前恢复状态的副本。
+
+恢复时 Current State 必须从以下权威来源动态确定：
+
+1. Git refs / commits / worktrees
+2. Active Formal Task Card
+3. Role State
+4. `PROJECT_STATUS.md`
+5. 已验证的外部恢复 Artifact / Remote
+
+当前状态入口：
+
+- Current task lifecycle: `docs/project/tasks/<active-task>.md`
+- Current role recovery snapshot: `docs/coordination/<Role>.md`
+- Global project state: `docs/project/PROJECT_STATUS.md`
+- Git state: Git itself
+
+本文件只定义 Recovery Procedure、边界和验证方法。不得根据本文件中的历史示例推断当前：
+
+- Bundle 状态
+- Remote truth
+- Fetch / Push 状态
+- Simulation 状态
+- Task lifecycle
