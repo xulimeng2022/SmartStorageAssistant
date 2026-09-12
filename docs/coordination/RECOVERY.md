@@ -304,15 +304,15 @@ Continue
 | Asset | Required / Class | Current Location | Source / Version | Restore | Verify | Secret |
 | --- | --- | --- | --- | --- | --- | --- |
 | Project AGENTS | Yes / Tracked | Repository 根目录 | Git recovery commit；当前 checkpoint blob `251be91ab40eedad02f0b6bfe8a60358d954c3a5` | 从目标恢复 Commit checkout | `git hash-object AGENTS.md` 与目标 Commit 一致 | No |
-| Global AGENTS | Yes / Local-only | `C:\Users\XU\.codex\AGENTS.md` | 无 canonical remote；audit SHA-256 `AD7DE0CEE83881614CD019DFF87D1D207E586D59C5F70366F154F791D3B1C86E` | 从安全配置备份恢复；无备份时按规则类别重建 | 文件存在且项目必需规则仍由 Project AGENTS 覆盖 | No |
-| Codex Config | Yes / Local-only | `C:\Users\XU\.codex\config.toml` | Host-managed；audit SHA-256 `21C406C390EC04928A8EB28804BCDFCAF5E79754963AD3A3C9BFF64E9CB56FDF` | 从脱敏配置模板或安全备份重建 provider、sandbox、plugin、MCP 入口 | `codex --version`；配置可解析；必要入口可用 | Yes, auth references |
-| Skills | `multi-codex-coordinator` Yes；`archify` Optional / Local-only | `C:\Users\XU\.codex\skills\multi-codex-coordinator`、`...\skills\archify` | Source `VERIFY AT MIGRATION`；当前安装为本地 Skill 包；Archify metadata `2.17` / package `2.17.0-dev.1`；协调 Skill 无版本号，`SKILL.md` SHA-256 `9CB848D934C5D171450591363B0735B7B1BA069ED0663FE08259722DC913F90B`；CC Switch skill sync `auto / cc_switch` | 从安全工作区备份恢复最小 Skill；无备份时 Archify 可按来源重装，协调 Skill 标记待重建 | Skill 名称存在；Archify `doctor` 通过；协调 Skill hash 与基线一致 | No |
-| Plugins | Minimum Required: None / Optional host plugins | `C:\Users\XU\.codex\config.toml`、plugin cache | 仅用于现有 Codex 工作流对齐，不是 Repository 恢复硬依赖 | 缺失时继续 Repository Recovery；需完整环境时按下方清单重新安装 | 插件入口可用且不影响核心恢复 | No |
-| MCP | Optional capability enhancement / Local-only | `config.toml` 的 `[mcp_servers.node_repl]`；当前 command path 为 `C:\Users\XU\AppData\Local\OpenAI\Codex\runtimes\cua_node\e7fe122ad3cbcd58\bin\node_repl.exe` | `node_repl`；运行时版本 `VERIFY AT MIGRATION` | 重建 config entry 或安装 Codex 对应运行时；路径变化时重新解析当前 runtime | Node REPL 启动；工具入口可调用 | No |
-| CC Switch | Yes for current provider route / Local-only sensitive | `C:\Users\XU\.cc-switch` | App：`C:\Users\XU\AppData\Local\Programs\CC Switch\cc-switch.exe`；App version `VERIFY AT MIGRATION`；DB/settings 为本地状态 | 安装同版本 App 或从加密备份恢复 settings / DB；不复制 logs/cache | 进程运行；`enableLocalProxy=true`；Provider 可选中 | Yes |
-| Model Provider | Yes for current Codex model / Local-only | Codex Config + CC Switch | Codex provider `custom`；model `deepseek-flash`；base URL `http://127.0.0.1:15721/v1`；wire API `responses`；catalog `C:\Users\XU\.codex\cc-switch-deepseek-vision-model-catalog.json`；CC Switch provider ID `9aab64d1-10be-48c9-a61b-467e32cefc69` | 按下方 Model Provider / CC Switch 顺序恢复 | 非破坏性最小模型/能力检查；确认模型路由 | Yes, credential only |
-| Obsidian | Optional / Local-only | `D:\Knowledge` → `D:\Study` | Vault 本地目录；Agent Client `0.12.1` | 恢复或重新连接 Vault；按需安装 Agent Client | Vault 可打开；只读搜索成功；不影响 Repository | No |
-| Archify | Optional / Generated enhancement | `C:\Users\XU\.codex\skills\archify`；生成产物在 Codex work output | Skill `2.17`；当前 v1.2.0 spec base `d92d8123dde9510607858a00faf7950081ccf4f9` | 从 Skill 备份恢复或重装；必要时从 Code 重新生成 | Archify `doctor`；spec / artifact 可读 | No |
+| Global AGENTS | Yes / Local-only | `<CODEX_HOME>\AGENTS.md` | 无 canonical remote；audit SHA-256 `AD7DE0CEE83881614CD019DFF87D1D207E586D59C5F70366F154F791D3B1C86E` | 从安全配置备份恢复；无备份时按规则类别重建 | 文件存在且项目必需规则仍由 Project AGENTS 覆盖 | No |
+| Codex Config | Yes / Local-only | `<CODEX_HOME>\config.toml` | Host-managed；audit SHA-256 `21C406C390EC04928A8EB28804BCDFCAF5E79754963AD3A3C9BFF64E9CB56FDF` | 从脱敏配置模板或安全备份重建 provider、sandbox、plugin、MCP 入口 | `codex --version`；配置可解析；必要入口可用 | Yes, auth references |
+| Skills | `multi-codex-coordinator` Yes；`archify` Optional / Local-only | `<CODEX_HOME>\skills\multi-codex-coordinator`、`<CODEX_HOME>\skills\archify` | Source `VERIFY AT MIGRATION`；当前安装为本地 Skill 包；Archify metadata `2.17` / package `2.17.0-dev.1`；协调 Skill 无版本号，`SKILL.md` SHA-256 `9CB848D934C5D171450591363B0735B7B1BA069ED0663FE08259722DC913F90B`；CC Switch skill sync `auto / cc_switch` | 从安全工作区备份恢复最小 Skill；无备份时 Archify 可按来源重装，协调 Skill 标记待重建 | Skill 名称存在；Archify `doctor` 通过；协调 Skill hash 与基线一致 | No |
+| Plugins | Minimum Required: None / Optional host plugins | `<CODEX_HOME>\config.toml`、host plugin cache | 仅用于现有 Codex 工作流对齐，不是 Repository 恢复硬依赖 | 缺失时继续 Repository Recovery；需完整环境时按下方清单重新安装 | 插件入口可用且不影响核心恢复 | No |
+| MCP | Optional capability enhancement / Local-only | `<CODEX_HOME>\config.toml` 的 `[mcp_servers.node_repl]`；runtime command path `VERIFY AT MIGRATION` | `node_repl`；运行时版本 `VERIFY AT MIGRATION` | 重建 config entry 或安装 Codex 对应运行时；路径变化时重新解析当前 runtime | Node REPL 启动；工具入口可调用 | No |
+| CC Switch | Yes for current provider route / Local-only sensitive | `<CC_SWITCH_HOME>` | App path `VERIFY AT MIGRATION`；DB/settings 为本地状态 | 安装同版本 App 或从加密备份恢复 settings / DB；不复制 logs/cache | 进程运行；`enableLocalProxy=true`；Provider 可选中 | Yes |
+| Model Provider | Yes for current Codex model / Local-only | Codex Config + CC Switch | Codex provider `custom`；model `deepseek-flash`；base URL `http://127.0.0.1:<CC_SWITCH_PORT>/v1`；wire API `responses`；catalog path `VERIFY AT MIGRATION`；CC Switch provider ID `VERIFY AT MIGRATION` | 按下方 Model Provider / CC Switch 顺序恢复 | 非破坏性最小模型/能力检查；确认模型路由 | Yes, credential only |
+| Obsidian | Optional / Local-only | `<OBSIDIAN_VAULT>` | Vault 本地目录；Agent Client `0.12.1` | 恢复或重新连接 Vault；按需安装 Agent Client | Vault 可打开；只读搜索成功；不影响 Repository | No |
+| Archify | Optional / Generated enhancement | `<CODEX_HOME>\skills\archify`；生成产物在 `<ARCHIFY_OUTPUT>` | Skill `2.17`；当前 v1.2.0 spec base `d92d8123dde9510607858a00faf7950081ccf4f9` | 从 Skill 备份恢复或重装；必要时从 Code 重新生成 | Archify `doctor`；spec / artifact 可读 | No |
 | local.properties | Yes for Android build / Local-only Never Commit | 当前 audit 仅 main Worktree 存在 | 无版本控制；字段：`sdk.dir`、`SILICONFLOW_API_KEY`、`KEYSTORE_FILE`、`KEYSTORE_PASSWORD`、`KEY_ALIAS`、`KEY_PASSWORD` | 按新机 Android SDK 和签名环境重建；Secret 从安全存储重注入 | Gradle 可解析；只运行允许的构建/测试验证 | Yes |
 | Secrets | Yes / Secret | `local.properties`、Codex auth、`.sandbox-secrets`、CC Switch DB | 无 Repository Source；来自用户 Secret Store | `REINJECT FROM SECRET STORE`；不得从 Git / Obsidian / Archify 恢复 | 认证成功；模型可用；签名构建仅在明确授权时验证 | Yes |
 
@@ -362,17 +362,17 @@ Plugins 对 Repository Recovery 没有硬依赖。以下仅为当前环境对齐
 
 1. Install 或 restore CC Switch 当前 App。
 2. Restore 非 Secret settings 与所需 DB；不要复制日志和缓存。
-3. Confirm non-secret fields：`enableLocalProxy=true`、`currentProviderCodex=9aab64d1-10be-48c9-a61b-467e32cefc69`。
+3. Confirm non-secret fields：`enableLocalProxy=true`；`currentProviderCodex` 的精确值按 `VERIFY AT MIGRATION` 重新确认。
 4. 从 Secret Store 重新注入 provider credential；不得写入 Repository。
 5. Start CC Switch。
-6. Verify 本地 provider endpoint `http://127.0.0.1:15721/v1` 与 routing；若无法监听则停止并报告。
+6. Verify 本地 provider endpoint `http://127.0.0.1:<CC_SWITCH_PORT>/v1` 与 routing；若无法监听则停止并报告。
 7. Restore Codex custom provider reference：`model_provider = "custom"`、`model = "deepseek-flash"`、`wire_api = "responses"`、model catalog path。
 8. Start Codex。
 9. Verify selected model 与 provider。
 10. Run non-destructive capability check；不得把一次成功调用扩大成 Release 或数据操作授权。
 
 - Current architecture: Codex 通过 custom provider 引用本机 CC Switch proxy；CC Switch 负责 DeepSeek-compatible provider routing。
-- Non-secret configuration: provider identifier `custom`、CC Switch ID `9aab64d1-10be-48c9-a61b-467e32cefc69`、model `deepseek-flash`、base URL `http://127.0.0.1:15721/v1`、wire API `responses`、model catalog `C:\Users\XU\.codex\cc-switch-deepseek-vision-model-catalog.json`。
+- Non-secret configuration: provider identifier `custom`、model `deepseek-flash`、base URL `http://127.0.0.1:<CC_SWITCH_PORT>/v1`、wire API `responses`；CC Switch provider ID 与 catalog 绝对路径按 `VERIFY AT MIGRATION` 重新解析。
 - Secret reinjection: `Credential: REINJECT FROM SECRET STORE`。
 - Unknown fields: CC Switch App version、CC Switch installer source、proxy listener 当前状态、model catalog 版本均标记 `VERIFY AT MIGRATION`。
 
@@ -386,8 +386,8 @@ Plugins 对 Repository Recovery 没有硬依赖。以下仅为当前环境对齐
 
 ### Obsidian
 
-- 逻辑路径：`D:\Knowledge`
-- 实际目标：`D:\Study`
+- 逻辑路径：`<OBSIDIAN_VAULT>`
+- 实际 junction / 目录位置：`VERIFY AT MIGRATION`
 - 恢复后先验证 junction、Vault 内容和 Obsidian 再连接。
 - Obsidian 不可用不阻塞 Repository 开发。
 
