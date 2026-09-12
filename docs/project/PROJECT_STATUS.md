@@ -4,12 +4,12 @@
 > 写入规则：只有主控 Codex 与 Release 流程可以更新；模块 / Review / 测试 Agent 只读，发现过期信息报告主控。
 > 不承载任务管理（任务卡见 `04-任务与验收清单.md` 与 `tasks/`），不写临时日志与命令输出。
 
-- 最近更新：2026-09-12（Stable main propagation 已完成；下一阶段为 Data / AI / UI Baseline Resync 与 Lightweight Resume 验证）
+- 最近更新：2026-09-12（完成 Baseline Resync、四角色 Resume 验证与 Role State Finalization；T-009 Final Readiness checkpoint 定义 Multi-Codex Overall Readiness = READY）
 
 ## 当前版本与阶段
 
 - 当前版本：`1.2.0`（versionCode 6，见 `app/build.gradle.kts` 当前实际配置）。
-- 当前阶段：v1.2.0 开发 / Debug 准备阶段，尚未正式发布；Coordination Infrastructure 已通过 Stable Candidate Review 并成功传播到 stable main；下一阶段为 Data / AI / UI Baseline Resync 与 Lightweight Resume 验证。
+- 当前阶段：v1.2.0 开发 / Debug 准备阶段，尚未正式发布；Coordination Infrastructure、Baseline Resync、四角色 Lightweight Resume 与 Role State reconciliation 均已完成，T-009 Final Readiness checkpoint 作为最终治理基准。
 - Phase 3A — Coordination Infrastructure：`COMPLETE`。
 - Phase 3B — Global Status Reconciliation：`COMPLETE`。
 - Phase 3C — AGENTS Workflow Entry：`COMPLETE`。
@@ -17,7 +17,11 @@
 - Stable Candidate Review：`COMPLETE / PASS`。
 - Stable main propagation：`COMPLETE / PASS`。
 - v1.2.0 Preservation：`PASS`。
-- Data / AI / UI Baseline Resync：`NOT YET EXECUTED`。
+- Data / AI / UI Baseline Resync：`COMPLETE / PASS`。
+- Baseline Resync：`COMPLETE / PASS`。
+- Central Rule Git Propagation：`COMPLETE / PASS`。
+- Lightweight Resume Validation：`COMPLETE / PASS`。
+- Role State Finalization：`COMPLETE IN T-009 FINAL CHECKPOINT`。
 
 ## Baseline 状态
 
@@ -37,10 +41,12 @@
 - Lightweight Resume：`DEFINED`。
 - Handoff：`DEFINED`。
 - Experiment isolation：`DEFINED`。
-- Baseline Resync：`DEFINED / NOT YET EXECUTED`。
-- Central Rule Propagation：`NOT YET COMPLETED`。
-- Coordinator Recovery：`STATE FINALIZED / RESUME VALIDATION PENDING`。
-- Multi-Codex Overall Readiness：尚未正式 `READY`；Stable main 已包含 Coordination Infrastructure，但仍需完成 Data / AI / UI 的安全 Baseline Resync 与 Lightweight Resume 验证。
+- Baseline Resync：`COMPLETE / PASS`。
+- Central Rule Git Propagation：`COMPLETE / PASS`。
+- Central Rule State Reconciliation：`COMPLETE IN T-009 FINAL CHECKPOINT`。
+- Coordinator Recovery：`VALIDATED`。
+- Data / AI / UI Recovery：`VALIDATED`。
+- Multi-Codex Overall Readiness：`READY`；T-009 Final Readiness checkpoint 是该状态的治理基准，具体分支是否已应用 checkpoint 由 Git 事实决定。
 - Legacy Worktrees `10ba` / `baee`：已隔离保留，等待后续单独审计。
 
 ## 测试与构建状态

@@ -5,18 +5,18 @@
 
 ## Current Task
 
-- ID / Title: Baseline Resync Coordination
+- ID / Title: T-009 Multi-Codex Final Readiness Reconciliation
 - Status: IN_PROGRESS
 - Risk: Medium
-- Goal: 在不破坏各长期角色现有任务和 Git 状态的前提下，将新的 Stable main 安全传播到 Data / AI / UI，并验证各角色 Lightweight Resume 与中央规则恢复能力。
-- Allowed Scope: Resync Preconditions 检查；Data / AI / UI 状态检查；用户授权后的 Baseline Resync 调度；Lightweight Resume 验证；Readiness 汇总。不包含跨模块业务代码修改、module-to-module merge、reset / rebase / force、release 或 push。
-- Acceptance: Stable main 已包含已审核 Coordination Infrastructure；Data / AI / UI 在各自安全 Gate 通过后 fast-forward 到 stable main；不覆盖任何未提交工作或未集成任务；各长期角色完成首次 Lightweight Resume 验证；Central Rule Propagation 得到验证；Coordinator Recovery 完成实际 Resume 验证；最终评估 Multi-Codex Overall Readiness。
-- Task Card: None
+- Goal: 解决 Medium Risk Coordination Task 治理缺口，把 Baseline Resync、Central Rule Git Propagation 与四角色 Resume 验证结果安全收口为最终稳定状态，并完成 Overall Readiness Gate。
+- Allowed Scope: Coordination state reconciliation；Role State finalization 合规检查；Final Readiness Gate。不包含业务代码修改、module-to-module merge、reset / rebase / force、release、push 或版本号修改。
+- Acceptance: T-009 已正式登记；PROJECT_STATUS 与 Git 一致；Coordinator State 已收口；Data / AI / UI Role State 已完成合法最终收口；Central Rule Propagation 验证完成；Overall Readiness 最终判定。
+- Task Card: `docs/project/tasks/T-009-multi-codex-final-readiness-reconciliation.md`
 
 ## Progress
 
-- Completed: Coordination Infrastructure complete；Stable Candidate Review PASS；Stable main propagation PASS；v1.2.0 Preservation PASS；main propagation 后 Git / legacy preservation validation PASS
-- In Progress: 准备 Data / AI / UI Baseline Resync
+- Completed: Coordination Infrastructure complete；Stable Candidate Review PASS；Stable main propagation PASS；Baseline Resync PASS；Central Rule Git Propagation PASS；四角色首次 Lightweight Resume Validation PASS；Role State finalization completed under explicit Temporary Single Writer authorization；v1.2.0 Preservation PASS
+- In Progress: T-009 Final Readiness Gate
 
 ## Working Tree
 
@@ -25,20 +25,21 @@
 
 ## Validation
 
-- Phase 2 / 3A / 3B / 3C documentation gates: PASS
 - Coordination Finalization: PASS
 - Coordination Stable Candidate Review: PASS
 - Stable main propagation: PASS
-- Main / integration propagation validation: PASS
+- Baseline Resync: PASS
+- Central Rule Git Propagation: PASS
+- Lightweight Resume Validation: PASS
+- Role State Finalization: PASS
 - v1.2.0 Preservation: PASS
-- 10ba preservation: PASS
-- baee preservation: PASS
+- Legacy preservation: PASS
 
 ## Last Handoff
 
-- Task / Source Branch: Stable main propagation / codex/integration → main
-- Commits: 5736c0cd98f7f8c3cf5b7f0677814090ec87e3c1
-- Summary: 已审核 Coordination Stable Candidate 已通过 ff-only 安全传播到 local main；v1.2.0 与 legacy Worktrees Preservation PASS。
+- Task / Source Branch: T-009 Multi-Codex Final Readiness Reconciliation / codex/integration
+- Commits: None
+- Summary: Final Readiness checkpoint 内容已完成；任务审查与分支应用状态由 Git 与 Formal Task 决定。
 
 ## Blockers
 
@@ -46,4 +47,4 @@
 
 ## Next Step
 
-- 在开始任何 Data / AI / UI Baseline Resync 前，确认当前 Stable main 已包含最新协调状态 checkpoint，并完成对应安全 Gate 与所需用户授权；随后按 WORKFLOW 执行角色 Resync。
+- 按 T-009 Final Readiness Gate 完成正式任务与验收流程；后续业务任务分发在此 Gate 通过后开始。
