@@ -26,7 +26,7 @@
 | M03-03 | 语义搜索解析 | 首页把整句转为关键词或三字段（SearchParseOutcome） |
 | M03-04 | 错误分类 | LlmErrorClassifier：MISSING_CONFIG/AUTH/QUOTA/RATE_LIMIT/MODEL_OR_REQUEST/SERVER/NETWORK/UNKNOWN |
 | M03-05 | 重试 | 可重试错误（限流/服务端/网络）最多 2 次，退避 300ms |
-| M03-06 | 本地降级 | LocalDescriptionParser：句读切分 + 位置动词切地点 + 枚举拆分（保守，防误拆品牌） |
+| M03-06 | 本地降级 | LocalDescriptionParser：句读切分 + 位置动词切地点 + 枚举拆分 + 独立物品边界（保守，防误拆品牌或吞并后续物品） |
 | M03-07 | 清洗 | ParsedItemSanitizer：去首尾引号标点、剥离尾部连接词、丢弃空名称 |
 
 ## 3. 核心流程
@@ -60,13 +60,14 @@
 | 场景 | 层级 | 说明 |
 | --- | --- | --- |
 | 错误分类 | 单元 | LlmErrorClassifierTest（状态码→kind、可重试、脱敏摘要） |
-| 本地规则 | 单元 | LocalDescriptionParserTest（句读/共享地点/枚举/品牌防误拆） |
+| 本地规则 | 单元 | LocalDescriptionParserTest（句读/共享地点/枚举/品牌防误拆/地点后独立物品） |
 | 清洗 | 单元 | ParsedItemSanitizerTest（引号/尾部连接词/空名称丢弃） |
 | 传输故障注入 | 单元 | OkHttpLlmTransport 可被 LlmTransport 假实现替换（见接口注释） |
+| 语音规范化 | 单元 | VoiceTextNormalizerTest（停顿词/重复标点/多物品逗号边界） |
 
 ## 7. 实现定位
 - 代码：`app/src/main/java/com/example/smartstorage/data/remote/llm/`、`di/RemoteModule.kt`
-- 测试：`app/src/test/java/com/example/smartstorage/data/remote/llm/`（3 个测试文件）
+- 测试：`app/src/test/java/com/example/smartstorage/data/remote/llm/`（4 个测试文件）
 - 相关 UI 出口：`presentation/common/AiParseFailedDialog.kt`（M12）
 
 ## 8. 长期决策与待办
@@ -75,6 +76,7 @@
 | --- | --- | --- | --- |
 | v1.1.0 | 错误分类 + 有界重试 + 两出口引导 | 让用户可行动、不静默降级 | LlmErrorClassifier/LlmTransport |
 | v1.1.0 | 本地降级与模型结果统一过 Sanitizer | 行为一致 | ParsedItemSanitizer |
+| T-015 | 地点补语仅在同一地点链内合并；“地点名词 + 里/内/中 + 的 + 独立名词”保留为新物品 | 防止跨物品吞并 | LocalDescriptionParser |
 
 ### 待办 / 待确认
 - [ ] 各预设模型版本随服务商变动需人工核对（见 LlmPreset，M06）
@@ -102,7 +104,9 @@
 - DeepSeek 推荐模型为 `deepseek-flash`；旧别名（`deepseek-v4-flash` / `deepseek-v4-flash-vision-exp`）按已保存配置继续兼容探测，不迁移、不删除 Key/Base URL/自定义模型。
 - 视觉仅使用 OpenAI 兼容接口；文本与视觉失败互不影响。免费模型更新为 Qwen/Qwen3.5-4B。
 
-## 11. T-011：语音文本规范化
+## 11. T-011 / T-015：语音与结果边界
 
 - 模型解析和本地降级共用 `VoiceTextNormalizer`，处理独立停顿词、重复标点和相邻重复短语，不清除否定、数量或位置。
 - 提示词和本地地点链修复共同处理“充电线，放在书桌，第二个抽屉”，仍保持一次逻辑模型调用。
+- `LocalDescriptionParser` 对“地点名词 + 里/内/中 + 的 + 独立名词”的后续子句保持新物品边界，不并入上一件物品地点。
+- `VisionAnalyzer.analyze/verify` 必须保留协程取消语义：`CancellationException` 原样重抛，其他异常仍转换为 `Result.failure`。
