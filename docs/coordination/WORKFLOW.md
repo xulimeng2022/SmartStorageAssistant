@@ -17,7 +17,7 @@
 | 可复用调度逻辑 | `multi-codex-coordinator` Skill 及 references | Skill 维护者 / 用户 |
 | AI Bridge 外部传输协议 | `docs/coordination/AI_BRIDGE.md` + 全局 `ai-bridge` Skill | Coordinator |
 
-Formal Task Card / 现有任务系统是任务生命周期、验收条件和任务结果的主要真相源。Role State 只保存对应 Worktree / Chat 的恢复快照，不替代 Formal Task。
+Formal Task Card / 现有任务系统是任务生命周期、验收条件和任务结果的主要真相源。AI Bridge 是外部任务/状态传输层，不替代 Formal Task、Ownership、Single Writer、永久工作树优先或 Git Gate。Role State 只保存对应 Worktree / Chat 的恢复快照，不替代 Formal Task。
 
 ## 2. Baseline 术语
 
