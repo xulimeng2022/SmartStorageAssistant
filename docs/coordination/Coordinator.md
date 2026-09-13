@@ -12,6 +12,13 @@
 - Allowed Scope: UI 永久工作树执行资源返修；Coordinator 负责集成、Release 构建、文档与验收。
 - Acceptance: foreground 85%；三种 mask 下星光和立方体完整；Debug/Release 构建及正式签名通过；真机视觉待复测。
 
+## Parallel Infrastructure Task
+
+- ID / Title: BRIDGE-INIT-001 AI Bridge V1 Google Drive
+- Status: PARTIAL / WAITING_CHATGPT_CONNECTOR_VERIFICATION
+- Bridge Directory: `G:\我的云端硬盘\AI-Bridge\projects\github.com__xulimeng2022__smartstorageassistant`
+- Local Evidence: `STATUS.md=PARTIAL`、`REPORT.md=PARTIAL`、`BLOCKERS.md=None`；Phase A、去重、错误 ID、项目隔离 PASS。
+- Next Step: 用户在 ChatGPT 中执行 `检查 BRIDGE-TEST-001`，由 Google Drive Connector 读取 REPORT / STATUS / BLOCKERS。
 ## Progress
 
 - Completed: UI 源提交 `e9d37dc`、文档 `59ab246`、Release Handoff `52fb977` 已集成；最终 Release 已覆盖归档。
