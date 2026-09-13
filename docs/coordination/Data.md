@@ -33,7 +33,7 @@
 ## Last Handoff
 
 - Task / Source Branch: T-011 / codex/data
-- Commits: f691a69
+- Commits: f691a69, 7e83c62
 - Summary: 本角色范围已完成并进入 codex/integration，等待独立 Review 与真机验收。
 
 ## Blockers
