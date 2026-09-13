@@ -4,7 +4,10 @@
 
 - 使用方式：开始 Level 2/3 任务前，把 [../05-单任务卡-TDD](../05-单任务卡-TDD.md) 复制为 `T-编号-简短名称.md`，并在 [../04-任务与验收清单](../04-任务与验收清单.md) 登记状态。
 - 任务完成后：把稳定结论回写对应模块文档与 04；任务卡内的实施日志属于短期信息，可保留在 Git 历史，不迁移到长期知识库。
+- 最近完成任务卡：BRIDGE-PLAN-003 Dynamic Thread Naming + Workflow Cost Guardrails（COMPLETED / EXTERNAL_VERIFIED；见 BRIDGE-PLAN-003-Dynamic-Thread-Naming-Workflow-Cost-Guardrails.md）。
 - 最近完成任务卡：T-024 Coordinator 会话与 Worker Thread 生命周期规则落地（COMPLETED / LOCAL_VERIFIED；见 T-024-Coordinator会话与Worker线程生命周期规则.md）。
+- 待执行测试任务：BRIDGE-PLAN-TEST-002 AI Bridge V1.2 Context Lifecycle Test（NOT_STARTED；见 BRIDGE-PLAN-TEST-002-AI-Bridge-V1.2-Context-Lifecycle-Test.md）。
+- 最近完成任务卡：BRIDGE-PLAN-002 AI Bridge V1.2 Plan Mode Context Lifecycle（COMPLETED / EXTERNAL_VERIFIED；见 BRIDGE-PLAN-002-AI-Bridge-V1.2-Plan-Mode-Context-Lifecycle.md）。
 - 最近完成任务卡：T-023 Archify 与 Obsidian 1.1.0→当前知识同步（COMPLETED / LOCAL_VERIFIED；见 T-023-Archify-Obsidian-1.1.0-to-current.md）。
 - 历史完成任务卡：BRIDGE-PLAN-001 AI Bridge V1.1 Plan Handoff（COMPLETED / 本地验证；见 BRIDGE-PLAN-001-AI-Bridge-V1.1-Plan-Handoff.md）。
 - 待执行测试任务卡：BRIDGE-PLAN-TEST-001 Plan Handoff Gate Test（见 BRIDGE-PLAN-TEST-001-Plan-Handoff-Gate-Test.md）。

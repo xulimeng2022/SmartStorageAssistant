@@ -11,8 +11,17 @@
   5. `docs/project/modules/Mxx-*.md`（当前任务对应模块：负责/不负责/代码位置）
   6. `docs/project/04-任务与验收清单.md` 与 `docs/project/tasks/`（当前任务卡，如有）
   7. 需要当前版本 / 测试 / lint / 待验收状态时：`docs/project/PROJECT_STATUS.md`
-  8. 当用户显式发送 `执行 AI Bridge <Task ID>` 或 `重试 AI Bridge <Task ID>` 时：读取 `docs/coordination/AI_BRIDGE.md` 并按全局 `ai-bridge` Skill 执行。
+  8. AI Bridge V1.2 任务：`为 AI Bridge <Task ID> 制定实施计划，暂不执行`、`发布 AI Bridge <Task ID> 计划`、`读取 AI Bridge <Task ID> 计划审核`、`执行 AI Bridge <Task ID>`、`重试 AI Bridge <Task ID>` 时：读取 `docs/coordination/AI_BRIDGE.md` 和全局 `ai-bridge` Skill；恢复上下文时按需读取 Bridge `INDEX.md` 与派生的 `CURRENT-STATE.md`，但执行 Gate 必须直接校验 TASK / PLAN / PLAN_REVIEW / STATUS；Task Size、Plan Revision、Knowledge 与 Review Gate 未满足时不得执行。
 - `docs/reference/ai-project-template/` 是原始通用模板，只作结构/方法论参考，**不是项目事实**，禁止改动。
+- 外部知识库主路径（2026-09-13 迁移验收后）：
+  - Vault 根入口：`D:\Knowledge\Home.md`
+  - 智能收纳助手项目知识：`D:\Knowledge\Projects\智能收纳助手\`
+  - 项目总览：`D:\Knowledge\Projects\开发总览.md`
+  - Android 构建与真机：`D:\Knowledge\Tools\Android 构建与真机.md`
+  - 周报：`D:\Knowledge\Reviews\`
+  - Agent Client / Bridge / 多工作树：`D:\Knowledge\AI-Workflow\`
+- 停止向旧的 `D:\Knowledge\Development\`、`D:\Knowledge\Weekly\` 与旧工具入口路径写入；仅 `docs/project/tasks/T-023-*.md` 和 `docs/project/07-变更与交付确认.md` 中的历史路径保持原貌。
+- 知识工作流：按全局 `knowledge-base` Skill 主动查库；项目委派的 UI/AI/Data Worker 只读不写，在 Handoff 中提供 `Knowledge Candidate`（无则 `none`）；Coordinator 在集成收尾做语义去重并统一归档，记录 `Knowledge Archive`。
 
 ## 协作规则（强制）
 
@@ -95,6 +104,7 @@
 - 任务路由硬规则：项目永久角色任务遵循 `Permanent Worktree > Coordinator Owned Local > Temporary Subagent`；属于 UI / AI / Data Ownership 的开发任务必须先按 WORKFLOW 投递到对应永久工作树，不得因任务较小或 Coordinator 可直接完成而跳过。
 - Coordinator 本地执行仅限自身 Ownership、必要 glue、冲突解决与集成；永久工作树不可用时，模块写操作只有在明确授予临时 Single Writer 后才能由 Coordinator 或 Temporary Subagent 执行，否则生成人工接力卡。
 - 每次永久工作树投递与 fallback 必须记录目标角色、实际 Project / Worktree / Branch、threadId 和结果；永久工作树失败必须记录 `PERMANENT_WORKTREE_FALLBACK`，禁止静默降级或让临时子 Agent 冒充永久角色。
+- Thread Title 只投影当前 Active Task，不是新的真相源；仅在主要 Task / Goal 变化或标题明显无意义时按全局 `multi-codex-coordinator` Skill 更新。
 - 各真相源职责分离，不要求每次全文读取 WORKFLOW。
 - 同一事实在不同真相源冲突时，不自行猜测、覆盖或静默选择；停止相关修改并报告主控（Coordinator）。
 

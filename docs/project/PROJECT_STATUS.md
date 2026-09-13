@@ -4,7 +4,7 @@
 > 写入规则：只有主控 Codex 与 Release 流程可以更新；模块 / Review / 测试 Agent 只读，发现过期信息报告主控。
 > 不承载任务管理（任务卡见 `04-任务与验收清单.md` 与 `tasks/`），不写临时日志与命令输出。
 
-- 最近更新：2026-09-13（v1.2.0 GitHub Release 与 Tag 已正式发布；用户确认此前本轮事项完成；T-024 Coordinator 会话与 Worker Thread 生命周期规则落地；爱发电主页认证尚未通过；用户确认后新增的网盘排序/小字与 README 用户化待办仍未完成；Tag provenance 差异已记录）
+- 最近更新：2026-09-13（v1.2.0 GitHub Release 与 Tag 已正式发布；用户确认此前本轮事项完成；T-024 Coordinator 会话与 Worker Thread 生命周期规则落地；AI Bridge V1.2 与 BRIDGE-PLAN-003 Dynamic Thread Naming / Workflow Cost Guardrails 已外部验收；爱发电主页认证、网盘排序/小字与 README 用户化待办仍未完成；Tag provenance 差异已记录）
 
 ## 当前版本与阶段
 
@@ -45,11 +45,15 @@
 - Single Writer / Cross-module Request / Lightweight Resume / Handoff / Experiment isolation：`DEFINED`。
 - 对话生命周期 / Chat Handoff：`DEFINED（T-024）`；Coordinator 主对话不自动创建，只生成 Chat Handoff 并建议用户手动新开。
 - Worker Thread Reuse + Registry + REUSE-first Routing：`DEFINED（T-024）`；UI / AI / Data 默认复用健康 Worker Thread，NEW 需举证，Registry 只记录线程长期状态。
+- AI Bridge V1.2：`COMPLETED / EXTERNAL_VERIFIED`；INDEX / CURRENT-STATE、Task Size / Risk Floor、Knowledge 指针、Writer 分离与 history 归档已落地；ChatGPT Connector 外部读取 PASS。
+- Dynamic Thread Naming / Workflow Cost Guardrails：`COMPLETED / EXTERNAL_VERIFIED（BRIDGE-PLAN-003）`；Thread Title 只投影 Active Task；无 watcher / polling / 标题专用模型；5 个明确映射线程已纠偏。
 - T-010 Recovery / Backup / Team Migration：`DONE / 已验收 @ codex/integration`。
 - Full Machine Recovery：`NOT VERIFIED`；Legacy dirty recovery：`PENDING SEPARATE DECISION`。
 - Legacy Worktrees `10ba` / `baee`：保持隔离，未修改 dirty 数据。
 
 ## 测试与构建状态
+- BRIDGE-PLAN-003：静态规则一致性、UTF-8 无 BOM、引用与 `git diff --check` PASS；App 业务代码 / Gradle / 数据库 / 版本号 0 变更；Debug / Release NOT RUN（无 App 变更）。
+- BRIDGE-PLAN-002：AI Bridge V1.2 本地静态验证 PASS；App 业务代码 / Gradle / 数据库 / 版本号 0 变更；Debug / Release 构建 NOT RUN（本任务无 App 代码变更）；外部 ChatGPT Connector PENDING。
 
 - T-023：Archify 运行时图与协作图 showcase validate / deliver / Edge visual-check PASS；Obsidian 6 个笔记与 6 个入口同步；App 业务代码、Gradle、版本号 0 变更。
 - RC2 集成后自动验证：22 个测试套件 / 107 个 JVM 单元测试通过；Debug 与 Release/R8 构建通过；v4→v5→v6 迁移 SQL 以隔离 SQLite 数据库验证通过。

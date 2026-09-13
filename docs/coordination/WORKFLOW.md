@@ -15,9 +15,10 @@
 | 正式任务状态、验收与 TDD 记录 | `docs/project/04-任务与验收清单.md`、`docs/project/05-单任务卡-TDD.md`、`docs/project/tasks/` | 主控分配，责任角色更新 |
 | Git 代码、分支、提交事实 | Git branches / commits / worktrees | 执行对应任务的角色 |
 | 可复用调度逻辑 | `multi-codex-coordinator` Skill 及 references | Skill 维护者 / 用户 |
-| AI Bridge 外部传输协议（含 Plan Handoff / Review Gate） | `docs/coordination/AI_BRIDGE.md` + 全局 `ai-bridge` Skill | Coordinator |
+| AI Bridge V1.2 外部传输协议（薄入口 / Plan Gate / Task Size / Knowledge） | `docs/coordination/AI_BRIDGE.md` + 全局 `ai-bridge` Skill | Coordinator |
 
-Formal Task Card / 现有任务系统是任务生命周期、验收条件和任务结果的主要真相源。AI Bridge 是外部任务/状态传输层，不替代 Formal Task、Ownership、Single Writer、永久工作树优先或 Git Gate。Role State 只保存对应 Worktree / Chat 的恢复快照，不替代 Formal Task。 V1.1 Plan Handoff 要求计划先写入 PLAN.md、审核写入 PLAN_REVIEW.md，并在执行前校验 Task ID、Plan Revision、APPROVED 与 AUTHORIZED；APPROVED 不自动执行。
+Formal Task Card / 现有任务系统是任务生命周期、验收条件和任务结果的主要真相源。AI Bridge 是外部任务/状态传输层，不替代 Formal Task、Ownership、Single Writer、永久工作树优先或 Git Gate。Role State 只保存对应 Worktree / Chat 的恢复快照，不替代 Formal Task。
+ V1.2 在此基础上增加 INDEX / CURRENT-STATE 薄入口、Task Size / Risk Floor、Knowledge 指针、可追溯 Writer 与不可变历史快照；CURRENT-STATE 只做派生汇总，执行 Gate 始终读取 TASK / PLAN / PLAN_REVIEW / STATUS 权威文件。
 
 ## 2. Baseline 术语
 
@@ -52,6 +53,8 @@ Formal Task Card / 现有任务系统是任务生命周期、验收条件和任�
 ↓
 读取当前 Formal Task（如有）
 ↓
+确认 Active Task 与 Thread Title 投影是否已同步
+↓
 git status
 ↓
 查看最近相关 commit / Handoff
@@ -64,6 +67,7 @@ git status
 恢复报告至少包含：角色、Branch、Active Task、状态、Working Tree、最近 Handoff、Blocker、建议下一步。
 
 - 输出恢复报告前不得修改业务代码。
+- Active Task 已明确且发生任务级变化时，可按 `multi-codex-coordinator` Skill 至多执行一次 Thread Title 同步；失败不影响 Resume。
 - 如果本角色尚未同步最新 Stable Baseline，先检查 Role State、Formal Task Card、Handoff 和 Git。
 - 无明确原因时，停止并报告主控。
 - 如果已有记录的 Active Task，且主控已明确允许该任务暂时保持旧 Stable Baseline，恢复报告标记 `STALE_BASELINE / AUTHORIZED`，可继续当前任务；不得自行 Resync。
@@ -141,6 +145,13 @@ Multi-Codex 操作状态映射到现有正式任务体系：
 - 例如 Formal Task 为 `READY`、角色尚未实际开始时，Role State 仍可为 `IDLE`。
 - 两者语义不同，但不建立第二套生命周期；Formal Task 仍以现有任务系统为准。
 - Worker Thread Registry 的 `Wait / Block Reason` 复用本节 `BLOCKED` 与“阻断与解除条件”语义；Registry 的 `Health` 只描述线程自身可复用性，不新建第二套状态机。
+
+### Thread Title 投影
+
+- Thread Title 是当前 Active Task / Goal 的 UI 投影，不是 Task、Role State 或 Worker Thread Registry 之外的新真相源。
+- Formal Task 使用 `<Task ID> <短任务名>`；无 Formal Task 时使用 `TMP-<主题>`；仅规划或讨论时使用 `DISCUSS-<主题>`。详细规则见全局 `multi-codex-coordinator` Skill。
+- 仅在 Formal Task 绑定、Active Task ID 改变、主要 Goal 任务级变化、完成后正式承接新 Task、TMP / DISCUSS 升级或标题明显无意义时检查；Active Task 不变则不更新。
+- 可用 app rename action 时，每次任务级切换最多调用一次；失败继续任务，不重试、不轮询、不新增标题专用模型调用。
 
 ## 6. Task 使用方式
 
@@ -314,6 +325,8 @@ Handoff
 - Cross-module Impact:
 - Known Risk:
 - Remaining Work:
+- Knowledge Candidate: none | <Source ID, evidence, suggested topic>
+- Knowledge Archive: updated <paths> | skipped <reason> | pending <reason>
 - Next Consumer:
 ```
 
@@ -515,3 +528,47 @@ Lightweight Resume
 Chat Handoff 最小字段：项目与版本、branch / commit、开发阶段、已完成任务、进行中任务、待办任务、已确认重要决策、已废弃方案、已知问题、工作树状态、重要限制与禁止事项、下一步建议、新对话必读事实源与路径。
 
 Chat 结束不等于必须 commit。WIP checkpoint 是例外，不是默认流程。Chat Handoff 是会话级记录（落 Coordinator Role State），不是 Task Handoff（落 Formal Task Card），也不替代 RECOVERY.md。
+
+## 17. AI Bridge V1.2 Context and Plan Gate
+
+AI Bridge 是 Google Drive 外部传输层，不是第二套任务生命周期。Formal Task、Git、Ownership、Single Writer、永久工作树和本 WORKFLOW 仍是事实源。
+
+### Context Entry
+
+- 新会话按需读取全局 `AI-Bridge/INDEX.md`，再读取项目 `CURRENT-STATE.md`、活动 `TASK.md` 和当前阶段文件。
+- `CURRENT-STATE.md` 是派生快照，不是 Gate 输入。Revision、SHA 或状态不一致时先标记 Stale，再重读权威活动文件、重新执行 Gate，最后重新生成快照。
+- `history/**` 默认只读且不扫描；只在审计、回滚或历史查询时读取。
+
+### Task Size and Risk Floor
+
+- `SMALL`: 低风险、单一 Owner、单一可观察行为，无 contract/schema/安全/Release/跨模块影响。
+- `MEDIUM`: 单模块多文件行为、局部架构或正式计划审核。
+- `LARGE`: 工作流/规则、架构、数据库/Migration、共享 Contract/Schema、多 Worker、Release/Version、安全或高回滚风险。
+- Hard LARGE Trigger 命中时，Minimum Task Size 固定为 LARGE，Plan Requirement 固定为 REQUIRED；不得只修改 Size 字段降级。
+- Size 缺失的新任务默认 `MEDIUM / REQUIRED`；命中 Hard Trigger 时按 LARGE。
+
+### Plan and Review
+
+- Plan Mode 只调研、讨论和生成计划，不写 Bridge。
+- `PLAN.md` 由 Coordinator 在发布命令后写入，Revision 与 Task ID 必须匹配。
+- `PLAN_REVIEW.md` 的 Decision Source 必须是 ChatGPT/User。Coordinator 默认只读；只有用户明确授权代写并给出具体决定时，才可按 `File Writer=Coordinator (delegated)` 忠实持久化。
+- `APPROVED + AUTHORIZED` 不等于执行；必须另有显式执行命令。
+
+### Worker and Knowledge
+
+- Worker 只消费 Coordinator 提供的已批准执行切片，不默认读取完整 Bridge 或历史。
+- Worker 只提交 `Knowledge Candidate`，不直接写 `D:\Knowledge`。
+- Coordinator 按 `knowledge-base` Skill 做语义去重、串行安全写入并在 REPORT 中记录 `updated | unchanged | none | pending`。
+- Bridge 只保存 Knowledge 指针，不复制完整知识正文。
+
+### Compatibility
+
+- V1.0 / V1.1 任务继续可读，原审核和 Revision 不被重写。
+- 旧任务完成、Tag、Release 和 Gate 证据不因 V1.2 升级自动变更。
+- 不引入 MCP、Relay、watcher、polling、daemon 或自动执行。
+
+## 18. Workflow Cost Guardrails
+
+- 工作流新增、修改、自动化或规则升级前，轻量判断 `Time Cost / Performance Cost / Token Cost / Complexity Cost / Expected Benefit`。
+- 默认优先低延迟、低复杂度、低额外推理与低 Token 方案；复用已有状态，不为了自动化程度无条件增加 watcher、daemon、网络请求或模型调用。
+- 小改动一句话或内联说明；Medium / Large 变更才展开。成本判断不是新审批门禁，完整问题清单见全局 `multi-codex-coordinator` Skill reference。
