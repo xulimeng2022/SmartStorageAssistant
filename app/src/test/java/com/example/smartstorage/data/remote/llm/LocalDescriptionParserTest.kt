@@ -120,6 +120,17 @@ class LocalDescriptionParserTest {
     }
 
     @Test
+    fun independentItemAfterLocationIsNotMergedIntoPreviousLocation() {
+        assertEquals(
+            listOf(
+                "充电器" to "柜子里",
+                "抽屉里的钥匙" to "",
+            ),
+            pairs("充电器放在柜子里，抽屉里的钥匙"),
+        )
+    }
+
+    @Test
     fun asrFillersAndDuplicateWordsRemovedWithoutLosingQuantity() {
         assertEquals(
             listOf("一个充电器" to "", "两根数据线" to ""),

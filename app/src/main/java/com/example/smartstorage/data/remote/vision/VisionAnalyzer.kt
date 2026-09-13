@@ -129,7 +129,7 @@ class VisionAnalyzer @Inject constructor(
     }
 
     suspend fun analyze(imageBytes: ByteArray, mimeType: String = "image/jpeg"): Result<VisionAnalysis> =
-        runCatching {
+        runVisionRequest {
             withContext(Dispatchers.IO) {
                 val config = currentConfig()
                 check(config.baseUrl.isNotBlank() && config.modelName.isNotBlank() && config.apiKey.isNotBlank()) {
@@ -149,7 +149,7 @@ class VisionAnalyzer @Inject constructor(
         }
 
     suspend fun verify(question: String, imageBytes: ByteArray, mimeType: String = "image/jpeg"): Result<VisionVerification> =
-        runCatching {
+        runVisionRequest {
             withContext(Dispatchers.IO) {
                 val config = currentConfig()
                 val content = transport.postVisionCompletion(
@@ -200,3 +200,11 @@ class VisionAnalyzer @Inject constructor(
         private const val VERIFY_SYSTEM_PROMPT = "你是视觉搜索候选复核器。只返回 JSON：{\"candidateId\":\"\",\"match\":\"HIGH|MEDIUM|LOW\",\"reason\":{\"zh-Hans\":\"\",\"zh-Hant\":\"\",\"en\":\"\"},\"confidence\":0.0}"
     }
 }
+/** 视觉请求统一 Result 边界：保留协程取消，其他异常按现有失败路径返回。 */
+internal suspend fun <T> runVisionRequest(block: suspend () -> T): Result<T> =
+    try {
+        Result.success(block())
+    } catch (error: Throwable) {
+        if (error is CancellationException) throw error
+        Result.failure(error)
+    }

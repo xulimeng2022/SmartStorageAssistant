@@ -40,6 +40,10 @@ internal object LocalDescriptionParser {
         "抽屉", "柜子", "书桌", "桌子", "架子", "箱子", "盒子", "床", "沙发",
         "厨房", "客厅", "卧室", "书房", "阳台", "卫生间", "玄关", "里面",
     )
+    /** “地点名词 + 里/内/中 + 的 + 独立名词”通常是新物品，不是上一句的地点补语。 */
+    private val LOCATION_OBJECT_REGEX = Regex(
+        "(${LOCATION_NOUNS.joinToString("|") { Regex.escape(it) }})(?:里面|里|内|中|内部)?的.+",
+    )
     /** 品牌复读后缀：右侧以“左侧文本 + 后缀”开头时视为品牌/固定名称，不拆分。 */
     private val BRAND_SUFFIXES = listOf("牌子", "牌", "氏", "家", "的")
 
@@ -91,6 +95,7 @@ internal object LocalDescriptionParser {
         val text = stripLeadingConnectors(clause)
         // 含“在/放到…”的完整子句是新物品描述，不是上一句的地点补语。
         if (findLocationSplit(text) != null) return false
+        if (LOCATION_OBJECT_REGEX.containsMatchIn(text)) return false
         if (text.startsWith("第")) return true
         return text.length <= 12 && LOCATION_NOUNS.any(text::contains)
     }

@@ -42,12 +42,20 @@ class ImageIndexWorker @AssistedInject constructor(
                 val row = indexRepository.getQueued().firstOrNull() ?: break
                 val file = File(row.imagePath)
                 if (!file.exists()) {
-                    indexRepository.markFailed(
-                        path = row.imagePath,
-                        generation = row.generation,
-                        hash = null,
-                        errorKind = "FILE_MISSING",
+                    val handled = failMissingImageFile(
+                        claimProcessing = {
+                            indexRepository.markProcessing(row.imagePath, row.generation)
+                        },
+                        markFailed = {
+                            indexRepository.markFailed(
+                                path = row.imagePath,
+                                generation = row.generation,
+                                hash = null,
+                                errorKind = "FILE_MISSING",
+                            )
+                        },
                     )
+                    if (!handled) break
                     processed++
                     setProgress(workDataOf(KEY_PROGRESS to processed))
                     continue
@@ -95,4 +103,12 @@ class ImageIndexWorker @AssistedInject constructor(
     companion object {
         const val KEY_PROGRESS = "progress"
     }
+}
+/** 缺失图片先合法抢占，再标失败；并发变化时让本轮安全退出。 */
+internal suspend fun failMissingImageFile(
+    claimProcessing: suspend () -> Boolean,
+    markFailed: suspend () -> Boolean,
+): Boolean {
+    if (!claimProcessing()) return false
+    return markFailed()
 }
