@@ -8,7 +8,7 @@
 - Source Branch: `codex/integration`
 - Contract Change: 新增全局 `ai-bridge` Skill；项目仓库增加 AI Bridge 指针与最小规则链接，不改 App contract
 - Cross-module Request: UI / AI / Data 均不直接写 Bridge；继续通过 Coordinator Handoff
-- Execution Order: Google Drive 安装与登录 → bootstrap 唯一路径发现 → 全局 Skill 验证 → Google Drive Bridge 文件 → 仓库指针与规则 → BRIDGE-TEST-001 Phase A → ChatGPT Connector Phase B
+- Execution Order: Google Drive 安装与登录 → bootstrap 唯一路径发现 → 全局 Skill 验证 → Google Drive Bridge 文件 → 仓库指针与规则 → BRIDGE-TEST-001 Phase A/B → Git 验证
 - Handoff Target: 主控（Coordinator）
 
 ## Task Boundary
@@ -28,32 +28,24 @@
 - [x] 全局 `ai-bridge` Skill 结构、模板和静态检查通过；`quick_validate.py` 因 Python 缺少 `PyYAML` 未运行，未安装新依赖。
 - [x] 已建立 `docs/coordination/AI_BRIDGE.md` 和最小 AGENTS / WORKFLOW 入口。
 - [x] `BRIDGE-TEST-001` Phase A 通过：本地读写、状态转换、REPORT、BLOCKERS、Git 验证。
-- [ ] `BRIDGE-TEST-001` Phase B：ChatGPT Connector 外部读取 REPORT / STATUS / BLOCKERS。
+- [x] `BRIDGE-TEST-001` Phase B：ChatGPT Connector 外部读取 REPORT / STATUS / BLOCKERS / TASK 通过。
 - [x] 去重、错误 ID、项目隔离测试通过。
+- [x] COMPLETED 状态最终去重测试通过，重复执行未产生文件变化。
 - [x] 不 Push、不 Tag、不 Release、不修改 App / CC Switch / DeepSeek。
 
-## Current State
+## Final State
 
-- Status: `PARTIAL / WAITING_CHATGPT_CONNECTOR_VERIFICATION`
-- Google Drive: installed and signed in; mounted at `G:\我的云端硬盘`.
-- Bootstrap: `_bootstrap_7f3c9a` unique candidate found and removed after confirmation.
-- Google Drive Bridge:
-  `G:\我的云端硬盘\AI-Bridge\projects\github.com__xulimeng2022__smartstorageassistant`
-- `STATUS.md`: `PARTIAL`.
-- `REPORT.md`: `PARTIAL`; Coordinator-side local read/write verification passed.
-- `BLOCKERS.md`: `None`.
+- Status: `COMPLETED / EXTERNAL_VERIFIED`
+- Google Drive Sync Root: `G:\我的云端硬盘`
+- Project Bridge Directory: `G:\我的云端硬盘\AI-Bridge\projects\github.com__xulimeng2022__smartstorageassistant`
+- `STATUS.md`: `COMPLETED`
+- `REPORT.md`: `COMPLETED`
+- `BLOCKERS.md`: `None`
+- External result: ChatGPT Connector successfully read TASK / STATUS / REPORT / BLOCKERS.
+- Final loop: `ChatGPT ↔ Google Drive ↔ Google Drive for Desktop ↔ Coordinator` PASS.
 - Global Skill: `C:\Users\XU\.codex\skills\ai-bridge`.
 - Repository pointer: `docs/coordination/AI_BRIDGE.md`.
-- App / CC Switch / DeepSeek: 未修改。
-
-## Remaining External Action
-
-1. 回到 ChatGPT，使用 Google Drive Connector 读取：
-   - `REPORT.md`
-   - `STATUS.md`
-   - `BLOCKERS.md`
-2. 返回当前 ChatGPT 的真实读取结果。
-3. 只有外部读取成功，才把 `BRIDGE-TEST-001` 标记为 `COMPLETED`。
+- App / CC Switch / DeepSeek: unchanged.
 
 ## Rollback
 
@@ -68,8 +60,9 @@
 - 2026-09-13：Google Drive for Desktop 安装并登录；唯一 bootstrap 命中后确认实际同步路径。
 - 2026-09-13：创建 Bridge README、项目目录和五个普通 Markdown 文件。
 - 2026-09-13：建立项目指针和最小 AGENTS / WORKFLOW 链接。
-- 2026-09-13：`BRIDGE-TEST-001` Phase A PASS；去重、错误 ID、项目隔离测试 PASS；STATUS/REPORT 保持 PARTIAL。
-- Repository Commits: `ec66492`、`a271852`、`6e0cd49`、`9e8e971`、`0ef92ed`、`e3cc155`、`4c196e6`。
+- 2026-09-13：`BRIDGE-TEST-001` Phase A PASS；去重、错误 ID、项目隔离测试 PASS。
+- 2026-09-13：ChatGPT Connector 外部读取验收 PASS；STATUS / REPORT 更新为 COMPLETED；最终去重 PASS。
+- Repository Commits: `ec66492`、`a271852`、`6e0cd49`、`9e8e971`、`0ef92ed`、`e3cc155`、`4c196e6`、`ad520d9`、`9109898`。
 
 ## Fallback Record
 

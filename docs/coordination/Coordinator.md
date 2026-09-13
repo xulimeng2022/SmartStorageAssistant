@@ -15,10 +15,10 @@
 ## Parallel Infrastructure Task
 
 - ID / Title: BRIDGE-INIT-001 AI Bridge V1 Google Drive
-- Status: PARTIAL / WAITING_CHATGPT_CONNECTOR_VERIFICATION
+- Status: COMPLETED / EXTERNAL_VERIFIED
 - Bridge Directory: `G:\我的云端硬盘\AI-Bridge\projects\github.com__xulimeng2022__smartstorageassistant`
-- Local Evidence: `STATUS.md=PARTIAL`、`REPORT.md=PARTIAL`、`BLOCKERS.md=None`；Phase A、去重、错误 ID、项目隔离 PASS。
-- Next Step: 用户在 ChatGPT 中执行 `检查 BRIDGE-TEST-001`，由 Google Drive Connector 读取 REPORT / STATUS / BLOCKERS。
+- Local Evidence: `STATUS.md=COMPLETED`、`REPORT.md=COMPLETED`、`BLOCKERS.md=None`；Phase A/B、最终去重、错误 ID、项目隔离与 ChatGPT Connector 外部读取 PASS。
+- Next Step: None；V1 通信闭环已完成，后续使用新的显式 Task ID。
 ## Progress
 
 - Completed: UI 源提交 `e9d37dc`、文档 `59ab246`、Release Handoff `52fb977` 已集成；最终 Release 已覆盖归档。
