@@ -28,7 +28,7 @@
 - Resource：`:app:processDebugResources` PASS（集成分支）。
 - Debug：`:app:assembleDebug` PASS（集成分支）。
 - Mask 预演：圆形 / 圆角矩形 / Squircle 下星光完整，立方体不裁切，无双层圆角。
-- Release：本轮未构建；现有 `app/release/智能收纳助手-1.2.0.apk` 不含 T-022 返修，不可用于最终图标验收。
+- Release：`:app:assembleRelease` PASS；`app/release/智能收纳助手-1.2.0.apk` 已更新为 T-022 返修包，v2+v3 正式签名通过。
 - Android 真机：NOT VERIFIED，需用户重新安装新 Debug 构建复测。
 
 ## Last Handoff
@@ -45,4 +45,4 @@
 
 ## Next Step
 
-- 用户安装新的 Debug 构建复测 Launcher、Round / Squircle、Splash、应用信息与最近任务；通过前不重建 Release。
+- 用户安装 `app/release/智能收纳助手-1.2.0.apk` 复测 Launcher、Round / Squircle、Splash、应用信息与最近任务；通过前不 Push / Tag / 外部发布。
