@@ -5,17 +5,17 @@
 
 ## Current Task
 
-- ID / Title: T-011 v1.2.0 历史问题与 A1–A8 收口
-- Status: READY_FOR_INTEGRATION
+- ID / Title: T-014 UI T-013 缺陷返修
+- Status: COMPLETE
 - Risk: High
-- Goal: 完成 1.2.0 历史阻塞与 A1–A8 中本角色职责范围。
-- Allowed Scope: 单图索引 UI、批量合并预览、邮箱、检查更新、完全删除界面、三语资源
-- Acceptance: JVM 测试、Debug/Release 构建、三语资源回归通过
-- Task Card: docs/project/tasks/T-011-v1.2.0历史问题与A1-A8收口.md
+- Goal: 修复 T-013 UI 核验确认的重复弹窗、单图索引误删除、关闭图片理解后继续上传及邮箱兜底本地化问题。
+- Allowed Scope: `presentation/**`、UI 资源、UI 测试
+- Acceptance: UI-1 至 UI-4 实现；JVM 测试与 Debug/Release 构建通过；真机行为另行验收。
+- Task Card: docs/project/tasks/T-014-UI-T013缺陷返修.md
 
 ## Progress
 
-- Completed: 本角色实现已提交并同步至 codex/integration；主控集成测试通过。
+- Completed: T-014 已完成并由 Coordinator cherry-pick 到 `codex/integration`；UI 角色恢复快照已更新。
 - In Progress: None
 
 ## Working Tree
@@ -25,16 +25,16 @@
 
 ## Validation
 
-- Integration JVM: 78 tests PASS
-- Debug / Release Build: PASS
-- Migration SQL: PASS
+- Integration JVM: 99 tests PASS（Coordinator 核验）
+- Debug / Release Build: PASS（Coordinator 核验）
+- T-014 targeted: PhotoIndexUiStateTest / HomeVisualVerificationPolicyTest / LocalizationRegressionTest PASS（`9afd50c` 叠加验证）
 - Android instrumentation / real device: NOT RUN
 
 ## Last Handoff
 
-- Task / Source Branch: T-011 / codex/ui
-- Commits: 9d98e1d, 6cccb62, 0707743, ec179f9
-- Summary: 本角色范围已完成并进入 codex/integration，等待独立 Review 与真机验收。
+- Task / Source Branch: T-014 / codex/ui
+- Commits: source `4b00bee`; integrated cherry-pick `58679dc`
+- Summary: UI-1 至 UI-4 已完成并集成；M08/M10/M11 已同步长期行为事实，等待真机验收。
 
 ## Blockers
 
@@ -42,4 +42,4 @@
 
 ## Next Step
 
-- 等待主控安排独立 Review / Test；真机验收前保持 READY_FOR_INTEGRATION。
+- 保持 IDLE，等待用户真机验收或 Coordinator 分配新任务。
