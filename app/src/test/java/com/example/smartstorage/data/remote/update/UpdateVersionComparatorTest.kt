@@ -16,5 +16,6 @@ class UpdateVersionComparatorTest {
     fun vPrefixAcceptedAndPrereleaseRejected() {
         assertTrue(UpdateVersionComparator.parse("v2.0.1") != null)
         assertNull(UpdateVersionComparator.parse("v2.0.1-rc1"))
+        assertNull(UpdateVersionComparator.parse("v999999999999999999999.0.0"))
     }
 }

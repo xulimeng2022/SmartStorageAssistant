@@ -19,8 +19,10 @@ sealed interface UpdateCheckResult {
 object UpdateVersionComparator {
     private val stableVersion = Regex("^v?(\\d+)\\.(\\d+)\\.(\\d+)$")
 
-    fun parse(version: String): List<Int>? =
-        stableVersion.matchEntire(version.trim())?.groupValues?.drop(1)?.mapNotNull(String::toIntOrNull)
+    fun parse(version: String): List<Int>? {
+        val parts = stableVersion.matchEntire(version.trim())?.groupValues?.drop(1) ?: return null
+        return parts.map { it.toIntOrNull() ?: return null }
+    }
 
     fun isNewer(candidate: String, current: String): Boolean? {
         val left = parse(candidate) ?: return null
