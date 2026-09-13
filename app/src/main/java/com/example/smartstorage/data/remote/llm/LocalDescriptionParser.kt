@@ -35,12 +35,17 @@ internal object LocalDescriptionParser {
     /** 子句开头的顺承连接词 / 宾语提前标记（“还有/以及/请把/把…”），切句后剥离。 */
     private val LEADING_CONNECTORS = listOf("请把", "请将", "还有", "以及", "然后", "接着", "另外", "把", "将", "请")
 
+    /** 常见地点名词，仅用于判断逗号后的地点补语是否应与前句合并。 */
+    private val LOCATION_NOUNS = listOf(
+        "抽屉", "柜子", "书桌", "桌子", "架子", "箱子", "盒子", "床", "沙发",
+        "厨房", "客厅", "卧室", "书房", "阳台", "卫生间", "玄关", "里面",
+    )
     /** 品牌复读后缀：右侧以“左侧文本 + 后缀”开头时视为品牌/固定名称，不拆分。 */
     private val BRAND_SUFFIXES = listOf("牌子", "牌", "氏", "家", "的")
 
     /** 解析整段口语描述，返回 0~N 条（结果建议再经 [ParsedItemSanitizer] 清洗）。 */
     fun parse(rawText: String): List<ParsedItem> {
-        val text = rawText.trim()
+        val text = repairPauseSeparatedLocation(rawText.trim())
         if (text.isEmpty()) return emptyList()
         val result = mutableListOf<ParsedItem>()
         text.split(CLAUSE_SPLIT_REGEX)
@@ -50,6 +55,43 @@ internal object LocalDescriptionParser {
         return result
     }
 
+    /**
+     * 语音输入常把同一地点链用逗号拆开，例如“充电线，放在书桌，第二个抽屉”。
+     * 仅在后续片段明确是位置动词/位置补语时与前句合并，避免把“一个充电器，两根数据线”误合。
+     */
+    private fun repairPauseSeparatedLocation(text: String): String {
+        if (!text.contains(',') && !text.contains('，')) return text
+        val clauses = text.split(CLAUSE_SPLIT_REGEX).map(String::trim).filter(String::isNotEmpty)
+        if (clauses.size < 2) return text
+        val merged = mutableListOf<String>()
+        clauses.forEach { clause ->
+            if (merged.isNotEmpty() && isLocationVerbClause(clause) && findLocationSplit(merged.last()) == null) {
+                merged[merged.lastIndex] = merged.last() + clause
+            } else if (
+                merged.isNotEmpty() &&
+                isLocationContinuation(clause) &&
+                findLocationSplit(merged.last()) != null
+            ) {
+                merged[merged.lastIndex] = merged.last() + clause
+            } else {
+                merged += clause
+            }
+        }
+        return merged.joinToString("，")
+    }
+
+    /** 片段是否以位置动词开头。 */
+    private fun isLocationVerbClause(clause: String): Boolean {
+        val text = stripLeadingConnectors(clause)
+        return MULTI_CHAR_VERBS.any(text::startsWith) || text.startsWith("在")
+    }
+
+    /** 片段是否像地点补语（序数或常见位置名词）。 */
+    private fun isLocationContinuation(clause: String): Boolean {
+        val text = stripLeadingConnectors(clause)
+        if (text.startsWith("第")) return true
+        return LOCATION_NOUNS.any(text::contains)
+    }
     /** 解析单个子句并把结果追加到 [out]。 */
     private fun parseClause(clause: String, out: MutableList<ParsedItem>) {
         if (clause.isEmpty()) return

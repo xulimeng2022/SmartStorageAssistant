@@ -86,6 +86,7 @@ class LlmClient @Inject constructor(
      * @return 结构化物品字段；配置缺失或调用失败时返回 null（调用方降级处理）。
      */
     suspend fun parseItem(rawText: String): ParsedItem? = withContext(Dispatchers.IO) {
+        val normalizedText = VoiceTextNormalizer.normalize(rawText)
         val systemPrompt = """
             你是一个物品收纳专家。请从用户输入的文本中提取物品名称（name）、存放地点（location）和描述（description）。
             要求：
@@ -94,7 +95,7 @@ class LlmClient @Inject constructor(
             - 如果某个字段无法提取，设为空字符串
             - 必须返回完整的 JSON 对象，以 { 开头，以 } 结尾
         """.trimIndent()
-        val parsed = chatCompletion(systemPrompt, rawText)?.let { parseJsonContent(it) }
+        val parsed = chatCompletion(systemPrompt, normalizedText)?.let { parseJsonContent(it) }
         ParsedItemSanitizer.sanitize(parsed ?: return@withContext null)
     }
 
@@ -109,10 +110,11 @@ class LlmClient @Inject constructor(
      * 免费模式超时会抛出 [LlmTimeoutException]，由调用方（UI）弹出“解析超时”引导。
      */
     suspend fun parseItems(rawText: String): ParseItemsResult = withContext(Dispatchers.IO) {
+        val normalizedText = VoiceTextNormalizer.normalize(rawText)
         var source = ParseSource.MODEL
         var warning: LlmErrorKind? = null
         val modelItems: List<ParsedItem> = try {
-            val call = chatCompletionCore(buildBatchSystemPrompt(), rawText, maxTokens = BATCH_MAX_TOKENS)
+            val call = chatCompletionCore(buildBatchSystemPrompt(), normalizedText, maxTokens = BATCH_MAX_TOKENS)
             if (call.error != null) {
                 // 模型调用失败：回退本地并记录类型化原因（显示层按当前语言渲染）
                 source = ParseSource.LOCAL_FALLBACK
@@ -147,7 +149,7 @@ class LlmClient @Inject constructor(
             ParseItemsResult(items = modelItems, source = ParseSource.MODEL, warning = null)
         } else {
             // 本地兜底解析：与模型结果走同一套清洗逻辑，保证两条路径行为一致
-            val localItems = ParsedItemSanitizer.sanitizeAll(LocalDescriptionParser.parse(rawText))
+            val localItems = ParsedItemSanitizer.sanitizeAll(LocalDescriptionParser.parse(normalizedText))
             ParseItemsResult(items = localItems, source = source, warning = warning)
         }
     }
@@ -159,8 +161,9 @@ class LlmClient @Inject constructor(
      * [ParseSource.LOCAL_FALLBACK]，是否以及如何提示由调用方决定。
      */
     suspend fun parseItemsLocal(rawText: String): ParseItemsResult = withContext(Dispatchers.IO) {
+        val normalizedText = VoiceTextNormalizer.normalize(rawText)
         ParseItemsResult(
-            items = ParsedItemSanitizer.sanitizeAll(LocalDescriptionParser.parse(rawText)),
+            items = ParsedItemSanitizer.sanitizeAll(LocalDescriptionParser.parse(normalizedText)),
             source = ParseSource.LOCAL_FALLBACK,
             warning = null,
         )
@@ -183,6 +186,9 @@ class LlmClient @Inject constructor(
         7. 不精确数量词只输出一条，不要把“一堆”等当作数量虚构多条或虚构确切数量；
            “一堆消毒液试用装在左下抽屉里”→ 一条，数量词“一堆”保留在 name 或 description 中。
         8. 用户没有说地点时 location 设为空字符串（如“雨衣和拖鞋”→ 两条，location 均为空），不要编造地点。
+        9. 语音转文字可能插入多余逗号、停顿词或重复词；标点不一定代表物品边界。
+           如“充电线，放在书桌，第二个抽屉”应合并为一条：name=“充电线”，location=“书桌第二个抽屉”。
+        10. 保留明确的否定、数量和位置关系，不得为了通顺凭空补写或删除事实。
     """.trimIndent()
 
     /**
@@ -229,6 +235,12 @@ class LlmClient @Inject constructor(
             } else {
                 val parsed = result.content?.let(::parseJsonContent)
                 if (parsed == null) {
+                    SearchParseOutcome.Failed(timedOut = false)
+                } else if (
+                    parsed.name.isBlank() &&
+                    parsed.location.isBlank() &&
+                    parsed.description.isBlank()
+                ) {
                     SearchParseOutcome.Failed(timedOut = false)
                 } else {
                     SearchParseOutcome.Fields(parsed.name, parsed.location, parsed.description)

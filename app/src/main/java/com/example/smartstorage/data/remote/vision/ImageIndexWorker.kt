@@ -5,7 +5,6 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.example.smartstorage.data.local.prefs.ImageIndexJobState
 import com.example.smartstorage.data.local.prefs.ImageUnderstandingRepository
 import com.example.smartstorage.data.local.prefs.VisionCapabilityStatus
 import com.example.smartstorage.data.remote.llm.LlmRequestException
@@ -13,6 +12,8 @@ import com.example.smartstorage.data.repository.ImageAiIndexRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @HiltWorker
@@ -25,36 +26,37 @@ class ImageIndexWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
-        val state = understandingRepository.state.value
-        if (!state.enabled || state.capability != VisionCapabilityStatus.SUPPORTED) {
-            return Result.success()
-        }
         return try {
             indexRepository.reconcileActiveItems()
-            val queued = indexRepository.getQueued()
-            if (queued.isEmpty()) return Result.success()
             var processed = 0
-            queued.forEach { row ->
+            while (true) {
                 if (isStopped) throw CancellationException("图片索引任务已取消")
-                val current = understandingRepository.state.value
-                if (!current.enabled || current.capability != VisionCapabilityStatus.SUPPORTED) {
+                val state = understandingRepository.state.value
+                if (!state.enabled || state.capability != VisionCapabilityStatus.SUPPORTED) {
                     return Result.success()
                 }
+                val row = indexRepository.getQueued().firstOrNull() ?: break
                 val file = File(row.imagePath)
                 if (!file.exists()) {
-                    indexRepository.markFailed(row.imagePath, null, "FILE_MISSING")
+                    indexRepository.markFailed(
+                        path = row.imagePath,
+                        generation = row.generation,
+                        hash = null,
+                        errorKind = "FILE_MISSING",
+                    )
                     processed++
-                    setProgress(workDataOf(KEY_PROGRESS to processed, KEY_TOTAL to queued.size))
-                    return@forEach
+                    setProgress(workDataOf(KEY_PROGRESS to processed))
+                    continue
                 }
-                indexRepository.markProcessing(row.imagePath)
-                val bytes = file.readBytes()
+                if (!indexRepository.markProcessing(row.imagePath, row.generation)) continue
+                val bytes = withContext(Dispatchers.IO) { file.readBytes() }
                 val hash = indexRepository.sha256(bytes)
                 visionAnalyzer.analyze(bytes, mimeTypeFor(row.imagePath))
                     .onSuccess { analysis ->
                         val config = visionAnalyzer.currentConfig()
                         indexRepository.saveSuccess(
                             path = row.imagePath,
+                            generation = row.generation,
                             hash = hash,
                             analysis = analysis,
                             provider = config.provider,
@@ -63,10 +65,15 @@ class ImageIndexWorker @AssistedInject constructor(
                     }
                     .onFailure { error ->
                         val kind = (error as? LlmRequestException)?.kind?.name ?: "UNKNOWN"
-                        indexRepository.markFailed(row.imagePath, hash, kind)
+                        indexRepository.markFailed(
+                            path = row.imagePath,
+                            generation = row.generation,
+                            hash = hash,
+                            errorKind = kind,
+                        )
                     }
                 processed++
-                setProgress(workDataOf(KEY_PROGRESS to processed, KEY_TOTAL to queued.size))
+                setProgress(workDataOf(KEY_PROGRESS to processed))
             }
             Result.success()
         } catch (e: CancellationException) {
@@ -83,6 +90,5 @@ class ImageIndexWorker @AssistedInject constructor(
 
     companion object {
         const val KEY_PROGRESS = "progress"
-        const val KEY_TOTAL = "total"
     }
 }

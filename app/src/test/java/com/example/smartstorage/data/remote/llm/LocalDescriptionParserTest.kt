@@ -112,6 +112,29 @@ class LocalDescriptionParserTest {
     }
 
     @Test
+    fun asrCommaLocationChainKeptAsSingleItem() {
+        assertEquals(
+            listOf("充电线" to "书桌第二个抽屉"),
+            pairs("充电线，放在书桌，第二个抽屉"),
+        )
+    }
+
+    @Test
+    fun asrFillersAndDuplicateWordsRemovedWithoutLosingQuantity() {
+        assertEquals(
+            listOf("一个充电器" to "", "两根数据线" to ""),
+            pairs("一个充电器，那个，两根数据线"),
+        )
+    }
+
+    @Test
+    fun negationAndQuantityPreserved() {
+        assertEquals(
+            listOf("没有放在抽屉里的充电器" to "柜子里"),
+            pairs("没有放在抽屉里的充电器，是在柜子里"),
+        )
+    }
+    @Test
     fun emptyInputReturnsEmpty() {
         assertEquals(emptyList<Pair<String, String>>(), pairs("   "))
     }

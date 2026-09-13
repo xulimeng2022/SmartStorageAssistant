@@ -53,6 +53,36 @@ class ImageIndexingCoordinator @Inject constructor(
         understandingRepository.setJobState(ImageIndexJobState.IDLE)
     }
 
+    /** 用户明确请求单图索引；未开启/不支持时不做网络请求。 */
+    suspend fun requestIndex(itemId: Long, path: String): Boolean {
+        val state = understandingRepository.state.value
+        if (!state.enabled || state.capability != VisionCapabilityStatus.SUPPORTED) return false
+        val changed = indexRepository.requestIndex(itemId, path)
+        if (changed) {
+            understandingRepository.setJobState(ImageIndexJobState.ACTIVE)
+            enqueue()
+        }
+        return changed
+    }
+
+    /** 用户明确删除单图索引；保留墓碑，旧 Worker 由 generation 拦截。 */
+    suspend fun disableIndex(path: String): Boolean = indexRepository.disableIndex(path)
+
+    /** 保存/编辑后同步图片索引状态；仅对用户选中的照片发起分析。 */
+    suspend fun syncItemImages(itemId: Long, paths: List<String>, requestedPaths: Set<String>) {
+        val state = understandingRepository.state.value
+        val allowed = if (state.enabled && state.capability == VisionCapabilityStatus.SUPPORTED) {
+            requestedPaths
+        } else {
+            emptySet()
+        }
+        indexRepository.syncItemImages(itemId, paths, allowed)
+        if (allowed.isNotEmpty()) {
+            understandingRepository.setJobState(ImageIndexJobState.ACTIVE)
+            enqueue()
+        }
+    }
+
     suspend fun onNewImagesSaved() {
         if (!understandingRepository.state.value.enabled) return
         if (understandingRepository.state.value.jobState == ImageIndexJobState.IDLE) {
@@ -71,7 +101,7 @@ class ImageIndexingCoordinator @Inject constructor(
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(
             WORK_NAME,
-            ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
             request,
         )
     }
