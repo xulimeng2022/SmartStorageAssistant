@@ -23,6 +23,17 @@
 - State: Clean
 - Changed: None
 
+## Worker Thread Registry
+
+轻量 Worker Thread 登记表，供 Coordinator 投递前判断哪个已有健康线程对当前 Task 的上下文价值最高。只登记线程长期状态；**Formal Task 的 Thread Decision 唯一真相源是该 Task Card**，本表不重复记录 REUSE / NEW。Writer：本角色（Single Writer 不变）。
+
+| Role | Worktree / Project | Thread ID | Domain | Health | Wait / Block Reason | Last Task | Last Active | Handoff Reference |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| AI | `C:\Users\XU\.codex\worktrees\ae14\智能收纳助手` / `codex/ai` | `01a098ef-0cdf-7d92-abff-368e1822b54b` | Vision / Parser 与索引缺陷返修（T-013） | UNKNOWN（历史 Task Card 记录，尚未 Resume 验证） | NONE | T-015 | 未记录 | `tasks/T-015-AI-T013缺陷返修.md` |
+
+- 初始条目来自已发布的 Formal Task Card 记录（threadId 为历史事实）；Health 一律标记 `UNKNOWN`，待本角色下次 Resume / Handoff 时核实并更新。
+- `Wait / Block Reason` 复用 [WORKFLOW.md](WORKFLOW.md) 第 5 节的 `BLOCKED` 与阻断 / 解除条件语义，不新建状态机；外部依赖型等待不代表线程不健康。
+
 ## Validation
 
 - AI 分支 ASCII 基线验证：JVM 86 tests PASS；Debug build PASS

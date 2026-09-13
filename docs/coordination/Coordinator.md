@@ -5,53 +5,62 @@
 
 ## Current Task
 
-- ID / Title: T-022 UI 1.2.0 App 图标安全区返修
-- Status: FINAL_RELEASE_PACKAGE_BUILT / DEVICE_VISUAL_PENDING
-- Risk: Low
-- Goal: 保持现有蓝紫渐变与立方体/星光设计不变，仅把透明 foreground 缩小到原视觉约 85%，进入 Adaptive Icon 安全区。
-- Allowed Scope: UI 永久工作树执行资源返修；Coordinator 负责集成、Release 构建、文档与验收。
-- Acceptance: foreground 85%；三种 mask 下星光和立方体完整；Debug/Release 构建及正式签名通过；真机视觉待复测。
-
-## Parallel Infrastructure Task
-
-- ID / Title: BRIDGE-PLAN-001 AI Bridge V1.1 Plan Handoff
+- ID / Title: T-024 Coordinator 会话与 Worker Thread 生命周期规则落地
 - Status: COMPLETED / LOCAL_VERIFIED
-- Plan: `Plan Revision=2`，PLAN_REVIEW `APPROVED + AUTHORIZED`；批准只绑定 Revision 2。
-- Delivered: 全局 ai-bridge Skill 增加 PLAN/PLAN_REVIEW、Plan Revision 绑定与执行 Review Gate；Bridge README 更新为 7 文件；项目指针 / AGENTS / WORKFLOW 最小规则更新。
-- Local Evidence: Skill 结构、7 文件 Single Writer、Gate 字段、bootstrap 保护、旧字段策略检查 PASS；App 业务代码 0 变更。
-- Pending External: ChatGPT Connector 对 V1.1 新文件的外部读取确认。
-- Next Step: `BRIDGE-PLAN-TEST-001`；ChatGPT/User 将 TASK.md 切换到测试任务后执行 A-F Gate 测试。
-- Previous: BRIDGE-INIT-001 AI Bridge V1（COMPLETED / EXTERNAL_VERIFIED）。
+- Risk: Low
+- Goal: 固化 Coordinator 对话生命周期与 Worker Thread REUSE-first 规则，替换「新 Task ID → 新建线程」旧默认。
+- Allowed Scope: 全局 `multi-codex-coordinator` Skill、`docs/coordination/**`、`docs/project/**` 协调与任务文档。
+- Acceptance: Skill 与 WORKFLOW 口径一致；8 处旧默认替换；UI / AI / Data Role State 建立 Worker Thread Registry；App 业务代码 0 变更。
+- Task Card: `docs/project/tasks/T-024-Coordinator会话与Worker线程生命周期规则.md`
+
+## Previous Tasks
+
+- T-023 Archify 与 Obsidian 1.1.0→当前知识同步：COMPLETED / LOCAL_VERIFIED；两张 Archify 图与 Obsidian 6 个笔记/入口同步，App 代码 0 变更。
+- T-022 UI 1.2.0 App 图标安全区返修：用户于 2026-09-13 确认本轮完成；最终 Release APK SHA-256 `1C080AEC567814A314868DBD44F8B3A1CDE0CA42BFBEE326E3A41917B7C2A854`。
+- BRIDGE-PLAN-001：COMPLETED / LOCAL_VERIFIED。
+- BRIDGE-PLAN-TEST-001：内容和证据保留，暂不执行 A-F Gate 测试。
+
+## Chat Handoff
+
+- 会话级交接（切换 Coordinator 主对话时使用）：当前阶段、已完成、进行中、待办、已确认重要决策、已废弃方案、已知问题、工作树状态、限制与禁止事项、下一步建议、必读事实源。
+- 已确认决策：Coordinator Chat 生命周期与 Worker Thread 路由是两套不同机制；主对话只生成 Chat Handoff 并建议用户手动新开，不自动创建；Worker Thread 默认 REUSE，NEW 需举证。
+- 已废弃方案：`新 Task ID → 新建线程` 的旧默认（替换清单见 T-024 任务卡）。
+- 必读事实源：`AGENTS.md`、`docs/coordination/WORKFLOW.md`（§3 / §6 / §16）、`docs/coordination/OWNERSHIP.md`、`docs/project/PROJECT_STATUS.md`、本文件。
+- 下一步建议：无新任务时保持 IDLE；进入下一阶段前按 WORKFLOW §16 判断是继续当前对话还是生成 Chat Handoff。
+
+## 投递日志
+
+- T-024 由 Coordinator Owned Local 执行：无永久角色 Worker Thread 投递；全局 Skill 写入为一次性用户授权操作（仓库外，不入 Git）。
+- Worker Thread 复用 / 新建的判定与证据记录在各 Formal Task Card（唯一任务级真相源）；`UI.md` / `AI.md` / `Data.md` 的 Worker Thread Registry 只记录线程长期状态。
+- 最近一次永久工作树投递：T-014 UI / T-015 AI / T-016 Data（历史记录，详见各 Task Card）。
 
 ## Progress
 
-- Completed: UI 源提交 `e9d37dc`、文档 `59ab246`、Release Handoff `52fb977` 已集成；最终 Release 已覆盖归档。
-- In Progress: 等待用户安装 T-022 Release APK 复测 Launcher、Round / Squircle、Splash、应用信息与最近任务。
+- Completed: 全局 Skill 与 WORKFLOW 固化对话生命周期、REUSE-first 路由、Hot / Warm / Cold、Thread Decision 单真相源、BLOCKED 与 Block Reason 判断；UI / AI / Data Role State 建立 Worker Thread Registry；RECOVERY、PROJECT_STATUS、04 清单与 tasks/README 同步。
+- External Pending: 爱发电主页认证尚未通过；用户完成确认之后新增的网盘入口排序/「国内网络优先」小字和 GitHub README 用户化待办仍按未完成记录。
 
 ## Working Tree
 
-- State: BRIDGE-PLAN-001 V1.1 changes applied; pre-existing Release documentation changes preserved
-- Changed: AI Bridge pointer / AGENTS / WORKFLOW / Formal Task cards / 04 / tasks README / Coordinator state
+- State: T-024 规则与状态文档已写入；T-023 未提交成果与 T-024 改动按两个 commit 分开提交；其它既有未提交修改保留。
+- Pre-existing Dirty Files: `AGENTS.md`、`README.md`、`RELEASE_GUIDE.md`、`docs/project/08-开发环境.md`、`docs/project/09-发布与版本.md` 等在本任务前已存在修改，按文件级增量处理，不整体暂存。
 
 ## Validation
 
-- AI Bridge V1.1：Skill / protocol / templates 静态检查 PASS；PLAN Rev2 与 PLAN_REVIEW 绑定保护 PASS；App 业务代码 0 变更。
-- Resource / Debug：`:app:processDebugResources`、`:app:assembleDebug` PASS。
-- Release / R8：`:app:assembleRelease` PASS，包含 T-022 返修。
-- Final APK：`app/release/智能收纳助手-1.2.0.apk`，SHA-256 `1C080AEC567814A314868DBD44F8B3A1CDE0CA42BFBEE326E3A41917B7C2A854`，v2+v3 有效。
-- Mask 预演：圆形 / 圆角矩形 / Squircle 下星光完整，立方体不裁切，无双层圆角。
-- 真机：NOT VERIFIED；本轮以用户复测为准。
-
-## Last Handoff
-
-- Task / Source Branch: T-022 / `codex/ui` → `codex/integration`
-- Commits: implementation `e9d37dc`; integration `e2f0577`; docs `59ab246` / `0281f10`; release Handoff `52fb977` / `3df394e`。
-- Summary: 只缩小 foreground 到原视觉 85%，背景满铺不变，解决真机星光裁切与主体过大问题。
+- 一致性搜索：`新 Task ID` / `新建线程` / `新任务线程` / `创建新线程` 在 Skill 与 WORKFLOW 中 0 命中（历史任务卡 T-012 保留当时的完成记录，不作为现行规则）。
+- 口径检查：Thread Decision 单真相源、HOT 自动降级、BLOCKED ≠ NEW 三条硬规则在 Skill §4 / §10 与 WORKFLOW §3 / §6 / §16 一致。
+- Skill hash：`SKILL.md` SHA-256 `C71D737FFBC05481E49A6DCF709ACA1D339F0C09D26BD25F41E31A55A5BFD745`，与 RECOVERY.md 记录一致。
+- App 业务代码 / Gradle / 数据库 / 版本号：0 变更。Debug / Release 构建：NOT RUN（本任务无代码变更）。
+- Push：按 T-024 授权 push `codex/integration`；不含 Tag 与 Release。
 
 ## Blockers
 
-- 无。
+- 无阻塞。
+
+## Known Issues
+
+- Tag `v1.2.0` 指向 `f5aa898`，其 App tree 与最终 APK 源码 tree `d68f09c` 不同；T-023 只记录，不修复。
+- Worker Thread Registry 初始条目 Health 均为 `UNKNOWN`，threadId 来自历史 Formal Task Card，待对应角色下次 Resume / Handoff 核实。
 
 ## Next Step
 
-- 用户安装最新 `app/release/智能收纳助手-1.2.0.apk` 复核所有 Launcher Mask；通过后再进入 Archify、项目页与个人主页更新。未获明确授权前不 Push / Tag / GitHub Release。
+- 等待用户审核 T-024 结果与下一阶段任务；继续工作前先按 WORKFLOW §16 判断当前对话是否继续。

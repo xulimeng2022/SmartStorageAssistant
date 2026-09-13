@@ -23,6 +23,19 @@
 - State: Clean after docs-only Handoff commit
 - Changed: None
 
+## Worker Thread Registry
+
+轻量 Worker Thread 登记表，供 Coordinator 投递前判断哪个已有健康线程对当前 Task 的上下文价值最高。只登记线程长期状态；**Formal Task 的 Thread Decision 唯一真相源是该 Task Card**，本表不重复记录 REUSE / NEW。Writer：本角色（Single Writer 不变）。
+
+| Role | Worktree / Project | Thread ID | Domain | Health | Wait / Block Reason | Last Task | Last Active | Handoff Reference |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| UI | `C:\Users\XU\.codex\worktrees\f98f\智能收纳助手` / `codex/ui` | `01a09914-b95c-7c50-a078-54984963ca08` | M09 合并未分配照片 | UNKNOWN（历史 Task Card 记录，尚未 Resume 验证） | NONE | T-020 | 未记录 | `tasks/T-020-UI-1.2.0真机反馈修复-合并未分配照片.md` |
+| UI | 同上 | `01a0990e-e420-7c51-b1a6-17c5d006ce7a` | 设置 / 本地化（校园邮箱与设置布局） | UNKNOWN（同上） | NONE | T-019 | 未记录 | `tasks/T-019-UI-1.2.0真机反馈修复-校园邮箱与设置布局.md` |
+| UI | 同上 | `01a098ef-0140-7520-b705-25d678ea190a` | T-013 缺陷返修 | UNKNOWN（同上） | NONE | T-014 | 未记录 | `tasks/T-014-UI-T013缺陷返修.md` |
+
+- 初始条目来自已发布的 Formal Task Card 记录（threadId 为历史事实）；Health 一律标记 `UNKNOWN`，待本角色下次 Resume / Handoff 时核实并更新。
+- `Wait / Block Reason` 复用 [WORKFLOW.md](WORKFLOW.md) 第 5 节的 `BLOCKED` 与阻断 / 解除条件语义，不新建状态机；外部依赖型等待不代表线程不健康。
+
 ## Validation
 
 - Resource：`:app:processDebugResources` PASS（集成分支）。

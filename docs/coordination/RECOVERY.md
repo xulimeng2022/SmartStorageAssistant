@@ -2,6 +2,7 @@
 
 > 本文件只定义恢复协议、边界和验证方法，不保存项目当前恢复状态的副本。
 > 本文不是第二份 Workflow。正常新 Chat 继续使用 [WORKFLOW.md](WORKFLOW.md) 的 Lightweight Resume；只有普通 Resume 无法完成时，才使用本 Runbook。
+> Warm Resume 不走本 Runbook；Cold Start 与「旧 Chat 永久不可访问」的恢复路径仍按第 8 / 9 节执行。
 
 ## 1. 目的与边界
 
@@ -314,7 +315,7 @@ Continue
 | Project AGENTS | Yes / Tracked | Repository 根目录 | Git recovery commit；当前 checkpoint blob `251be91ab40eedad02f0b6bfe8a60358d954c3a5` | 从目标恢复 Commit checkout | `git hash-object AGENTS.md` 与目标 Commit 一致 | No |
 | Global AGENTS | Yes / Local-only | `<CODEX_HOME>\AGENTS.md` | 无 canonical remote；audit SHA-256 `AD7DE0CEE83881614CD019DFF87D1D207E586D59C5F70366F154F791D3B1C86E` | 从安全配置备份恢复；无备份时按规则类别重建 | 文件存在且项目必需规则仍由 Project AGENTS 覆盖 | No |
 | Codex Config | Yes / Local-only | `<CODEX_HOME>\config.toml` | Host-managed；audit SHA-256 `21C406C390EC04928A8EB28804BCDFCAF5E79754963AD3A3C9BFF64E9CB56FDF` | 从脱敏配置模板或安全备份重建 provider、sandbox、plugin、MCP 入口 | `codex --version`；配置可解析；必要入口可用 | Yes, auth references |
-| Skills | `multi-codex-coordinator` Yes；`archify` Optional / Local-only | `<CODEX_HOME>\skills\multi-codex-coordinator`、`<CODEX_HOME>\skills\archify` | Source `VERIFY AT MIGRATION`；当前安装为本地 Skill 包；Archify metadata `2.17` / package `2.17.0-dev.1`；协调 Skill 无版本号，`SKILL.md` SHA-256 `9CB848D934C5D171450591363B0735B7B1BA069ED0663FE08259722DC913F90B`；CC Switch skill sync `auto / cc_switch` | 从安全工作区备份恢复最小 Skill；无备份时 Archify 可按来源重装，协调 Skill 标记待重建 | Skill 名称存在；Archify `doctor` 通过；协调 Skill hash 与基线一致 | No |
+| Skills | `multi-codex-coordinator` Yes；`archify` Optional / Local-only | `<CODEX_HOME>\skills\multi-codex-coordinator`、`<CODEX_HOME>\skills\archify` | Source `VERIFY AT MIGRATION`；当前安装为本地 Skill 包；Archify metadata `2.17` / package `2.17.0-dev.1`；协调 Skill 无版本号，`SKILL.md` SHA-256 `C71D737FFBC05481E49A6DCF709ACA1D339F0C09D26BD25F41E31A55A5BFD745`；CC Switch skill sync `auto / cc_switch` | 从安全工作区备份恢复最小 Skill；无备份时 Archify 可按来源重装，协调 Skill 标记待重建 | Skill 名称存在；Archify `doctor` 通过；协调 Skill hash 与基线一致 | No |
 | Plugins | Minimum Required: None / Optional host plugins | `<CODEX_HOME>\config.toml`、host plugin cache | 仅用于现有 Codex 工作流对齐，不是 Repository 恢复硬依赖 | 缺失时继续 Repository Recovery；需完整环境时按下方清单重新安装 | 插件入口可用且不影响核心恢复 | No |
 | MCP | Optional capability enhancement / Local-only | `<CODEX_HOME>\config.toml` 的 `[mcp_servers.node_repl]`；runtime command path `VERIFY AT MIGRATION` | `node_repl`；运行时版本 `VERIFY AT MIGRATION` | 重建 config entry 或安装 Codex 对应运行时；路径变化时重新解析当前 runtime | Node REPL 启动；工具入口可调用 | No |
 | CC Switch | Yes for current provider route / Local-only sensitive | `<CC_SWITCH_HOME>` | App path `VERIFY AT MIGRATION`；DB/settings 为本地状态 | 安装同版本 App 或从加密备份恢复 settings / DB；不复制 logs/cache | 进程运行；`enableLocalProxy=true`；Provider 可选中 | Yes |

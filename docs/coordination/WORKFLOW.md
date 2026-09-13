@@ -15,9 +15,9 @@
 | 正式任务状态、验收与 TDD 记录 | `docs/project/04-任务与验收清单.md`、`docs/project/05-单任务卡-TDD.md`、`docs/project/tasks/` | 主控分配，责任角色更新 |
 | Git 代码、分支、提交事实 | Git branches / commits / worktrees | 执行对应任务的角色 |
 | 可复用调度逻辑 | `multi-codex-coordinator` Skill 及 references | Skill 维护者 / 用户 |
-| AI Bridge 外部传输协议 | `docs/coordination/AI_BRIDGE.md` + 全局 `ai-bridge` Skill | Coordinator |
+| AI Bridge 外部传输协议（含 Plan Handoff / Review Gate） | `docs/coordination/AI_BRIDGE.md` + 全局 `ai-bridge` Skill | Coordinator |
 
-Formal Task Card / 现有任务系统是任务生命周期、验收条件和任务结果的主要真相源。AI Bridge 是外部任务/状态传输层，不替代 Formal Task、Ownership、Single Writer、永久工作树优先或 Git Gate。Role State 只保存对应 Worktree / Chat 的恢复快照，不替代 Formal Task。
+Formal Task Card / 现有任务系统是任务生命周期、验收条件和任务结果的主要真相源。AI Bridge 是外部任务/状态传输层，不替代 Formal Task、Ownership、Single Writer、永久工作树优先或 Git Gate。Role State 只保存对应 Worktree / Chat 的恢复快照，不替代 Formal Task。 V1.1 Plan Handoff 要求计划先写入 PLAN.md、审核写入 PLAN_REVIEW.md，并在执行前校验 Task ID、Plan Revision、APPROVED 与 AUTHORIZED；APPROVED 不自动执行。
 
 ## 2. Baseline 术语
 
@@ -71,6 +71,19 @@ git status
 - Role State 不存在或状态冲突时，停止并报告主控。
 - 不得因为新 Chat 重装 JDK / SDK、重下 Gradle、清 Gradle cache、大规模 clean、重新 clone、重新创建项目或重建已有环境。
 - 只有实际确认缺失、损坏或版本不匹配后，才采取对应修复。
+
+### Resume 分级（Hot / Warm / Cold）
+
+| 模式 | 适用 | 行为 |
+| --- | --- | --- |
+| Hot Continue | 同一 Formal Task、同一 Worker Thread、执行连续、无已知外部状态变化 | 不重新初始化，直接利用当前上下文继续 |
+| Warm Resume | 已有健康 Worker Thread 接收新的 Formal Task，或 Hot 因状态可能变化而降级而来 | 只核验必要变化：Worktree / branch、新 Task Card、Role State、Skill / AGENTS / WORKFLOW 关键更新、最近 Handoff 是否仍与工作树一致；不无条件重读全部身份文件、项目规则和代码 |
+| Cold Start | 新 Worker Thread、原线程不可恢复、正式 NEW 决策 | 执行完整初始化与必要规则读取 |
+
+- **Hot Continue 依赖连续且稳定的执行上下文；一旦状态可能变化，自动降级为 Warm Resume。** 触发情形：执行中断后恢复；branch / commit 已变化；Worktree 事实可能已变化；AGENTS / Skill / WORKFLOW 等关键规则更新；Role State / Handoff 已更新；其它足以影响当前判断的外部状态变化。
+- HOT 降级只到 WARM，不直接 Cold Start；除非线程已不可恢复。
+- 优先级：**上下文正确性 > 线程连续性 > Token 节省**。
+- Warm Resume 不走 [RECOVERY.md](RECOVERY.md)；Recovery Runbook 仅在普通 Resume 失效时使用。
 
 ### Recovery Escalation
 
@@ -127,12 +140,23 @@ Multi-Codex 操作状态映射到现有正式任务体系：
 - Role State 不使用 `PLANNED`、`READY`、`DONE`。
 - 例如 Formal Task 为 `READY`、角色尚未实际开始时，Role State 仍可为 `IDLE`。
 - 两者语义不同，但不建立第二套生命周期；Formal Task 仍以现有任务系统为准。
+- Worker Thread Registry 的 `Wait / Block Reason` 复用本节 `BLOCKED` 与“阻断与解除条件”语义；Registry 的 `Health` 只描述线程自身可复用性，不新建第二套状态机。
 
 ## 6. Task 使用方式
 
 ### Permanent Worktree Dispatch
 
 > 项目专属角色路由由本节定义；通用发现、投递、回收和 fallback 机制由 `multi-codex-coordinator` Skill 定义。Project、Worktree 路径、branch 占用和 threadId 必须运行时发现，不写死。
+>
+> **Coordinator Chat 生命周期切换与 Worker Thread 路由是两套不同机制。** Coordinator 主对话判定需要切换时只生成 Chat Handoff 并建议用户新开（见第 16 节）；UI / AI / Data Worker Thread 由 Coordinator 依据 Thread Decision 自行 `REUSE` 或 `NEW`。“Coordinator Chat 不自动新建”不得解释为“所有 Worker Thread 都禁止自动创建”。
+>
+> **REUSE 是默认路径，NEW 是需要明确证据和理由的例外路径。**
+
+```text
+Permanent Worktree（生命周期最长）
+├── Worker Thread（跨多个 Formal Task 复用）
+└── Formal Task（生命周期最短，是执行与验收边界）
+```
 
 | 逻辑角色 | 默认 Ownership | 永久 Branch | 默认路由 |
 | --- | --- | --- | --- |
@@ -146,17 +170,21 @@ Multi-Codex 操作状态映射到现有正式任务体系：
 
 1. 依据 [OWNERSHIP.md](OWNERSHIP.md) 判断任务属于 Coordinator Owned 还是明确的永久角色 Ownership；跨模块任务先按 Owner 拆分，共享 contract 先冻结。
 2. 从实际 Codex Project、`git worktree list --porcelain`、Role State 和分支占用中唯一定位目标角色。发现多个候选、路径不符或 branch 不符时停止选择，不静默猜测。
-3. 先检查当前 Task Card / Role State 是否已有同一 `Task ID` 的目标 threadId；存在时验证其 Project 与 `cwd` 后继续投递，不存在时创建新任务线程。
-4. 禁止为路由创建新 Worktree。新任务线程必须绑定既有角色 Project，并使用该 Project 的本地环境，确保执行目录就是原永久 Worktree。
+3. 查询该永久 Worktree 在 Role State Registry 中登记的 Worker Thread，排除 `POLLUTED` / `UNRECOVERABLE` 与无法验证的 `UNKNOWN`；`Wait / Block Reason` 为外部等待的线程不排除。
+4. 按 Domain、最近任务与上下文连续性选择最佳健康候选，检查 REUSE 条件，并把判断与证据写入本 Task Card。
+5. 禁止为路由创建新 Worktree。任何 Worker Thread 都必须绑定既有角色 Project，并使用该 Project 的本地环境，确保执行目录就是原永久 Worktree。
 
 #### 投递与回收
 
 ```text
-Task Card
+Task Card（Thread Decision 唯一真相源）
 ↓
 解析目标角色与实际 Project / Worktree / Branch
 ↓
-复用同 Task ID threadId，否则在目标 Project 创建新任务线程
+查询 Role State 的 Worker Thread Registry
+↓
+REUSE：记录 Thread Decision + Health Evidence → Lightweight Resume（HOT；状态变化时降级为 WARM）
+   NEW：写明 NEW 理由 → 创建 Worker Thread → Cold Start
 ↓
 确认 threadId / hostId（clientThreadId 未就绪时不得声称投递成功）
 ↓
@@ -164,11 +192,19 @@ Task Card
 ↓
 核验目标 cwd、branch、Git commit 与文件变化
 ↓
+更新 Registry（Last Task / Last Active / Handoff Reference；不记录 REUSE / NEW）
+↓
 Review / Test / Integration
 ```
 
-- Task Card 至少记录：Task ID、From、Target Role、目标 Project/Worktree/Branch、Goal、Scope、禁止范围、依赖、Acceptance、Required Output、threadId、Routing/Fallback。
-- 同一 Task ID 的返修优先续投原线程；新 Task ID 在目标永久 Worktree 中新建线程。线程 ID记录在本项目 Task Card / Role State，不写入通用 Skill。
+- **Thread Decision 的唯一任务级真相源是该 Task Card**；Task Card 至少记录：Task ID、From、Target Role、目标 Project/Worktree/Branch、Goal、Scope、禁止范围、依赖、Acceptance、Required Output、threadId、Thread Decision、Selected Thread Domain、Resume Mode、Thread Health Evidence、Routing/Fallback。
+- Worker Thread Registry 只记录线程长期状态：Role、Worktree / Project、Thread ID、Domain、Health、Wait / Block Reason、Last Task、Last Active、Handoff Reference；**不重复记录 REUSE / NEW**，Writer 为对应长期角色。
+- `Coordinator.md` 只记录投递日志、Task Card 引用、Registry 引用与总体进展，不形成第二份 Thread Decision 真相源。
+- REUSE 默认条件（满足多数即优先复用）：Owner 未变；Target Worktree 未变；工作领域连续或高度相关；旧线程健康；旧线程已读取的代码 / 规则 / 身份 / 项目状态仍然有效；当前上下文对新任务价值仍高；不存在 Single Writer、并发隔离或实验隔离要求。
+- NEW 合法理由：工作阶段或领域重大切换；当前线程上下文价值显著低于约 30%；上下文污染、状态混乱或持续误判；需要实验隔离或正式允许的并发隔离；原线程自身异常或无法可靠恢复（不含外部依赖型 BLOCKED）。
+- 禁止单独作为 NEW 理由：T-xxx 编号变化；上一个 Formal Task 已 COMPLETED；新 Task Card 已创建；已完成一次 commit；已执行一次 Build；当前线程已执行过若干任务；Token 数量较大。
+- **BLOCKED 本身不是 NEW 的充分理由**：必须读取并判断 Block Reason 与 Thread Health。外部依赖、等待其它 Role / 用户 / 验收 / 外部资源 / Git / Release Gate 的阻塞保留原 Thread，依赖解除后优先 REUSE；只有线程自身异常、上下文损坏、状态持续混乱、反复误判事实、无法完成可靠 Lightweight Resume 或线程已无法恢复，才可作为 NEW 依据，并写入 `Thread Health Evidence`。
+- **Hot Continue 依赖连续且稳定的执行上下文；一旦状态可能变化，自动降级为 Warm Resume。** 同 Task、同 Thread、执行连续且无外部变化才可 HOT；否则只核验必要变化后继续，不直接 Cold Start。
 - 结果不能只信摘要；必须核验目标线程实际工作树、branch、commit、diff 与测试证据，再进入集成。
 
 #### Fallback 与 Single Writer
@@ -272,6 +308,8 @@ Handoff
 - What Changed:
 - Why:
 - Validation:
+- Build Verification: Debug=PASS/FAIL/NOT RUN; Release=PASS/FAIL/NOT RUN; Final user-facing artifact=Release APK/Release AAB/Debug APK (explicit request only)/None
+- Release Artifact Metadata (if generated):
 - Contract Change:
 - Cross-module Impact:
 - Known Risk:
@@ -284,6 +322,9 @@ Handoff
 - Handoff 不复制完整 Chat、日志或源码。
 - 未完成时只能使用 `PARTIAL`、`BLOCKED` 或 `WIP`，不得声明 `READY_FOR_INTEGRATION`。
 - 轻量 Handoff 可记录在 Role State；正式 Handoff 同时记录在 Formal Task Card。
+- UI / Data / AI 可为 Release-only 问题自行执行 Debug 或 Release 构建验证；Release 验证不等同于正式交付或发布产物。
+- Coordinator 决定何时生成正式 Release、最终用户交付物及发布阶段协调；模块角色不得自行把诊断构建标记为正式交付物。
+- `Build Verification` 未执行时明确写 `NOT RUN` 并说明原因；生成 Release APK/AAB 时，`Release Artifact Metadata` 至少记录版本、类型、路径、SHA-256、签名状态和分发渠道。
 
 ## 9. Test / Review
 
@@ -396,6 +437,43 @@ Data / AI / UI 安全执行 ff-only main
 
 ## 16. Chat 生命周期
 
+本节只治理 **Coordinator 主对话**；UI / AI / Data Worker Thread 的复用与新建见第 6 节，两者互相独立。
+
+### 三级生命周期
+
+```text
+Permanent Worktree（生命周期最长）
+├── Worker Thread（跨多个 Formal Task 复用）
+└── Formal Task（生命周期最短）
+
+Coordinator Permanent Worktree
+├── Coordinator Chat A（一个主要阶段）
+├── Chat Handoff
+└── Coordinator Chat B（下一阶段）
+```
+
+> 工作树是长期角色。Chat / Thread 是阶段性上下文容器。Formal Task 是执行与验收边界，而不是新建 Chat / Thread 的理由。
+
+### 继续当前对话（默认）
+
+默认继续当前对话。满足多数条件时继续：任务与本对话核心目标一致；仍处于同一版本、阶段或决策链；明显依赖前面的决策、约束或执行结果；上下文大部分信息对下一步仍有价值；属于已有任务的修复、验证、Review 或后续推进；对当前状态理解稳定。
+
+### 评估新开对话
+
+进入新的重大阶段；核心目标明显变化；处理新的版本、项目或独立问题域；历史信息大部分与下一阶段无关；旧计划、旧状态或废弃决策干扰判断；开始重复误判已完成任务或混淆分支 / 工作树；项目发生重大架构、协作流程或运行环境切换。
+
+### 70% 上下文价值原则
+
+- ≥ 70%：默认继续当前对话。
+- 30%–70%：结合阶段是否变化判断。
+- < 30%：优先新开对话。
+
+只做工程语义判断，不精算 Token。
+
+### 不得作为新开理由
+
+Token 数量较大；对话持续时间很长；完成了一个普通子任务；某个 Worker Thread 刚返回结果；刚进行了一次 Build；刚出现一个新 Bug；仍明显属于同一阶段。
+
 ### 完整逻辑检查点
 
 ```text
@@ -426,4 +504,14 @@ Lightweight Resume
 继续
 ```
 
-Chat 结束不等于必须 commit。WIP checkpoint 是例外，不是默认流程。
+### 新开 Coordinator Chat 的执行规则
+
+1. 更新 Coordinator Role State；
+2. 生成 Chat Handoff；
+3. 给出新对话初始化依据；
+4. 建议用户手动新开 Coordinator Chat；
+5. **不替用户自动创建新的 Coordinator 主对话。**
+
+Chat Handoff 最小字段：项目与版本、branch / commit、开发阶段、已完成任务、进行中任务、待办任务、已确认重要决策、已废弃方案、已知问题、工作树状态、重要限制与禁止事项、下一步建议、新对话必读事实源与路径。
+
+Chat 结束不等于必须 commit。WIP checkpoint 是例外，不是默认流程。Chat Handoff 是会话级记录（落 Coordinator Role State），不是 Task Handoff（落 Formal Task Card），也不替代 RECOVERY.md。
