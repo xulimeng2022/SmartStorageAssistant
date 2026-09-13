@@ -4,12 +4,12 @@
 > 写入规则：只有主控 Codex 与 Release 流程可以更新；模块 / Review / 测试 Agent 只读，发现过期信息报告主控。
 > 不承载任务管理（任务卡见 `04-任务与验收清单.md` 与 `tasks/`），不写临时日志与命令输出。
 
-- 最近更新：2026-09-12（完成 T-010 Recovery / Backup / Team Migration；Git / Multi-Codex Recovery 已验证，main propagation 尚未执行）
+- 最近更新：2026-09-13（T-011 完成 1.2.0 历史问题与 A1–A8 代码收口；候选包待真机验收）
 
 ## 当前版本与阶段
 
 - 当前版本：`1.2.0`（versionCode 6，见 `app/build.gradle.kts` 当前实际配置）。
-- 当前阶段：v1.2.0 开发 / Debug 准备阶段，尚未正式发布；Multi-Codex 协作基础设施与 T-010 Git Recovery 能力已完成并验证，T-010 仍在 `codex/integration`，尚未传播到 main。
+- 当前阶段：v1.2.0 候选包准备阶段，尚未正式发布；T-011 已进入 `codex/integration`，待真机覆盖升级验收。
 - Phase 3A — Coordination Infrastructure：`COMPLETE`。
 - Phase 3B — Global Status Reconciliation：`COMPLETE`。
 - Phase 3C — AGENTS Workflow Entry：`COMPLETE`。
@@ -22,6 +22,7 @@
 - Central Rule Git Propagation：`COMPLETE / PASS`。
 - Lightweight Resume Validation：`COMPLETE / PASS`。
 - Role State Finalization：`COMPLETE IN T-009 FINAL CHECKPOINT`。
+- T-011 历史问题与 A1–A8 收口：`IMPLEMENTED / 待真机`。
 
 ## Baseline 状态
 
@@ -36,29 +37,16 @@
 - Ownership：已固化并进入 Stable main，唯一真相源为 [OWNERSHIP](../coordination/OWNERSHIP.md)；Remaining Pending Ownership 为 `None`。
 - Workflow：已固化并进入 Stable main，唯一主要真相源为 [WORKFLOW](../coordination/WORKFLOW.md)。
 - Role State infrastructure：已建立并进入 Stable main；Coordinator / Data / AI / UI 恢复快照机制已可用。
-- Single Writer：`DEFINED`。
-- Cross-module Request：`DEFINED`。
-- Lightweight Resume：`DEFINED`。
-- Handoff：`DEFINED`。
-- Experiment isolation：`DEFINED`。
-- Baseline Resync：`COMPLETE / PASS`。
-- Central Rule Git Propagation：`COMPLETE / PASS`。
-- Central Rule State Reconciliation：`COMPLETE IN T-009 FINAL CHECKPOINT`。
-- Coordinator Recovery：`VALIDATED`。
-- Data / AI / UI Recovery：`VALIDATED`。
-- Multi-Codex Overall Readiness：`READY`；T-009 Final Readiness checkpoint 是该状态的治理基准，具体分支是否已应用 checkpoint 由 Git 事实决定。
+- Single Writer / Cross-module Request / Lightweight Resume / Handoff / Experiment isolation：`DEFINED`。
 - T-010 Recovery / Backup / Team Migration：`DONE / 已验收 @ codex/integration`。
-- Git Recovery：`VALIDATED`；Off-device Git Bundle：`AVAILABLE`；Remote Recovery Model B：`AVAILABLE`；Team Migration / Multi-Codex Recovery：`VALIDATED`。
 - Full Machine Recovery：`NOT VERIFIED`；Legacy dirty recovery：`PENDING SEPARATE DECISION`。
-- Stable main propagation、Final Remote Sync、Data / AI / UI Baseline Resync：`PENDING`。
 - Legacy Worktrees `10ba` / `baee`：保持隔离，未修改 dirty 数据。
 
 ## 测试与构建状态
 
-- 最近已有自动验证基线：71 个 JVM 单元测试通过；Debug 与 Release 构建通过；Release APK 通过 v2 + v3 签名校验。
-- 最近一次完整自动验证记录：2026-09-11（T-008，见 `07-变更与交付确认.md`）。
-- 上述结果仅代表已有自动化 / 构建验证基线，不代表 v1.2.0 已完成本轮正式 Debug、真机验收或正式发布。
-- 当前 Coordination Infrastructure 变更只涉及文档，尚未重新运行完整项目构建。
+- 本轮自动验证：78 个 JVM 单元测试通过；Debug 与未签名 Release 构建通过；v4→v5→v6 迁移 SQL 以隔离 SQLite 数据库验证通过。
+- 本轮代码包含 Room v6/索引生命周期、导入事务、照片索引、合并、语音纠错、邮箱、检查更新和完全删除数据。
+- Android Room 仪器测试、真机覆盖升级、真实网络/视觉 API 与完整清理流程尚未执行，不代表已通过真机验收。
 
 ## Lint
 
@@ -66,10 +54,10 @@
 
 ## 待用户验收
 
-- 多语言、真实视觉 API、历史索引进度与 Top-5 流程仍待用户在手机验收。
+- v1.1.0 覆盖安装候选包的数据保留、单图索引创建/删除、批量合并、语音例子、完全删除数据、检查更新、邮箱、三语言和深色模式仍待真机验收。
 
 ## 已知问题
 
 - 百川最新模型 ID 无法从官方 API 文档零猜测确认，列表中明确标注「待官方确认」。
-- 待确认·数据安全风险：Room v5 的 `MIGRATION_4_5` 已在 `AppDatabase.kt` 声明，但未注册到 `DatabaseModule.addMigrations(...)`；同时启用了 `fallbackToDestructiveMigration()`。真实 v4→v5 升级可能触发破坏性重建，存在本地数据丢失风险。当前仅登记，不创建正式任务、不修复；未来如立项按 High Risk / Data Safety 处理，要求 Data Owner、Migration Test、Test、Review 与主控 Gate。
-- 待确认·代码质量问题：`ItemRepositoryImpl` 注入了未使用的 `ImageIndexingCoordinator`；当前仅登记，不修改，不创建修复任务。
+- 已修复·数据安全：`MIGRATION_4_5` 已注册，新增 `MIGRATION_5_6` 并移除破坏性回退；仍需真机覆盖升级最终确认。
+- 已修复·代码质量：`ItemRepositoryImpl` 的未使用 `ImageIndexingCoordinator` 注入已移除。

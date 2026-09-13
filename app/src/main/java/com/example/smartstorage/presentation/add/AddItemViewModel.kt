@@ -643,7 +643,7 @@ class AddItemViewModel @Inject constructor(
         val preview = _mergePreview.value ?: return
         val name = preview.name.trim()
         if (name.isEmpty()) {
-            _uiMessages.trySend(UiMessage.Res(R.string.add_error_name_empty))
+            _uiMessages.trySend(UiMessage.Res(R.string.save_err_name_empty))
             return
         }
         if (preview.selectedPhotoPaths.size > MAX_IMAGES) return
@@ -709,6 +709,20 @@ class AddItemViewModel @Inject constructor(
                 batchClaimedOriginals += outcome.consumedOriginals
                 // 每成功新增一件都累计历史添加数并检查 Star 里程碑（含部分成功场景）
                 if (outcome.added > 0) bumpStarMilestone(outcome.added)
+                outcome.savedItems.forEach { saved ->
+                    val requested = if (imageUnderstandingRepository.state.value.enabled) {
+                        saved.imagePaths.toSet()
+                    } else {
+                        emptySet()
+                    }
+                    runCatching {
+                        imageIndexingCoordinator.syncItemImages(
+                            itemId = saved.itemId,
+                            paths = saved.imagePaths,
+                            requestedPaths = requested,
+                        )
+                    }
+                }
                 if (outcome.failedUids.isEmpty()) {
                     // 全部成功：清空批量状态并驱动返回首页
                     _batchItems.value = emptyList()

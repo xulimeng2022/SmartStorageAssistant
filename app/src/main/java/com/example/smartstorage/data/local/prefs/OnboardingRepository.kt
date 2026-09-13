@@ -23,6 +23,10 @@ class OnboardingRepository @Inject constructor(
     // 首次启动标志键（默认 true：从未写入即视为首次启动）
     private val KEY_IS_FIRST_LAUNCH = booleanPreferencesKey("is_first_launch")
 
+    /** 恢复首次启动引导状态。 */
+    suspend fun clearAll() {
+        context.onboardingDataStore.edit { it.clear() }
+    }
     /** 是否首次启动（未完成引导时为 true）。 */
     val isFirstLaunch: Flow<Boolean> = context.onboardingDataStore.data
         .map { prefs -> prefs[KEY_IS_FIRST_LAUNCH] ?: true }

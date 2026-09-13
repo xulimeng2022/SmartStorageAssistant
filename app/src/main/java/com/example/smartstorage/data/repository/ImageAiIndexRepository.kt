@@ -82,7 +82,13 @@ class ImageAiIndexRepository @Inject constructor(
             return true
         }
         if (existing.itemId != itemId) return false
-        if (existing.requested) return false
+        if (
+            existing.requested &&
+            existing.status != ImageAnalysisStatus.FAILED.name &&
+            existing.status != ImageAnalysisStatus.OUTDATED.name
+        ) {
+            return false
+        }
         return indexDao.requestExisting(path, itemId) > 0
     }
 

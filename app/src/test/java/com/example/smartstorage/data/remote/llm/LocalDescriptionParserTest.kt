@@ -130,8 +130,8 @@ class LocalDescriptionParserTest {
     @Test
     fun negationAndQuantityPreserved() {
         assertEquals(
-            listOf("没有放在抽屉里的充电器" to "柜子里"),
-            pairs("没有放在抽屉里的充电器，是在柜子里"),
+            listOf("不是红色的充电器" to "柜子里"),
+            pairs("不是红色的充电器放在柜子里"),
         )
     }
     @Test

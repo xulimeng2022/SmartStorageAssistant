@@ -47,12 +47,6 @@ data class AiConfig(
         modelNameMap[presetType]
             ?: (LlmPreset.entries.firstOrNull { it.label == presetType }?.model ?: "")
 
-    /** 完全删除用户 AI 配置与加密凭据，并立即刷新内存缓存。 */
-    suspend fun clearAll() {
-        context.dataStore.edit { it.clear() }
-        encryptedPrefs().edit().clear().commit()
-        apiKeyFlow.value = emptyMap()
-    }
     companion object {
         /** 免费模式：使用内置免费模型，无需配置。 */
         const val MODE_FREE = "FREE"

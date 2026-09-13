@@ -77,19 +77,19 @@
     <string name="settings_update_failed_body">無法連線到更新服務，請檢查網路後重試。目前版本不會受到影響。</string>    <string name="about_changelog">📝 更新記錄</string>
     <string name="changelog_title">v1.2.0 更新內容</string>
     <string name="changelog_new">新增</string>
-    <string name="changelog_new_1">新增 AI 圖片理解和視覺找物：可為新照片和歷史照片建立本機視覺索引，搜尋時只分析 Top-5 候選</string>
-    <string name="changelog_new_2">AI 模型目錄更新至 2026-09-11，免費模式升級為支援視覺的 Qwen3.5-4B</string>
+    <string name="changelog_new_1">新增照片視覺找物：可按需為照片建立本機圖片索引，搜尋時只分析最相關的少數候選</string>
+    <string name="changelog_new_2">新增校園信箱聯絡方式、檢查更新和完全刪除本機 App 資料</string>
     <string name="changelog_fix">修復</string>
-    <string name="changelog_fix_1">修復 v1.1.0 遺留的可見簡體中文硬編碼，補齊簡體中文、繁體中文和 English 資源</string>
-    <string name="changelog_fix_2">新增 AI 圖片理解隱私開關、能力偵測、歷史索引進度/暫停/繼續/重試和清除索引</string>
-    <string name="changelog_fix_3">新增全螢幕照片縮放預覽，模型不可用時明確提示並分類錯誤</string>
+    <string name="changelog_fix_1">批次錄入可選擇多個物品合併為一筆，並可選擇合併照片</string>
+    <string name="changelog_fix_2">改善語音輸入解析，自動處理多餘逗號、停頓和重複詞，減少錯誤拆分</string>
+    <string name="changelog_fix_3">語言切換後的提示、圖片索引狀態和舊版升級資料保護均已修復</string>
     <string name="changelog_ok">知道了</string>
     <string name="onboarding_1_title">📦 記錄你的物品</string>
     <string name="onboarding_1_sub">語音錄入物品名稱與存放位置，再也不怕找不到東西</string>
     <string name="onboarding_2_title">🎙️ AI 智慧解析</string>
-    <string name="onboarding_2_sub">說一句話，AI 自動擷取物品名稱與地點，省去手動輸入</string>
+    <string name="onboarding_2_sub">口述多個物品，AI 會自動修正停頓並擷取名稱、地點，可選擇合併確認</string>
     <string name="onboarding_3_title">🔍 隨時查找</string>
-    <string name="onboarding_3_sub">語音搜尋、智慧解析，一秒找到你存放的任何物品</string>
+    <string name="onboarding_3_sub">依名稱、地點、備註或照片內容查找；圖片索引預設關閉，由你按需開啟</string>
     <string name="onboarding_skip">略過</string>
     <string name="onboarding_next">下一步</string>
     <string name="onboarding_start">開始使用</string>
@@ -103,7 +103,7 @@
     <string name="searchtips_2">• 語音搜尋：點擊搜尋框右側的 🎤 麥克風，說出你想找的物品</string>
     <string name="searchtips_3">• AI 智慧解析：點擊搜尋框右側的 ✨ 按鈕，AI 自動擷取關鍵字並搜尋</string>
     <string name="searchtips_4">💡 小技巧：支援模糊搜尋，輸入「筆」即可找到所有含「筆」的物品</string>
-    <string name="searchtips_5">可在設定頁再次查看</string>
+    <string name="searchtips_5">• 照片搜尋：開啟 AI 圖片理解後，可依照片內容查找並手動複核候選</string>
     <string name="searchtips_dont">不再提示</string>
     <string name="searchtips_ok">知道了</string>
     <string name="photo_preview_cd">物品照片大圖</string>
@@ -303,9 +303,9 @@
     <string name="donate_option_true_fan">包養作者（真愛粉）</string>
     <string name="donate_option_true_love">真愛支持（包養作者）</string>
     <string name="settings_ai_help_title">如何設定 AI 智慧解析？</string>
-    <string name="settings_ai_help_body">0. 免費模式內建 %1$s（完全免費）：免費模式無需任何設定；若模型暫時不可用，可切換到自訂模式並填寫自己的服務商與 API Key 後重試。自訂模式可填寫任意 OpenAI 相容介面。\n\n1. 點擊上方預設按鈕（如 DeepSeek、OpenAI 等），會自動填入該供應商的介面地址與預設模型版本。\n\n2. 可在「模型版本」下拉選單中選擇具體模型；每個預設的 API Key 獨立儲存，切換預設會自動恢復對應的 Key。\n\n3. 填寫該供應商的 API Key 後，點擊「儲存設定」。\n\n4. 設定完成後，在「新增物品」頁的口語描述框輸入或語音錄入，即可自動解析為物品名稱、地點和備註。\n\n5. 支援批次辨識：一次輸入多條描述（用逗號、句號或分號分隔），AI 會自動拆分為多條物品並逐個確認新增。</string>
+    <string name="settings_ai_help_body">0. 免費模式內建 %1$s（完全免費）：免費模式無需任何設定；若模型暫時不可用，可切換到自訂模式並填寫自己的服務商與 API Key 後重試。自訂模式可填寫任意 OpenAI 相容介面。\n\n1. 點擊上方預設按鈕（如 DeepSeek、OpenAI 等），會自動填入該供應商的介面地址與預設模型版本。\n\n2. 可在「模型版本」下拉選單中選擇具體模型；每個預設的 API Key 獨立儲存，切換預設會自動恢復對應的 Key。\n\n3. 填寫該供應商的 API Key 後，點擊「儲存設定」。\n\n4. 設定完成後，在「新增物品」頁的口語描述框輸入或語音錄入，即可自動解析為物品名稱、地點和備註。\n\n5. 支援批次辨識與合併：語音停頓造成的多餘逗號會自動處理；可選擇多個辨識結果合併為一筆，也可選擇合併照片。</string>
     <string name="settings_backup_help_title">📦 資料備份與還原教學</string>
-    <string name="settings_backup_help_body">📤 匯出資料：\n點擊「匯出資料」，選擇儲存位置，即可將所有物品（含圖片）備份為一個 ZIP 檔案。\n\n📥 匯入資料：\n點擊「匯入資料」，選擇之前的 ZIP 備份檔，選擇「覆寫」或「合併」模式即可還原資料。\n\n💡 建議定期匯出備份，避免資料遺失！</string>
+    <string name="settings_backup_help_body">📤 匯出資料：\n點擊「匯出資料」，選擇儲存位置，即可備份物品、照片和已成功建立的圖片索引。\n\n📥 匯入資料：\n點擊「匯入資料」，選擇 ZIP 備份後，可選擇「覆寫」或「合併」模式還原。匯入失敗不會先清空原有資料。\n\n🧹 完全刪除：\n設定頁可在兩次確認後刪除本機 App 資料；系統相簿原圖、外部備份和雲端資料不會被刪除。\n\n💡 建議定期匯出備份，避免資料遺失！</string>
     <string name="settings_ai_config_incomplete">請填寫完整的介面地址、模型版本和 API Key</string>
     <string name="settings_ai_config_saved">AI 智慧解析設定已儲存</string>
     <string name="settings_backup_default_name">智慧收納助手_備份_%1$s.zip</string>

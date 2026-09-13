@@ -45,7 +45,7 @@ internal object LocalDescriptionParser {
 
     /** 解析整段口语描述，返回 0~N 条（结果建议再经 [ParsedItemSanitizer] 清洗）。 */
     fun parse(rawText: String): List<ParsedItem> {
-        val text = repairPauseSeparatedLocation(rawText.trim())
+        val text = repairPauseSeparatedLocation(VoiceTextNormalizer.normalize(rawText.trim()))
         if (text.isEmpty()) return emptyList()
         val result = mutableListOf<ParsedItem>()
         text.split(CLAUSE_SPLIT_REGEX)
@@ -89,8 +89,10 @@ internal object LocalDescriptionParser {
     /** 片段是否像地点补语（序数或常见位置名词）。 */
     private fun isLocationContinuation(clause: String): Boolean {
         val text = stripLeadingConnectors(clause)
+        // 含“在/放到…”的完整子句是新物品描述，不是上一句的地点补语。
+        if (findLocationSplit(text) != null) return false
         if (text.startsWith("第")) return true
-        return LOCATION_NOUNS.any(text::contains)
+        return text.length <= 12 && LOCATION_NOUNS.any(text::contains)
     }
     /** 解析单个子句并把结果追加到 [out]。 */
     private fun parseClause(clause: String, out: MutableList<ParsedItem>) {

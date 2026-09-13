@@ -902,13 +902,13 @@ fun AddItemScreen(
                         )
                         OutlinedTextField(
                             value = preview.location,
-                            onValueChange = { onUpdateMerge(it, preview.location, preview.description) },
+                            onValueChange = { onUpdateMerge(preview.name, it, preview.description) },
                             label = { Text(stringResource(R.string.add_location_label)) },
                             modifier = Modifier.fillMaxWidth(),
                         )
                         OutlinedTextField(
                             value = preview.description,
-                            onValueChange = { onUpdateMerge(it, preview.location, preview.description) },
+                            onValueChange = { onUpdateMerge(preview.name, preview.location, it) },
                             label = { Text(stringResource(R.string.add_description_label)) },
                             modifier = Modifier.fillMaxWidth(),
                         )

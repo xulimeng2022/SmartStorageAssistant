@@ -9,6 +9,12 @@ import javax.inject.Inject
 private const val MAX_IMAGES_PER_ITEM = 9
 
 /** 批量保存的统计结果。 */
+data class BatchSavedItem(
+    val uid: Long,
+    val itemId: Long,
+    val imagePaths: List<String>,
+)
+
 data class BatchAddOutcome(
     /** 成功新增的件数（含“新建记录”决策）。 */
     val added: Int = 0,
@@ -24,6 +30,9 @@ data class BatchAddOutcome(
      * 避免重试条目再次直存同一路径导致两条记录共享文件。
      */
     val consumedOriginals: List<String> = emptyList(),
+
+    /** 本轮成功新增/更新的记录，供调用方同步派生索引。 */
+    val savedItems: List<BatchSavedItem> = emptyList(),
 )
 
 /**
@@ -63,6 +72,7 @@ class BatchAddItemsUseCase @Inject constructor(
         var skipped = 0
         val failed = mutableListOf<Long>()
         val consumed = mutableListOf<String>()
+        val savedItems = mutableListOf<BatchSavedItem>()
         // 已被某条记录占用的绝对路径：同一次保存内互斥，且跨重试由 alreadyClaimedPaths 延续
         val claimed = alreadyClaimedPaths.toMutableSet()
         val now = System.currentTimeMillis()
@@ -106,8 +116,7 @@ class BatchAddItemsUseCase @Inject constructor(
                 val imagePaths = (keepOldPaths + newImages).take(MAX_IMAGES_PER_ITEM)
 
                 if (targetExisting == null) {
-                    // 无重名 或 用户选择“新建记录”：直接插入（不携带旧记录照片）
-                    addItemUseCase(
+                    val newItemId = addItemUseCase(
                         Item(
                             name = name,
                             location = draft.location.trim(),
@@ -115,9 +124,9 @@ class BatchAddItemsUseCase @Inject constructor(
                             imagePaths = imagePaths,
                         ),
                     )
+                    savedItems += BatchSavedItem(uid, newItemId, imagePaths)
                     added++
                 } else {
-                    // 更新旧记录：保留 id/createdAt 与旧照片，位置/备注取本次解析/编辑结果
                     updateItemUseCase(
                         targetExisting.copy(
                             location = draft.location.trim(),
@@ -126,6 +135,7 @@ class BatchAddItemsUseCase @Inject constructor(
                             updatedAt = now,
                         ),
                     )
+                    savedItems += BatchSavedItem(uid, targetExisting.id, imagePaths)
                     updated++
                 }
             } catch (e: Exception) {
@@ -139,6 +149,7 @@ class BatchAddItemsUseCase @Inject constructor(
             skipped = skipped,
             failedUids = failed,
             consumedOriginals = consumed,
+            savedItems = savedItems,
         )
     }
 }

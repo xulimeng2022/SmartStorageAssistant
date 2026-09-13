@@ -77,19 +77,19 @@
     <string name="settings_update_failed_body">Could not reach the update service. Check your connection and try again. Your current version is unaffected.</string>    <string name="about_changelog">📝 What is new</string>
     <string name="changelog_title">What is new in v1.2.0</string>
     <string name="changelog_new">New</string>
-    <string name="changelog_new_1">AI photo understanding and visual search with reusable local indexes; only the top five candidates are re-checked</string>
-    <string name="changelog_new_2">Provider models refreshed through 2026-09-11; free mode now uses vision-capable Qwen3.5-4B</string>
+    <string name="changelog_new_1">Added visual search for photos, with optional local photo indexes and a small candidate check</string>
+    <string name="changelog_new_2">Added the university email contact, update check and complete local app data deletion</string>
     <string name="changelog_fix">Fixed</string>
-    <string name="changelog_fix_1">Completed the v1.1.0 localization cleanup across Simplified Chinese, Traditional Chinese and English</string>
-    <string name="changelog_fix_2">Privacy controls, capability testing, history indexing progress, pause/resume/retry and index clearing</string>
-    <string name="changelog_fix_3">Added full-screen zoomable photo preview and clear, categorized model errors</string>
+    <string name="changelog_fix_1">Batch entry can now merge selected items into one record and choose which photos to keep</string>
+    <string name="changelog_fix_2">Voice input parsing now handles extra commas, pauses and repeated words more reliably</string>
+    <string name="changelog_fix_3">Fixed language-switch messages, photo index status and v1.1 data preservation during upgrade</string>
     <string name="changelog_ok">Got it</string>
     <string name="onboarding_1_title">📦 Record your items</string>
     <string name="onboarding_1_sub">Speak item names and locations so you never lose track</string>
     <string name="onboarding_2_title">🎙️ AI smart parsing</string>
-    <string name="onboarding_2_sub">Describe an item and AI extracts the name and location for you</string>
+    <string name="onboarding_2_sub">Describe several items; AI corrects pauses, extracts names and locations, and can merge them</string>
     <string name="onboarding_3_title">🔍 Find anything fast</string>
-    <string name="onboarding_3_sub">Voice search and smart parsing find any item in seconds</string>
+    <string name="onboarding_3_sub">Find items by name, location, notes or photo content; photo indexing is opt-in</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_start">Get started</string>
@@ -103,7 +103,7 @@
     <string name="searchtips_2">• Voice search: tap the 🎤 mic and say what you want</string>
     <string name="searchtips_3">• Smart parse: tap the ✨ button to let AI extract keywords</string>
     <string name="searchtips_4">💡 Tip: fuzzy search works — type “pen” to find every pen</string>
-    <string name="searchtips_5">You can view this again in Settings</string>
+    <string name="searchtips_5">• Photo search: after enabling AI photo understanding, search by photo content and manually review candidates</string>
     <string name="searchtips_dont">Do not show again</string>
     <string name="searchtips_ok">Got it</string>
     <string name="photo_preview_cd">Item photo (fullscreen)</string>
@@ -303,9 +303,9 @@
     <string name="donate_option_true_fan">True fan support</string>
     <string name="donate_option_true_love">Premium support</string>
     <string name="settings_ai_help_title">How to configure AI parsing</string>
-    <string name="settings_ai_help_body">0. Free mode uses %1$s at no charge and needs no configuration. If it is unavailable, switch to Custom mode and enter your provider and API Key. Custom mode accepts any OpenAI-compatible endpoint.\n\n1. Tap a provider preset to fill its endpoint and default model.\n\n2. Choose a model version from the dropdown. API Keys are stored separately for each preset.\n\n3. Enter the provider API Key and tap Save.\n\n4. On the Add item page, type or dictate a description to extract the item name, location and notes.\n\n5. Batch parsing splits multiple descriptions separated by punctuation into separate items for confirmation.</string>
+    <string name="settings_ai_help_body">0. Free mode uses %1$s at no charge and needs no configuration. If it is unavailable, switch to Custom mode and enter your provider and API Key. Custom mode accepts any OpenAI-compatible endpoint.\n\n1. Tap a provider preset to fill its endpoint and default model.\n\n2. Choose a model version from the dropdown. API Keys are stored separately for each preset.\n\n3. Enter the provider API Key and tap Save.\n\n4. On the Add item page, type or dictate a description to extract the item name, location and notes.\n\n5. Batch parsing handles speech pauses and extra commas. You can merge selected results into one record and choose which photos to keep.</string>
     <string name="settings_backup_help_title">📦 Backup and restore guide</string>
-    <string name="settings_backup_help_body">📤 Export: tap Export, choose a destination, and save all items and photos as a ZIP file.\n\n📥 Import: tap Import, choose a ZIP backup, then select merge or overwrite mode.\n\n💡 Export backups regularly to avoid data loss.</string>
+    <string name="settings_backup_help_body">📤 Export: tap Export and choose a destination to back up items, photos and successful photo indexes.\n\n📥 Import: tap Import, choose a ZIP backup, then select merge or overwrite. Import failure does not clear existing data first.\n\n🧹 Delete all: Settings offers a two-step local data deletion. System gallery photos, external backups and cloud data are not removed.\n\n💡 Export backups regularly to avoid data loss.</string>
     <string name="settings_ai_config_incomplete">Enter the Base URL, model and API Key</string>
     <string name="settings_ai_config_saved">AI parsing settings saved</string>
     <string name="settings_backup_default_name">SmartStorageAssistant_backup_%1$s.zip</string>

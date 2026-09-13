@@ -125,6 +125,7 @@ class ImageStorage @Inject constructor(
     }
 
     companion object {
+        const val PENDING_DIR = "pending_images"
         private const val TARGET_WIDTH = 1080
         private const val JPEG_QUALITY = 80
     }
