@@ -73,19 +73,22 @@ class ItemRepositoryImpl @Inject constructor(
     }
 
     override suspend fun permanentDeleteItem(item: Item) {
-        // 永久删除：先清理全部照片文件，再物理删除记录
+        // 先提交数据库删除，再清理文件；文件失败只留下孤儿，不会产生悬空引用。
+        database.withTransaction {
+            imageAiIndexRepository.deleteItem(item.id)
+            itemDao.permanentDelete(item.id)
+        }
         item.imagePaths.forEach { imageStorage.deleteImage(it) }
-        itemDao.permanentDelete(item.id)
     }
 
     override suspend fun emptyTrash() {
-        // 清空回收站：先清理全部照片文件，再批量物理删除记录
-        itemDao.getTrashedItems().forEach { entity ->
-            entity.imagePaths.forEach { imageStorage.deleteImage(it) }
-        }
+        val trashed = itemDao.getTrashedItems()
         database.withTransaction {
-            itemDao.getTrashedItems().forEach { imageAiIndexRepository.deleteItem(it.id) }
+            trashed.forEach { imageAiIndexRepository.deleteItem(it.id) }
             itemDao.permanentDeleteAll()
+        }
+        trashed.forEach { entity ->
+            entity.imagePaths.forEach { imageStorage.deleteImage(it) }
         }
     }
 }

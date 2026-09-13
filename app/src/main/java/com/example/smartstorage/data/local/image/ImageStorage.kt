@@ -22,6 +22,10 @@ class ImageStorage @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
 
+    private val pendingDir: File by lazy {
+        File(context.cacheDir, PENDING_DIR).apply { mkdirs() }
+    }
+
     private val imageDir: File by lazy {
         File(context.filesDir, "item_images").apply { mkdirs() }
     }
@@ -67,6 +71,17 @@ class ImageStorage @Inject constructor(
         return dest.absolutePath
     }
 
+    /** 删除全部 App 管理的物品图片；只操作私有目录，不触碰系统相册原图。 */
+    fun clearAllManagedImages() {
+        listOf(imageDir, File(context.cacheDir, PENDING_DIR)).forEach { dir ->
+            val canonicalRoot = dir.canonicalFile
+            dir.listFiles()?.forEach { file ->
+                if (file.canonicalFile.toPath().startsWith(canonicalRoot.toPath())) {
+                    file.deleteRecursively()
+                }
+            }
+        }
+    }
     /** 删除图片文件（路径为空时忽略）。 */
     fun deleteImage(path: String?) {
         if (path.isNullOrBlank()) return

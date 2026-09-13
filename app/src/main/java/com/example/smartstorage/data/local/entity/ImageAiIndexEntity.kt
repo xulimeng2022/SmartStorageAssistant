@@ -54,6 +54,14 @@ data class ImageAiIndexEntity(
     @ColumnInfo(name = "status")
     val status: String,
 
+    /** 用户是否明确请求建立/保留该索引；false 表示持久化停用墓碑。 */
+    @ColumnInfo(name = "requested", defaultValue = "1")
+    val requested: Boolean = true,
+
+    /** 每次请求递增，旧 Worker 不能更新新一代任务。 */
+    @ColumnInfo(name = "generation", defaultValue = "0")
+    val generation: Long = 0L,
+
     @ColumnInfo(name = "analysis_provider")
     val analysisProvider: String? = null,
 

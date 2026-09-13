@@ -77,6 +77,11 @@ class ThemeRepository @Inject constructor(
         ThemeMode.entries.firstOrNull { it.value == value } ?: ThemeMode.FOLLOW_SYSTEM
     }
 
+    /** 恢复默认主题和文字颜色。 */
+    suspend fun clearAll() {
+        context.themeDataStore.edit { it.clear() }
+        _textColorConfig.value = TextColorConfig()
+    }
     /** 持久化主题模式 */
     suspend fun saveThemeMode(mode: ThemeMode) {
         context.themeDataStore.edit { prefs ->

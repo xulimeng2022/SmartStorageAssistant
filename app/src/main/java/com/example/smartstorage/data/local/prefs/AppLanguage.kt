@@ -23,6 +23,11 @@ object AppLanguage {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .getString(KEY_CODE, "") ?: ""
 
+    /** 恢复跟随系统语言。 */
+    fun clear(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().clear().commit()
+        Locale.setDefault(Locale.getDefault())
+    }
     /** 保存语言码（调用方随后触发 Activity.recreate 立即生效）。 */
     fun setCode(context: Context, code: String) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

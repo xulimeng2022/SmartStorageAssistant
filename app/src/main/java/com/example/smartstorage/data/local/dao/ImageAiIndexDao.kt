@@ -9,28 +9,36 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ImageAiIndexDao {
-    @Query("SELECT * FROM image_ai_indices ORDER BY analyzed_at DESC, image_path ASC")
+    /** 观察有效索引；requested=0 的停用墓碑不参与进度和搜索。 */
+    @Query("SELECT * FROM image_ai_indices WHERE requested = 1 ORDER BY analyzed_at DESC, image_path ASC")
     fun observeAll(): Flow<List<ImageAiIndexEntity>>
 
-    @Query("SELECT * FROM image_ai_indices WHERE status = 'SUCCESS'")
+    @Query("SELECT * FROM image_ai_indices WHERE status = 'SUCCESS' AND requested = 1")
     suspend fun getAll(): List<ImageAiIndexEntity>
 
-    @Query("SELECT * FROM image_ai_indices WHERE status = 'SUCCESS'")
+    @Query("SELECT * FROM image_ai_indices WHERE status = 'SUCCESS' AND requested = 1")
     fun observeSuccessful(): Flow<List<ImageAiIndexEntity>>
 
-    @Query("SELECT * FROM image_ai_indices WHERE item_id = :itemId")
+    /** 详情/编辑页观察单件物品的全部行，包含停用墓碑以展示“未创建”状态。 */
+    @Query("SELECT * FROM image_ai_indices WHERE item_id = :itemId ORDER BY image_path ASC")
+    fun observeByItem(itemId: Long): Flow<List<ImageAiIndexEntity>>
+
+    @Query("SELECT * FROM image_ai_indices WHERE item_id = :itemId ORDER BY image_path ASC")
     suspend fun getByItem(itemId: Long): List<ImageAiIndexEntity>
 
     @Query("SELECT * FROM image_ai_indices WHERE image_path = :path LIMIT 1")
     suspend fun getByPath(path: String): ImageAiIndexEntity?
 
-    @Query("SELECT * FROM image_ai_indices WHERE status IN ('PENDING', 'OUTDATED') ORDER BY image_path ASC")
+    @Query(
+        "SELECT * FROM image_ai_indices WHERE requested = 1 AND status IN ('PENDING', 'OUTDATED') " +
+            "ORDER BY image_path ASC"
+    )
     suspend fun getQueued(): List<ImageAiIndexEntity>
 
-    @Query("SELECT * FROM image_ai_indices WHERE status = 'FAILED' ORDER BY image_path ASC")
+    @Query("SELECT * FROM image_ai_indices WHERE requested = 1 AND status = 'FAILED' ORDER BY image_path ASC")
     suspend fun getFailed(): List<ImageAiIndexEntity>
 
-    @Query("SELECT * FROM image_ai_indices WHERE status = 'PROCESSING'")
+    @Query("SELECT * FROM image_ai_indices WHERE requested = 1 AND status = 'PROCESSING'")
     suspend fun getProcessing(): List<ImageAiIndexEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -45,13 +53,29 @@ interface ImageAiIndexDao {
     @Query("DELETE FROM image_ai_indices")
     suspend fun deleteAll()
 
-    @Query("UPDATE image_ai_indices SET status = 'PROCESSING', error_kind = NULL WHERE image_path = :path")
-    suspend fun markProcessing(path: String)
+    @Query(
+        "UPDATE image_ai_indices SET requested = 1, status = 'PENDING', error_kind = NULL, " +
+            "generation = generation + 1 WHERE image_path = :path AND item_id = :itemId"
+    )
+    suspend fun requestExisting(path: String, itemId: Long): Int
 
-    @Query("UPDATE image_ai_indices SET status = 'PENDING' WHERE status = 'PROCESSING'")
+    @Query(
+        "UPDATE image_ai_indices SET requested = 0, status = 'OUTDATED', error_kind = NULL, " +
+            "generation = generation + 1 WHERE image_path = :path"
+    )
+    suspend fun disableByPath(path: String): Int
+
+    @Query(
+        "UPDATE image_ai_indices SET status = 'PROCESSING', error_kind = NULL " +
+            "WHERE image_path = :path AND generation = :generation AND requested = 1 " +
+            "AND status IN ('PENDING', 'OUTDATED')"
+    )
+    suspend fun markProcessing(path: String, generation: Long): Int
+
+    @Query("UPDATE image_ai_indices SET status = 'PENDING' WHERE status = 'PROCESSING' AND requested = 1")
     suspend fun restoreProcessing()
 
-    @Query("UPDATE image_ai_indices SET status = 'PENDING' WHERE status = 'FAILED'")
+    @Query("UPDATE image_ai_indices SET status = 'PENDING' WHERE status = 'FAILED' AND requested = 1")
     suspend fun retryFailed()
 
     @Query(
@@ -71,10 +95,14 @@ interface ImageAiIndexDao {
             analyzed_at = :analyzedAt,
             error_kind = NULL
         WHERE image_path = :path
-        """,
+          AND generation = :generation
+          AND requested = 1
+          AND status = 'PROCESSING'
+        """
     )
     suspend fun markSuccess(
         path: String,
+        generation: Long,
         hash: String,
         objects: String,
         attributes: String,
@@ -86,7 +114,7 @@ interface ImageAiIndexDao {
         model: String,
         indexVersion: Int,
         analyzedAt: Long,
-    )
+    ): Int
 
     @Query(
         """
@@ -96,10 +124,22 @@ interface ImageAiIndexDao {
             error_kind = :errorKind,
             analyzed_at = :analyzedAt
         WHERE image_path = :path
-        """,
+          AND generation = :generation
+          AND requested = 1
+          AND status = 'PROCESSING'
+        """
     )
-    suspend fun markFailed(path: String, hash: String?, errorKind: String, analyzedAt: Long)
+    suspend fun markFailed(
+        path: String,
+        generation: Long,
+        hash: String?,
+        errorKind: String,
+        analyzedAt: Long,
+    ): Int
 
-    @Query("UPDATE image_ai_indices SET status = 'OUTDATED' WHERE image_path = :path")
-    suspend fun markOutdated(path: String)
+    @Query(
+        "UPDATE image_ai_indices SET status = 'OUTDATED' " +
+            "WHERE image_path = :path AND generation = :generation AND requested = 1"
+    )
+    suspend fun markOutdated(path: String, generation: Long): Int
 }

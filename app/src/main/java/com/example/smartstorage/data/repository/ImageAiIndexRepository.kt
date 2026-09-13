@@ -36,6 +36,9 @@ class ImageAiIndexRepository @Inject constructor(
 
     fun observeSuccessful(): Flow<List<ImageAiIndexEntity>> = indexDao.observeSuccessful()
 
+    /** 观察单件物品的全部索引行，包含停用墓碑供 UI 展示“未创建”。 */
+    fun observeByItem(itemId: Long): Flow<List<ImageAiIndexEntity>> = indexDao.observeByItem(itemId)
+
     fun observeProgress(): Flow<ImageIndexProgress> = indexDao.observeAll().map { rows ->
         ImageIndexProgress(
             total = rows.size,
@@ -47,11 +50,50 @@ class ImageAiIndexRepository @Inject constructor(
         )
     }
 
+    suspend fun getByItem(itemId: Long): List<ImageAiIndexEntity> = indexDao.getByItem(itemId)
+
+    suspend fun getByPath(path: String): ImageAiIndexEntity? = indexDao.getByPath(path)
+
     suspend fun getQueued(): List<ImageAiIndexEntity> = indexDao.getQueued()
 
     suspend fun getFailed(): List<ImageAiIndexEntity> = indexDao.getFailed()
 
-    suspend fun markProcessing(path: String) = indexDao.markProcessing(path)
+    suspend fun getProcessing(): List<ImageAiIndexEntity> = indexDao.getProcessing()
+
+    /**
+     * 用户明确请求单张图片索引。
+     *
+     * @return false 表示物品不存在、路径不属于该物品或索引已经有效。
+     */
+    suspend fun requestIndex(itemId: Long, path: String): Boolean {
+        val item = itemDao.getById(itemId) ?: return false
+        if (path !in item.imagePaths) return false
+        val existing = indexDao.getByPath(path)
+        if (existing == null) {
+            indexDao.upsert(
+                ImageAiIndexEntity(
+                    imagePath = path,
+                    itemId = itemId,
+                    status = ImageAnalysisStatus.PENDING.name,
+                    requested = true,
+                    generation = 0L,
+                ),
+            )
+            return true
+        }
+        if (existing.itemId != itemId) return false
+        if (existing.requested) return false
+        return indexDao.requestExisting(path, itemId) > 0
+    }
+
+    /** 用户明确删除单图索引：保留墓碑，不删除物品和照片文件。 */
+    suspend fun disableIndex(path: String): Boolean = indexDao.disableByPath(path) > 0
+
+    /** 物理删除索引行，仅在照片本身已删除或物品永久删除时使用。 */
+    suspend fun deleteIndex(path: String) = indexDao.deleteByPath(path)
+
+    suspend fun markProcessing(path: String, generation: Long): Boolean =
+        indexDao.markProcessing(path, generation) > 0
 
     suspend fun restoreProcessing() = indexDao.restoreProcessing()
 
@@ -61,55 +103,62 @@ class ImageAiIndexRepository @Inject constructor(
 
     suspend fun deleteItem(itemId: Long) = indexDao.deleteByItem(itemId)
 
-    suspend fun markFailed(path: String, hash: String?, errorKind: String) =
-        indexDao.markFailed(path, hash, errorKind, System.currentTimeMillis())
+    suspend fun markFailed(path: String, generation: Long, hash: String?, errorKind: String): Boolean =
+        indexDao.markFailed(path, generation, hash, errorKind, System.currentTimeMillis()) > 0
 
     suspend fun saveSuccess(
         path: String,
+        generation: Long,
         hash: String,
         analysis: VisionAnalysis,
         provider: String,
         model: String,
-    ) {
-        indexDao.markSuccess(
-            path = path,
-            hash = hash,
-            objects = encodeFields(analysis.objectTags),
-            attributes = encodeFields(analysis.attributes),
-            visibleText = encodeFields(analysis.visibleText),
-            description = encodeFields(analysis.description),
-            searchText = buildSearchText(analysis),
-            confidence = analysis.confidence.coerceIn(0.0, 1.0),
-            provider = provider,
-            model = model,
-            indexVersion = INDEX_VERSION,
-            analyzedAt = System.currentTimeMillis(),
-        )
-    }
+    ): Boolean = indexDao.markSuccess(
+        path = path,
+        generation = generation,
+        hash = hash,
+        objects = encodeFields(analysis.objectTags),
+        attributes = encodeFields(analysis.attributes),
+        visibleText = encodeFields(analysis.visibleText),
+        description = encodeFields(analysis.description),
+        searchText = buildSearchText(analysis),
+        confidence = analysis.confidence.coerceIn(0.0, 1.0),
+        provider = provider,
+        model = model,
+        indexVersion = INDEX_VERSION,
+        analyzedAt = System.currentTimeMillis(),
+    ) > 0
 
-    /** 保存/编辑物品后同步索引行；未变化路径保留已有成功结果。 */
-    suspend fun syncItemImages(itemId: Long, paths: List<String>) {
+    /**
+     * 保存/编辑物品后同步索引行。
+     *
+     * [requestedPaths] 是用户希望建立索引的照片；未列入且仍存在的路径会写成 requested=0 墓碑。
+     * 已不在 [paths] 中的行会被物理删除，避免悬空引用。
+     */
+    suspend fun syncItemImages(itemId: Long, paths: List<String>, requestedPaths: Set<String>) {
+        val normalizedPaths = paths.distinct()
         val existing = indexDao.getByItem(itemId).associateBy { it.imagePath }
-        paths.forEach { path ->
+        normalizedPaths.forEach { path ->
             val row = existing[path]
-            if (row == null) {
-                val source = indexDao.getByPath(path)
-                if (source != null && source.itemId != itemId) {
-                    indexDao.deleteByPath(path)
-                }
-                indexDao.upsert(
+            val requested = path in requestedPaths
+            when {
+                row == null && requested -> indexDao.upsert(
                     ImageAiIndexEntity(
                         imagePath = path,
                         itemId = itemId,
                         status = ImageAnalysisStatus.PENDING.name,
+                        requested = true,
                     ),
                 )
+                row == null -> Unit
+                requested && !row.requested -> indexDao.requestExisting(path, itemId)
+                !requested && row.requested -> indexDao.disableByPath(path)
             }
         }
-        existing.keys.filterNot { it in paths }.forEach { indexDao.deleteByPath(it) }
+        existing.keys.filterNot { it in normalizedPaths }.forEach { indexDao.deleteByPath(it) }
     }
 
-    /** 为当前正常物品补齐缺失索引行，不触碰回收站。 */
+    /** 为当前正常物品补齐缺失索引行；停用墓碑不会被重新启用。 */
     suspend fun reconcileActiveItems(): Int {
         var added = 0
         itemDao.getActiveItems().forEach { item ->
@@ -121,6 +170,7 @@ class ImageAiIndexRepository @Inject constructor(
                             imagePath = path,
                             itemId = item.id,
                             status = ImageAnalysisStatus.PENDING.name,
+                            requested = true,
                         ),
                     )
                     added++
@@ -130,8 +180,11 @@ class ImageAiIndexRepository @Inject constructor(
         return added
     }
 
-    suspend fun loadAnalysis(path: String): VisionAnalysis? =
-        indexDao.getByPath(path)?.takeIf { it.status == ImageAnalysisStatus.SUCCESS.name }?.toDomain()
+    suspend fun loadAnalysis(path: String): VisionAnalysis? {
+        val row = indexDao.getByPath(path) ?: return null
+        if (!row.requested || row.status != ImageAnalysisStatus.SUCCESS.name) return null
+        return row.toDomain()
+    }
 
     suspend fun sha256(bytes: ByteArray): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(bytes)

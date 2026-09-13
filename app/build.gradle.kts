@@ -90,10 +90,16 @@ android {
         jvmTarget = "17"
     }
 
+    sourceSets["androidTest"].assets.srcDir("$projectDir/schemas")
+
     buildFeatures {
         compose = true
         buildConfig = true
     }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 // 单元测试统一携带项目根目录，供本地化资源/硬编码扫描测试使用
@@ -149,6 +155,7 @@ dependencies {
     // 测试
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)

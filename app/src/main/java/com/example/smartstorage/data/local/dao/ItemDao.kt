@@ -22,6 +22,9 @@ interface ItemDao {
     @Query("SELECT COUNT(*) FROM items WHERE deleted_at IS NULL")
     fun observeActiveCount(): Flow<Int>
 
+    /** 按 ID 查询单个物品（包含回收站），供索引和文件生命周期校验使用。 */
+    @Query("SELECT * FROM items WHERE id = :id")
+    suspend fun getById(id: Long): ItemEntity?
     /** 按 ID 观察单个物品。 */
     @Query("SELECT * FROM items WHERE id = :id")
     fun observeById(id: Long): Flow<ItemEntity?>

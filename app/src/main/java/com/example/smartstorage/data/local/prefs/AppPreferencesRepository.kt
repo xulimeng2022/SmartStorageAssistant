@@ -31,6 +31,10 @@ class AppPreferencesRepository @Inject constructor(
         prefs.edit().putBoolean(KEY_SEARCH_TIPS_ENABLED, enabled).apply()
     }
 
+    /** 清除应用轻量偏好。 */
+    fun clearAll() {
+        prefs.edit().clear().commit()
+    }
     companion object {
         private const val PREFS_NAME = "app_prefs"
         private const val KEY_INPUT_TEXT_COLOR = "input_text_color"

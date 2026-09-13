@@ -16,8 +16,8 @@ import com.example.smartstorage.data.local.entity.ItemEntity
  */
 @Database(
     entities = [ItemEntity::class, ImageAiIndexEntity::class],
-    version = 5,
-    exportSchema = false,
+    version = 6,
+    exportSchema = true,
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -29,6 +29,19 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun imageAiIndexDao(): ImageAiIndexDao
 
     companion object {
+        /**
+         * v5 → v6：索引增加用户请求状态和代次，防止停用后旧任务回写。
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE image_ai_indices ADD COLUMN requested INTEGER NOT NULL DEFAULT 1"
+                )
+                db.execSQL(
+                    "ALTER TABLE image_ai_indices ADD COLUMN generation INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
         /**
          * v1 → v2：新增照片附件列 image_path。
          */
