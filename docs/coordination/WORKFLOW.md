@@ -15,6 +15,7 @@
 | 正式任务状态、验收与 TDD 记录 | `docs/project/04-任务与验收清单.md`、`docs/project/05-单任务卡-TDD.md`、`docs/project/tasks/` | 主控分配，责任角色更新 |
 | Git 代码、分支、提交事实 | Git branches / commits / worktrees | 执行对应任务的角色 |
 | 可复用调度逻辑 | `multi-codex-coordinator` Skill 及 references | Skill 维护者 / 用户 |
+| AI Bridge 外部传输协议 | `docs/coordination/AI_BRIDGE.md` + 全局 `ai-bridge` Skill | Coordinator |
 
 Formal Task Card / 现有任务系统是任务生命周期、验收条件和任务结果的主要真相源。Role State 只保存对应 Worktree / Chat 的恢复快照，不替代 Formal Task。
 
