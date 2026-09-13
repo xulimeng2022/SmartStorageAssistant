@@ -114,6 +114,7 @@ class BackupRepository @Inject constructor(
                     val localImageDir = File(context.filesDir, "item_images").apply { mkdirs() }
                     val imagePathMap = mutableMapOf<String, String>()
                     val newFiles = mutableListOf<File>()
+                    var databaseCommitted = false
                     try {
                         stagedImages.forEach { (entryName, stagedFile) ->
                             val dest = uniqueImageFile(localImageDir, stagedFile.name)
@@ -179,6 +180,7 @@ class BackupRepository @Inject constructor(
                                 )
                             }
                         }
+                        databaseCommitted = true
 
                         // 4. 数据库提交成功后才清理覆盖导入前的旧文件。
                         if (mode == ImportMode.OVERWRITE) {
@@ -187,8 +189,10 @@ class BackupRepository @Inject constructor(
                                 .filterNot(newPaths::contains)
                                 .forEach { runCatching { File(it).delete() } }
                         }
-                        textColorConfigFromJson(root.optString("textColorConfig", ""))?.let { config ->
-                            themeRepository.saveTextColorConfig(config)
+                        runCatching {
+                            textColorConfigFromJson(root.optString("textColorConfig", ""))?.let { config ->
+                                themeRepository.saveTextColorConfig(config)
+                            }
                         }
                         ImportResult(
                             totalItems = backupItems.size,
@@ -197,7 +201,9 @@ class BackupRepository @Inject constructor(
                             failedItems = 0,
                         )
                     } catch (e: Exception) {
-                        newFiles.forEach { runCatching { it.delete() } }
+                        if (!databaseCommitted) {
+                            newFiles.forEach { runCatching { it.delete() } }
+                        }
                         throw e
                     }
                 } finally {
@@ -225,7 +231,7 @@ class BackupRepository @Inject constructor(
                                 .substringBefore('?')
                                 .substringBefore('#')
                                 .ifBlank { "item.jpg" }
-                            val dest = File(stageDir, safeName)
+                            val dest = uniqueImageFile(stageDir, safeName)
                             dest.outputStream().use { out -> zip.copyTo(out) }
                             images[entry.name] = dest
                         }

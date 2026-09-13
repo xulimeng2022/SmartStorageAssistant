@@ -48,7 +48,7 @@
 - 本轮代码包含 Room v6/索引生命周期、导入事务、照片索引、合并、语音纠错、邮箱、检查更新和完全删除数据。
 - Android Room 仪器测试、真机覆盖升级、真实网络/视觉 API 与完整清理流程尚未执行，不代表已通过真机验收。
 
-- 候选包：`app/release/智能收纳助手-1.2.0-rc.apk`，SHA-256 `A2371D619F072C84D2FA1AC089BF36C684CC85E82996B963F345B4CCFEBE8F9B`。
+- 候选包：`app/release/智能收纳助手-1.2.0-rc.apk`，SHA-256 `A3D306334E1BC57874378DEF93FC6F1534515CFB2FCC75F00110E90D76E8EFE2`。
 
 ## Lint
 
