@@ -14,11 +14,15 @@
 
 ## Parallel Infrastructure Task
 
-- ID / Title: BRIDGE-INIT-001 AI Bridge V1 Google Drive
-- Status: COMPLETED / EXTERNAL_VERIFIED
-- Bridge Directory: `G:\我的云端硬盘\AI-Bridge\projects\github.com__xulimeng2022__smartstorageassistant`
-- Local Evidence: `STATUS.md=COMPLETED`、`REPORT.md=COMPLETED`、`BLOCKERS.md=None`；Phase A/B、最终去重、错误 ID、项目隔离与 ChatGPT Connector 外部读取 PASS。
-- Next Step: None；V1 通信闭环已完成，后续使用新的显式 Task ID。
+- ID / Title: BRIDGE-PLAN-001 AI Bridge V1.1 Plan Handoff
+- Status: COMPLETED / LOCAL_VERIFIED
+- Plan: `Plan Revision=2`，PLAN_REVIEW `APPROVED + AUTHORIZED`；批准只绑定 Revision 2。
+- Delivered: 全局 ai-bridge Skill 增加 PLAN/PLAN_REVIEW、Plan Revision 绑定与执行 Review Gate；Bridge README 更新为 7 文件；项目指针 / AGENTS / WORKFLOW 最小规则更新。
+- Local Evidence: Skill 结构、7 文件 Single Writer、Gate 字段、bootstrap 保护、旧字段策略检查 PASS；App 业务代码 0 变更。
+- Pending External: ChatGPT Connector 对 V1.1 新文件的外部读取确认。
+- Next Step: `BRIDGE-PLAN-TEST-001`；ChatGPT/User 将 TASK.md 切换到测试任务后执行 A-F Gate 测试。
+- Previous: BRIDGE-INIT-001 AI Bridge V1（COMPLETED / EXTERNAL_VERIFIED）。
+
 ## Progress
 
 - Completed: UI 源提交 `e9d37dc`、文档 `59ab246`、Release Handoff `52fb977` 已集成；最终 Release 已覆盖归档。
@@ -26,11 +30,12 @@
 
 ## Working Tree
 
-- State: Clean after T-022 central documentation commit
-- Changed: None
+- State: BRIDGE-PLAN-001 V1.1 changes applied; pre-existing Release documentation changes preserved
+- Changed: AI Bridge pointer / AGENTS / WORKFLOW / Formal Task cards / 04 / tasks README / Coordinator state
 
 ## Validation
 
+- AI Bridge V1.1：Skill / protocol / templates 静态检查 PASS；PLAN Rev2 与 PLAN_REVIEW 绑定保护 PASS；App 业务代码 0 变更。
 - Resource / Debug：`:app:processDebugResources`、`:app:assembleDebug` PASS。
 - Release / R8：`:app:assembleRelease` PASS，包含 T-022 返修。
 - Final APK：`app/release/智能收纳助手-1.2.0.apk`，SHA-256 `1C080AEC567814A314868DBD44F8B3A1CDE0CA42BFBEE326E3A41917B7C2A854`，v2+v3 有效。
