@@ -44,9 +44,11 @@
 
 ## 测试与构建状态
 
-- 本轮自动验证：78 个 JVM 单元测试通过；Debug 与未签名 Release 构建通过；v4→v5→v6 迁移 SQL 以隔离 SQLite 数据库验证通过。
+- 本轮自动验证：78 个 JVM 单元测试通过；Debug 与签名 Release 构建通过；v4→v5→v6 迁移 SQL 以隔离 SQLite 数据库验证通过。
 - 本轮代码包含 Room v6/索引生命周期、导入事务、照片索引、合并、语音纠错、邮箱、检查更新和完全删除数据。
 - Android Room 仪器测试、真机覆盖升级、真实网络/视觉 API 与完整清理流程尚未执行，不代表已通过真机验收。
+
+- 候选包：`app/release/智能收纳助手-1.2.0-rc.apk`，SHA-256 `A2371D619F072C84D2FA1AC089BF36C684CC85E82996B963F345B4CCFEBE8F9B`。
 
 ## Lint
 
