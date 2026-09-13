@@ -6,7 +6,7 @@
 ## Current Task
 
 - ID / Title: T-021 UI 1.2.0 最终 App 图标替换
-- Status: DONE / INTEGRATED / READY_FOR_USER_DEVICE_ACCEPTANCE
+- Status: FINAL_RELEASE_PACKAGE_BUILT / DEVICE_VISUAL_PENDING
 - Risk: Medium
 - Goal: 将用户最终 PNG 原图替换为 Launcher / adaptive / round / Android 12+ 默认 splash 的图标来源，并清理旧图标资源。
 - Allowed Scope: Coordinator 验收、集成、中央文档与验证；Launcher / 品牌资源由 UI 永久工作树执行。
@@ -15,7 +15,7 @@
 ## Progress
 
 - Completed: UI 源提交 `a378a32`、UI docs `a159c94` 已审核并 cherry-pick/合并；集成实现 `2b4a616`、集成 docs `e0bd8a9` 已完成。
-- In Progress: 等待用户安装包含 T-021 的新构建，验收 Launcher mask、Splash、应用信息、最近任务与 App 内旧 Logo 状态。
+- In Progress: 最终签名 APK 已生成，等待用户真机安装验收 Launcher mask、Splash、应用信息与最近任务。
 
 ## Working Tree
 
@@ -27,7 +27,7 @@
 - Source：用户 PNG 1254×1254，SHA-256 `4D32F0B84D8963EDF121BDFB01EE20951A755E76AA21C65486C11F5CBDCA94BC`。
 - Resource：`:app:processDebugResources` PASS。
 - JVM：22 suites / 107 tests，0 failures / 0 errors / 0 skipped（ASCII 临时目录）。
-- Debug / Release / R8：PASS（ASCII 临时目录；Release 为未签名验证包）。
+- Debug / Release / R8：PASS；最终签名 APK `app/release/智能收纳助手-1.2.0.apk`，SHA-256 `3FAC4FEC1F3291161E53EEDE619276E499137A8873C80B9138A8A039C64CCD5E`，v2+v3 有效。
 - Lint：仅既有 Manifest 相机硬件声明 error，114 warnings；无 T-021 图标 error。
 - APK：Manifest icon / roundIcon、v26 adaptive XML、nodpi PNG 均已打包；旧 vector / color 已清理。
 - 真机 / Android instrumentation / 真实网络：NOT VERIFIED。
