@@ -5,44 +5,44 @@
 
 ## Current Task
 
-- ID / Title: T-019/T-020 v1.2.0 三项真机反馈返修
+- ID / Title: T-021 UI 1.2.0 最终 App 图标替换
 - Status: DONE / INTEGRATED / READY_FOR_USER_DEVICE_ACCEPTANCE
-- Risk: High
-- Goal: 完成校园邮箱标签与设置布局、合并预览未分配照片两项 UI 返修，并重建可覆盖安装的签名 RC2。
-- Allowed Scope: Coordinator 协调、Review、集成、中央文档与候选包状态；模块代码由永久工作树执行。
-- Acceptance: T-019/T-020 已集成；107 JVM tests、Debug/Release/R8 通过；RC2 同包名同签名、v2+v3 有效；用户真机待验收。
-- Task Card: docs/project/tasks/T-019-UI-1.2.0真机反馈修复-校园邮箱与设置布局.md；docs/project/tasks/T-020-UI-1.2.0真机反馈修复-合并未分配照片.md
+- Risk: Medium
+- Goal: 将用户最终 PNG 原图替换为 Launcher / adaptive / round / Android 12+ 默认 splash 的图标来源，并清理旧图标资源。
+- Allowed Scope: Coordinator 验收、集成、中央文档与验证；Launcher / 品牌资源由 UI 永久工作树执行。
+- Acceptance: 新 background / foreground 已集成；旧资源无引用；资源编译、Debug/Release/R8、107 JVM tests、APK 资源检查通过；真机视觉待验收。
 
 ## Progress
 
-- Completed: T-019 UI 源 commit `698b9ee`、T-020 UI 源 commit `7fff55e` 已审核并 cherry-pick；文档冲突按双方意图合并；RC2 已构建并完成签名兼容校验。
-- In Progress: 等待用户安装 RC2 完成布局与合并持久性真机验收。
+- Completed: UI 源提交 `a378a32`、UI docs `a159c94` 已审核并 cherry-pick/合并；集成实现 `2b4a616`、集成 docs `e0bd8a9` 已完成。
+- In Progress: 等待用户安装包含 T-021 的新构建，验收 Launcher mask、Splash、应用信息、最近任务与 App 内旧 Logo 状态。
 
 ## Working Tree
 
-- State: Clean after RC2 integration and candidate documentation commit
+- State: Clean after T-021 central documentation commit
 - Changed: None
 
 ## Validation
 
-- T-019：三语邮箱标签、SettingsItem subtitle 布局与 6 个长说明调用点已完成；真机视觉待验。
-- T-020：合并候选包含会话未分配照片、默认选择与绝对路径去重已完成；真机取消重开/保存重启待验。
-- JVM：22 suites / 107 tests，0 failures / 0 errors / 0 skipped。
-- Debug / Release / R8：PASS。
-- Candidate：`app/release/智能收纳助手-1.2.0-rc2.apk`，SHA-256 `11A2F25E08F2950DD48CEBBFB02B8B30B4DC16766FADA8F3372B1EBB7DCF2BF7`，包名/版本 `com.example.smartstorage` / `1.2.0/6`，v2+v3 有效，证书 SHA-256 `0511094a1de87d24d3ed3dc3fd6d731f8158e40170ce85255ccecce74282525c`。
-- Android instrumentation / 真机 / 真实网络：NOT VERIFIED。
-- 后续体验项：T-017 批量合并分隔符本地化；T-018 单图索引失败原因细分。
+- Source：用户 PNG 1254×1254，SHA-256 `4D32F0B84D8963EDF121BDFB01EE20951A755E76AA21C65486C11F5CBDCA94BC`。
+- Resource：`:app:processDebugResources` PASS。
+- JVM：22 suites / 107 tests，0 failures / 0 errors / 0 skipped（ASCII 临时目录）。
+- Debug / Release / R8：PASS（ASCII 临时目录；Release 为未签名验证包）。
+- Lint：仅既有 Manifest 相机硬件声明 error，114 warnings；无 T-021 图标 error。
+- APK：Manifest icon / roundIcon、v26 adaptive XML、nodpi PNG 均已打包；旧 vector / color 已清理。
+- 真机 / Android instrumentation / 真实网络：NOT VERIFIED。
+- 既有 T-019/T-020：仍待用户真机视觉与持久性复测；现有 RC2 不包含 T-021 图标。
 
 ## Last Handoff
 
-- Task / Source Branch: T-019/T-020 / codex/integration
-- Commits: UI source `698b9ee`、`7fff55e`；集成实现 `88d6599`、`cfe5a5d`；docs Handoff `05acd2c`、`45fe428`。
-- Summary: 三项真机反馈修复已集成；107 JVM tests 与 Debug/Release/R8 通过；RC2 已签名并兼容当前测试包。
+- Task / Source Branch: T-021 / `codex/ui` → `codex/integration`
+- Commits: UI `a378a32`；docs `a159c94`；integration `2b4a616`；integration docs `e0bd8a9`。
+- Summary: 最终 App 图标资源已集成；静态构建、测试、lint 与 APK 资源检查完成。
 
 ## Blockers
 
-- 用户真机布局与合并持久性流程尚未执行；ADB 当前无设备。
+- 当前无 ADB 设备；真机 Launcher / Splash 视觉尚未验证。
 
 ## Next Step
 
-- 用户安装 `app/release/智能收纳助手-1.2.0-rc2.apk`，重点复测设置布局、三语/深色，以及“合并→取消→再打开”“合并选图→保存→关闭并重启→详情打开照片”；通过后才考虑 Stable Candidate 进入 main 与正式 Release。
+- 用户构建并安装当前 `codex/integration` 或生成新的 signed candidate 后完成 T-021 真机验收；通过后再进入 Archify、项目页与个人主页更新。未获明确授权前不 push / tag / release。
