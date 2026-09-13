@@ -45,7 +45,36 @@
     <string name="about_wechat_copied">微信號已複製，請開啟微信搜尋並新增</string>
     <string name="about_website">個人網站</string>
     <string name="about_email">信箱</string>
-    <string name="about_changelog">📝 更新記錄</string>
+    <string name="about_email_copied">信箱已複製，請開啟郵件應用聯絡</string>
+    <string name="photo_index_retry">重試圖片索引</string>
+    <string name="photo_index_pending">等待索引</string>
+    <string name="photo_index_processing">正在索引</string>
+    <string name="photo_index_refresh">更新圖片索引</string>    <string name="photo_index_enable">建立圖片索引</string>
+    <string name="photo_index_disable">刪除圖片索引</string>
+    <string name="photo_index_enable_first">請先在設定中開啟 AI 圖片理解</string>
+    <string name="batch_merge_selected">合併選取物品</string>
+    <string name="batch_merge_title">合併預覽</string>
+    <string name="batch_merge_photos">選擇保留的照片（%1$d/%2$d）</string>
+    <string name="batch_merge_too_many_photos">照片超過 9 張，請取消部分選擇</string>
+    <string name="batch_merge_confirm">合併為一筆</string>    <string name="settings_reset_all">完全刪除 App 資料</string>
+    <string name="settings_reset_all_desc">刪除本機物品、照片、索引與設定</string>
+    <string name="settings_reset_scope">將刪除本機全部物品、回收站、App 私有照片、視覺索引、快取、偏好設定、語言/主題與已儲存的 API Key。操作無法復原，建議先匯出備份。系統相簿原圖、外部備份、其他應用程式資料、Android 雲端備份與 API 服務商遠端資料不會被刪除。</string>
+    <string name="settings_reset_continue">繼續</string>
+    <string name="settings_reset_backup_first">先匯出備份</string>
+    <string name="settings_reset_final_title">確認完全刪除？</string>
+    <string name="settings_reset_final_body">此操作會清除本機全部 App 資料，且無法撤銷。是否繼續？</string>
+    <string name="settings_reset_confirm">完全刪除</string>
+    <string name="settings_reset_running_title">正在刪除資料</string>
+    <string name="settings_reset_running_body">正在停止背景工作並清理本機資料，請稍候。</string>
+    <string name="settings_reset_failed">部分資料未能刪除，請保持應用程式開啟後重試。</string>    <string name="settings_check_update">檢查更新</string>
+    <string name="settings_checking_update">正在檢查…</string>
+    <string name="settings_update_up_to_date_title">已是最新版本</string>
+    <string name="settings_update_up_to_date_body">目前版本 %1$s 已是最新穩定版。</string>
+    <string name="settings_update_available_title">發現新版本 %1$s</string>
+    <string name="settings_update_no_notes">此版本沒有提供額外說明。</string>
+    <string name="settings_update_download">前往下載</string>
+    <string name="settings_update_failed_title">檢查更新失敗</string>
+    <string name="settings_update_failed_body">無法連線到更新服務，請檢查網路後重試。目前版本不會受到影響。</string>    <string name="about_changelog">📝 更新記錄</string>
     <string name="changelog_title">v1.2.0 更新內容</string>
     <string name="changelog_new">新增</string>
     <string name="changelog_new_1">新增 AI 圖片理解和視覺找物：可為新照片和歷史照片建立本機視覺索引，搜尋時只分析 Top-5 候選</string>

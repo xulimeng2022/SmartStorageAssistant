@@ -115,6 +115,7 @@ fun AddItemRoute(
     val batchDuplicatePending by viewModel.batchDuplicatePending.collectAsStateWithLifecycle()
     val parseWarning by viewModel.parseWarning.collectAsStateWithLifecycle()
     val batchNotice by viewModel.batchNotice.collectAsStateWithLifecycle()
+    val mergePreview by viewModel.mergePreview.collectAsStateWithLifecycle()
 
     // 一次性 UI 消息（照片上限 / 图片保存失败）：用界面 Context 按当前语言解析为 Toast
     val messageContext = LocalContext.current
@@ -159,6 +160,8 @@ fun AddItemRoute(
         onImageUriSelected = viewModel::onImageUriSelected,
         onImageFileSelected = viewModel::onImageFileSelected,
         onRemoveImageAt = viewModel::removeImageAt,
+        indexedPhotoPaths = editState.requestedIndexPaths,
+        onTogglePhotoIndex = viewModel::togglePhotoIndex,
         onSave = viewModel::save,
         parseFailedGuide = parseFailedGuide,
         onDismissParseFailedGuide = viewModel::dismissParseFailedGuide,
@@ -179,6 +182,12 @@ fun AddItemRoute(
         onBatchDuplicateChoice = viewModel::onBatchDuplicateChoice,
         onConfirmBatchAdd = viewModel::confirmBatchAdd,
         onDismissBatchDialog = viewModel::dismissBatchDialog,
+        mergePreview = mergePreview,
+        onStartMerge = viewModel::startBatchMerge,
+        onUpdateMerge = viewModel::updateMergePreview,
+        onToggleMergePhoto = viewModel::toggleMergePhoto,
+        onConfirmMerge = viewModel::confirmBatchMerge,
+        onCancelMerge = viewModel::cancelBatchMerge,
         onBack = onBack,
     )
 }
@@ -210,6 +219,8 @@ fun AddItemScreen(
     onImageUriSelected: (Uri) -> Unit,
     onImageFileSelected: (File) -> Unit,
     onRemoveImageAt: (Int) -> Unit,
+    indexedPhotoPaths: Set<String>,
+    onTogglePhotoIndex: (String, Boolean) -> Unit,
     onSave: () -> Unit,
     parseFailedGuide: Boolean,
     onDismissParseFailedGuide: () -> Unit,
@@ -230,6 +241,12 @@ fun AddItemScreen(
     onBatchDuplicateChoice: (BatchDuplicateChoice) -> Unit,
     onConfirmBatchAdd: () -> Unit,
     onDismissBatchDialog: () -> Unit,
+    mergePreview: BatchMergePreviewState?,
+    onStartMerge: () -> Unit,
+    onUpdateMerge: (String, String, String) -> Unit,
+    onToggleMergePhoto: (String, Boolean) -> Unit,
+    onConfirmMerge: () -> Unit,
+    onCancelMerge: () -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -527,6 +544,20 @@ fun AddItemScreen(
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop,
                                 )
+                                val indexRequested = path in indexedPhotoPaths
+                                TextButton(
+                                    onClick = { onTogglePhotoIndex(path, !indexRequested) },
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.86f)),
+                                ) {
+                                    Text(
+                                        text = stringResource(
+                                            if (indexRequested) R.string.photo_index_disable else R.string.photo_index_enable,
+                                        ),
+                                        style = MaterialTheme.typography.labelSmall,
+                                    )
+                                }
                                 // 删除单张：仅从工作副本移除，文件在保存时才真正删除
                                 EmojiIconButton(
                                     onClick = { onRemoveImageAt(imagePaths.indexOf(path)) },
@@ -831,6 +862,13 @@ fun AddItemScreen(
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = onStartMerge,
+                    enabled = batchSelected.size >= 2 && saveState != SaveState.Saving,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.batch_merge_selected))
+                }
                 // 批量添加按钮（勾选数动态更新；保存中禁用防重复）
                 Button(
                     onClick = onConfirmBatchAdd,
@@ -844,6 +882,100 @@ fun AddItemScreen(
             }
         }
 
+        // 合并预览：编辑合并后的单条记录并选择保留照片
+        mergePreview?.let { preview ->
+            AlertDialog(
+                onDismissRequest = onCancelMerge,
+                title = { Text(stringResource(R.string.batch_merge_title)) },
+                text = {
+                    Column(
+                        modifier = Modifier
+                            .heightIn(max = 460.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = preview.name,
+                            onValueChange = { onUpdateMerge(it, preview.location, preview.description) },
+                            label = { Text(stringResource(R.string.add_name_label)) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = preview.location,
+                            onValueChange = { onUpdateMerge(it, preview.location, preview.description) },
+                            label = { Text(stringResource(R.string.add_location_label)) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = preview.description,
+                            onValueChange = { onUpdateMerge(it, preview.location, preview.description) },
+                            label = { Text(stringResource(R.string.add_description_label)) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            text = stringResource(
+                                R.string.batch_merge_photos,
+                                preview.selectedPhotoPaths.size,
+                                AddItemViewModel.MAX_IMAGES,
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        if (preview.selectedPhotoPaths.size > AddItemViewModel.MAX_IMAGES) {
+                            Text(
+                                text = stringResource(R.string.batch_merge_too_many_photos),
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        preview.availablePhotoPaths.forEach { path ->
+                            val checked = path in preview.selectedPhotoPaths
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onToggleMergePhoto(path, !checked) }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                AsyncImage(
+                                    model = File(path),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(RoundedCornerShape(6.dp)),
+                                    contentScale = ContentScale.Crop,
+                                )
+                                Text(
+                                    text = File(path).name,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 8.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Checkbox(
+                                    checked = checked,
+                                    onCheckedChange = { onToggleMergePhoto(path, it) },
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = onConfirmMerge,
+                        enabled = preview.name.isNotBlank() &&
+                            preview.selectedPhotoPaths.size <= AddItemViewModel.MAX_IMAGES,
+                    ) {
+                        Text(stringResource(R.string.batch_merge_confirm))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onCancelMerge) {
+                        Text(stringResource(R.string.common_cancel))
+                    }
+                },
+            )
+        }
         // 全屏预览某条草稿已分配的照片（关闭后保留弹窗内容）
         batchPreview?.let { (uid, index) ->
             val paths = batchItems.firstOrNull { it.uid == uid }?.photoPaths.orEmpty()

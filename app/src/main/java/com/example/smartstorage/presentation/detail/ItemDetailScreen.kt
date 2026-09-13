@@ -94,6 +94,7 @@ fun ItemDetailScreen(
     val item by viewModel.item.collectAsStateWithLifecycle()
     val addingPhoto by viewModel.addingPhoto.collectAsStateWithLifecycle()
     val textColorConfig by viewModel.textColorConfig.collectAsStateWithLifecycle()
+    val photoIndexStates by viewModel.photoIndexStates.collectAsStateWithLifecycle()
 
     // 加载并订阅该物品（编辑返回后自动刷新）
     LaunchedEffect(itemId) {
@@ -226,6 +227,34 @@ fun ItemDetailScreen(
                                     .clickable { fullscreenIndex = current.imagePaths.indexOf(path) },
                                 contentScale = ContentScale.Crop,
                             )
+                            val indexStatus = photoIndexStates[path]?.status ?: PhotoIndexStatus.NOT_CREATED
+                            TextButton(
+                                onClick = {
+                                    when (indexStatus) {
+                                        PhotoIndexStatus.NOT_CREATED,
+                                        PhotoIndexStatus.FAILED,
+                                        -> viewModel.requestPhotoIndex(path)
+                                        else -> viewModel.disablePhotoIndex(path)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.86f)),
+                            ) {
+                                Text(
+                                    text = stringResource(
+                                        when (indexStatus) {
+                                            PhotoIndexStatus.NOT_CREATED -> R.string.photo_index_enable
+                                            PhotoIndexStatus.FAILED -> R.string.photo_index_retry
+                                            PhotoIndexStatus.PENDING -> R.string.photo_index_pending
+                                            PhotoIndexStatus.PROCESSING -> R.string.photo_index_processing
+                                            PhotoIndexStatus.SUCCESS -> R.string.photo_index_disable
+                                            PhotoIndexStatus.OUTDATED -> R.string.photo_index_refresh
+                                        },
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            }
                             // 删除该张照片（立即删文件并更新数据库；带 Emoji 彩蛋）
                             val photoEmojis = remember { mutableStateListOf<Long>() }
                             Box(

@@ -45,7 +45,36 @@
     <string name="about_wechat_copied">WeChat ID copied. Open WeChat and search to add</string>
     <string name="about_website">Personal website</string>
     <string name="about_email">Email</string>
-    <string name="about_changelog">📝 What is new</string>
+    <string name="about_email_copied">Email copied. Open your mail app to contact the author</string>
+    <string name="photo_index_retry">Retry photo index</string>
+    <string name="photo_index_pending">Index queued</string>
+    <string name="photo_index_processing">Indexing</string>
+    <string name="photo_index_refresh">Refresh photo index</string>    <string name="photo_index_enable">Create photo index</string>
+    <string name="photo_index_disable">Delete photo index</string>
+    <string name="photo_index_enable_first">Enable AI photo understanding in Settings first</string>
+    <string name="batch_merge_selected">Merge selected items</string>
+    <string name="batch_merge_title">Merge preview</string>
+    <string name="batch_merge_photos">Select photos to keep (%1$d/%2$d)</string>
+    <string name="batch_merge_too_many_photos">More than 9 photos selected. Deselect some first.</string>
+    <string name="batch_merge_confirm">Merge into one</string>    <string name="settings_reset_all">Delete all app data</string>
+    <string name="settings_reset_all_desc">Delete local items, photos, indexes and settings</string>
+    <string name="settings_reset_scope">This removes all local items, trash, app-managed photos, visual indexes, cache, preferences, language/theme settings and saved API keys. It cannot be undone, so export a backup first. Photos in the system gallery, external backups, other apps, Android cloud backups and provider-side data are not deleted.</string>
+    <string name="settings_reset_continue">Continue</string>
+    <string name="settings_reset_backup_first">Export first</string>
+    <string name="settings_reset_final_title">Delete all app data?</string>
+    <string name="settings_reset_final_body">This permanently clears all local app data and cannot be undone. Continue?</string>
+    <string name="settings_reset_confirm">Delete all</string>
+    <string name="settings_reset_running_title">Deleting data</string>
+    <string name="settings_reset_running_body">Stopping background work and clearing local data. Please wait.</string>
+    <string name="settings_reset_failed">Some data could not be removed. Keep the app open and try again.</string>    <string name="settings_check_update">Check for updates</string>
+    <string name="settings_checking_update">Checking…</string>
+    <string name="settings_update_up_to_date_title">You are up to date</string>
+    <string name="settings_update_up_to_date_body">Version %1$s is the latest stable release.</string>
+    <string name="settings_update_available_title">Version %1$s is available</string>
+    <string name="settings_update_no_notes">No additional release notes were provided.</string>
+    <string name="settings_update_download">Download</string>
+    <string name="settings_update_failed_title">Update check failed</string>
+    <string name="settings_update_failed_body">Could not reach the update service. Check your connection and try again. Your current version is unaffected.</string>    <string name="about_changelog">📝 What is new</string>
     <string name="changelog_title">What is new in v1.2.0</string>
     <string name="changelog_new">New</string>
     <string name="changelog_new_1">AI photo understanding and visual search with reusable local indexes; only the top five candidates are re-checked</string>

@@ -28,6 +28,17 @@ fun openUrlWithChooser(context: Context, url: String) {
     }
 }
 
+/** 打开邮件应用；没有可用邮件应用时复制纯邮箱地址并提示。 */
+fun openEmailWithFallback(context: Context, address: String, fallbackMessageRes: Int) {
+    try {
+        val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$address"))
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        copyTextToClipboard(context, address)
+        Toast.makeText(context, context.getString(fallbackMessageRes), Toast.LENGTH_SHORT).show()
+    }
+}
 /** 复制文本到系统剪贴板 */
 fun copyTextToClipboard(context: Context, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

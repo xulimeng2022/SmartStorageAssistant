@@ -26,6 +26,24 @@ class BatchDraftOpsTest {
     }
 
     @Test
+    fun mergeCombinesFieldsAndPhotoPathsWithoutDuplicates() {
+        val items = listOf(
+            BatchDraftItem(1, "一个充电器", "书桌", "黑色", listOf("/p/a.jpg")),
+            BatchDraftItem(2, "两根数据线", "抽屉", "白色", listOf("/p/a.jpg", "/p/b.jpg")),
+        )
+        val result = BatchDraftOps.merge(items, setOf(1L, 2L))!!
+        assertEquals("一个充电器、两根数据线", result.name)
+        assertEquals("一个充电器：书桌；两根数据线：抽屉", result.location)
+        assertEquals("一个充电器：黑色；两根数据线：白色", result.description)
+        assertEquals(listOf("/p/a.jpg", "/p/b.jpg"), result.photoPaths)
+    }
+
+    @Test
+    fun mergeRequiresAtLeastTwoSources() {
+        val items = listOf(d(1, "雨衣"))
+        assertEquals(null, BatchDraftOps.merge(items, setOf(1L)))
+    }
+    @Test
     fun removeKeepsOthersAndTheirPhotos() {
         val items = listOf(
             d(1, "雨衣", photos = listOf("/p/a.jpg")),

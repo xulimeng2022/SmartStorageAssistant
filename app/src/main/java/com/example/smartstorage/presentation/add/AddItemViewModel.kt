@@ -8,13 +8,17 @@ import com.example.smartstorage.data.local.image.ImageStorage
 import com.example.smartstorage.data.local.prefs.STAR_REMIND_LATER_MILLIS
 import com.example.smartstorage.data.local.prefs.StarMilestoneRepository
 import com.example.smartstorage.data.local.prefs.TextColorConfig
+import com.example.smartstorage.data.local.prefs.ImageUnderstandingRepository
 import com.example.smartstorage.data.local.prefs.ThemeRepository
 import com.example.smartstorage.data.remote.llm.LlmClient
+import com.example.smartstorage.data.remote.vision.ImageIndexingCoordinator
+import com.example.smartstorage.data.repository.ImageAiIndexRepository
 import com.example.smartstorage.data.remote.llm.LlmTimeoutException
 import com.example.smartstorage.data.remote.llm.ParseItemsResult
 import com.example.smartstorage.domain.model.BatchDuplicateChoice
 import com.example.smartstorage.domain.model.BatchDraftItem
 import com.example.smartstorage.domain.model.BatchDraftOps
+import com.example.smartstorage.domain.model.BatchMergeResult
 import com.example.smartstorage.domain.model.ParsedItem
 import com.example.smartstorage.domain.model.Item
 import com.example.smartstorage.domain.usecase.AddItemUseCase
@@ -68,6 +72,9 @@ data class ItemEditState(
 
     /** 本次编辑中已移除的图片路径（保存时才真正删除文件） */
     val removedImagePaths: List<String> = emptyList(),
+
+    /** 用户希望建立/保留图片索引的路径；保存成功后才写入索引表。 */
+    val requestedIndexPaths: Set<String> = emptySet(),
 )
 
 /**
@@ -106,6 +113,9 @@ class AddItemViewModel @Inject constructor(
     private val themeRepository: ThemeRepository,
     private val starMilestoneRepository: StarMilestoneRepository,
     private val imageStorage: ImageStorage,
+    private val imageUnderstandingRepository: ImageUnderstandingRepository,
+    private val imageIndexingCoordinator: ImageIndexingCoordinator,
+    private val imageAiIndexRepository: ImageAiIndexRepository,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -132,6 +142,7 @@ class AddItemViewModel @Inject constructor(
             currentImagePaths = decodePaths(savedStateHandle.get<String>("current_images")),
             originalImagePaths = decodePaths(savedStateHandle.get<String>("original_images")),
             removedImagePaths = decodePaths(savedStateHandle.get<String>("removed_images")),
+            requestedIndexPaths = decodeSet(savedStateHandle.get<String>("requested_indexes")),
         ),
     )
     val editState: StateFlow<ItemEditState> = _editState.asStateFlow()
@@ -189,6 +200,9 @@ class AddItemViewModel @Inject constructor(
     private val _batchDuplicatePending = MutableStateFlow<BatchDuplicatePending?>(null)
     val batchDuplicatePending: StateFlow<BatchDuplicatePending?> = _batchDuplicatePending.asStateFlow()
 
+    // 多草稿合并预览（非 null 时显示编辑与照片选择弹窗）
+    private val _mergePreview = MutableStateFlow<BatchMergePreviewState?>(null)
+    val mergePreview: StateFlow<BatchMergePreviewState?> = _mergePreview.asStateFlow()
     // 是否正在执行批量保存（防重复点击）
     private var _batchRunning = false
 
@@ -299,6 +313,7 @@ class AddItemViewModel @Inject constructor(
             savedStateHandle["current_images"] = encodePaths(next.currentImagePaths)
             savedStateHandle["original_images"] = encodePaths(next.originalImagePaths)
             savedStateHandle["removed_images"] = encodePaths(next.removedImagePaths)
+            savedStateHandle["requested_indexes"] = encodePaths(next.requestedIndexPaths.toList())
             next
         }
         recomputeHasChanges()
@@ -324,6 +339,7 @@ class AddItemViewModel @Inject constructor(
         _batchNotice.value = null
         batchClaimedOriginals.clear()
         _parseWarning.value = null
+        _mergePreview.value = null
         recomputeHasChanges()
     }
 
@@ -341,7 +357,20 @@ class AddItemViewModel @Inject constructor(
         _editState.value = snapshot
         _original.value = snapshot
         _saveState.value = SaveState.Idle
-        recomputeHasChanges()
+        viewModelScope.launch {
+            val requested = runCatching {
+                imageAiIndexRepository.getByItem(item.id)
+                    .filter { it.requested }
+                    .map { it.imagePath }
+                    .toSet()
+            }.getOrDefault(emptySet())
+            if (_editState.value.id == item.id) {
+                val withIndexes = _editState.value.copy(requestedIndexPaths = requested)
+                _editState.value = withIndexes
+                _original.value = withIndexes
+                recomputeHasChanges()
+            }
+        }
     }
 
     fun onNameChange(value: String) = updateState { it.copy(name = value) }
@@ -359,9 +388,31 @@ class AddItemViewModel @Inject constructor(
             _uiMessages.trySend(UiMessage.Res(R.string.add_toast_max_photos, listOf(MAX_IMAGES)))
             return
         }
-        updateState { it.copy(currentImagePaths = it.currentImagePaths + newPath) }
+        val indexEnabled = imageUnderstandingRepository.state.value.enabled
+        updateState {
+            it.copy(
+                currentImagePaths = it.currentImagePaths + newPath,
+                requestedIndexPaths = if (indexEnabled) it.requestedIndexPaths + newPath else it.requestedIndexPaths,
+            )
+        }
     }
 
+    /** 在添加/编辑页切换单张照片的索引请求；未开启 AI 图片理解时只提示，不静默上传。 */
+    fun togglePhotoIndex(path: String, requested: Boolean) {
+        if (requested && !imageUnderstandingRepository.state.value.enabled) {
+            _uiMessages.trySend(UiMessage.Res(R.string.photo_index_enable_first))
+            return
+        }
+        updateState {
+            it.copy(
+                requestedIndexPaths = if (requested) {
+                    it.requestedIndexPaths + path
+                } else {
+                    it.requestedIndexPaths - path
+                },
+            )
+        }
+    }
     /** 从相册选图：压缩保存新文件并追加到列表；不删旧图、不写数据库。 */
     fun onImageUriSelected(uri: Uri) {
         viewModelScope.launch {
@@ -396,6 +447,7 @@ class AddItemViewModel @Inject constructor(
             state.copy(
                 currentImagePaths = state.currentImagePaths.filterIndexed { i, _ -> i != index },
                 removedImagePaths = removedList,
+                requestedIndexPaths = state.requestedIndexPaths - removedPath,
             )
         }
         // 照片池移除后，同步剥离所有批量草稿里对该路径的引用，避免保存悬空路径
@@ -545,6 +597,69 @@ class AddItemViewModel @Inject constructor(
         _batchItems.value = BatchDraftOps.setPhoto(_batchItems.value, uid, photoPath, assign)
     }
 
+    /** 打开合并预览；只有至少两条已勾选草稿时生效。 */
+    fun startBatchMerge() {
+        val selected = _batchSelected.value
+        val merged = BatchDraftOps.merge(_batchItems.value, selected) ?: return
+        _mergePreview.value = BatchMergePreviewState(
+            sourceUids = selected,
+            name = merged.name,
+            location = merged.location,
+            description = merged.description,
+            availablePhotoPaths = merged.photoPaths,
+            selectedPhotoPaths = merged.photoPaths,
+        )
+    }
+
+    fun updateMergePreview(name: String, location: String, description: String) {
+        _mergePreview.value = _mergePreview.value?.copy(
+            name = name,
+            location = location,
+            description = description,
+        )
+    }
+
+    fun toggleMergePhoto(path: String, selected: Boolean) {
+        val state = _mergePreview.value ?: return
+        if (selected && path !in state.selectedPhotoPaths && state.selectedPhotoPaths.size >= MAX_IMAGES) {
+            _uiMessages.trySend(UiMessage.Res(R.string.add_toast_max_photos, listOf(MAX_IMAGES)))
+            return
+        }
+        _mergePreview.value = state.copy(
+            selectedPhotoPaths = if (selected) {
+                (state.selectedPhotoPaths + path).distinct()
+            } else {
+                state.selectedPhotoPaths - path
+            },
+        )
+    }
+
+    fun cancelBatchMerge() {
+        _mergePreview.value = null
+    }
+
+    /** 确认合并：以一个稳定 uid 的新草稿替换来源草稿，并保持默认勾选。 */
+    fun confirmBatchMerge() {
+        val preview = _mergePreview.value ?: return
+        val name = preview.name.trim()
+        if (name.isEmpty()) {
+            _uiMessages.trySend(UiMessage.Res(R.string.add_error_name_empty))
+            return
+        }
+        if (preview.selectedPhotoPaths.size > MAX_IMAGES) return
+        val remaining = _batchItems.value.filterNot { it.uid in preview.sourceUids }
+        val merged = BatchDraftItem(
+            uid = batchNextUid++,
+            name = name,
+            location = preview.location.trim(),
+            description = preview.description.trim(),
+            photoPaths = preview.selectedPhotoPaths,
+        )
+        _batchItems.value = remaining + merged
+        _batchSelected.value = (_batchSelected.value - preview.sourceUids) + merged.uid
+        _mergePreview.value = null
+        refreshBatchDuplicateNames()
+    }
     /** 重查批量列表中与库中重名的名称（用于弹窗内“⚠ 已存在”标记）。 */
     private fun refreshBatchDuplicateNames() {
         viewModelScope.launch {
@@ -714,14 +829,19 @@ class AddItemViewModel @Inject constructor(
         val name = state.name.trim()
         _saveState.value = SaveState.Saving
         viewModelScope.launch {
+            var savedId: Long? = null
+            var savedImages: List<String> = state.currentImagePaths
+            var desiredIndexes: Set<String> = state.requestedIndexPaths
             val result = runCatching {
                 when {
-                    // 合并：更新重名旧记录，保留其 id/createdAt；原记录保留、不删其图片
                     mergeInto != null -> {
-                        val finalImages = state.currentImagePaths
-                        // 旧记录里不在最终列表中的图片清理（被替换掉的）
-                        mergeInto.imagePaths.filter { it !in finalImages }
-                            .forEach { imageStorage.deleteImage(it) }
+                        val existingRequested = imageAiIndexRepository.getByItem(mergeInto.id)
+                            .filter { it.requested }
+                            .map { it.imagePath }
+                            .toSet()
+                        val finalImages = (mergeInto.imagePaths + state.currentImagePaths)
+                            .distinct()
+                            .take(MAX_IMAGES)
                         updateItemUseCase(
                             mergeInto.copy(
                                 location = state.location.trim(),
@@ -730,19 +850,24 @@ class AddItemViewModel @Inject constructor(
                                 updatedAt = System.currentTimeMillis(),
                             ),
                         )
+                        savedId = mergeInto.id
+                        savedImages = finalImages
+                        desiredIndexes = existingRequested + state.requestedIndexPaths
                     }
 
-                    // 用户选择“新建记录”：忽略重名直接插入
                     forceInsert -> {
-                        // 若列表里仍有编辑中原记录的图片，先复制独立文件，避免两条记录共享图片文件
+                        val mappedIndexes = mutableSetOf<String>()
                         val finalImages = state.currentImagePaths.map { path ->
                             if (path in state.originalImagePaths) {
-                                imageStorage.saveFromFile(File(path))
+                                val copied = imageStorage.saveFromFile(File(path))
+                                if (path in state.requestedIndexPaths) mappedIndexes += copied
+                                copied
                             } else {
+                                if (path in state.requestedIndexPaths) mappedIndexes += path
                                 path
                             }
                         }
-                        addItemUseCase(
+                        savedId = addItemUseCase(
                             Item(
                                 name = name,
                                 location = state.location.trim(),
@@ -750,13 +875,12 @@ class AddItemViewModel @Inject constructor(
                                 imagePaths = finalImages,
                             ),
                         )
+                        savedImages = finalImages
+                        desiredIndexes = mappedIndexes
                     }
 
-                    // 编辑自身：保留 ID 与创建时间
                     editingItem != null -> {
                         val current = editingItem!!
-                        // 仅在保存时删除本次编辑中移除的图片文件
-                        state.removedImagePaths.forEach { imageStorage.deleteImage(it) }
                         updateItemUseCase(
                             current.copy(
                                 name = name,
@@ -766,11 +890,12 @@ class AddItemViewModel @Inject constructor(
                                 updatedAt = System.currentTimeMillis(),
                             ),
                         )
+                        savedId = current.id
+                        state.removedImagePaths.forEach { imageStorage.deleteImage(it) }
                     }
 
-                    // 新增（无重名）
                     else -> {
-                        addItemUseCase(
+                        savedId = addItemUseCase(
                             Item(
                                 name = name,
                                 location = state.location.trim(),
@@ -782,8 +907,18 @@ class AddItemViewModel @Inject constructor(
                 }
             }
             result.onSuccess {
+                val id = savedId
+                if (id != null) {
+                    val allowed = if (imageUnderstandingRepository.state.value.enabled) {
+                        desiredIndexes
+                    } else {
+                        emptySet()
+                    }
+                    runCatching {
+                        imageIndexingCoordinator.syncItemImages(id, savedImages, allowed)
+                    }
+                }
                 _saveState.value = SaveState.Success
-                // 仅新增成功（新建 / 强制新建）时累计历史添加数并检查 Star 里程碑；合并 / 编辑自身不计数
                 val isNewAdd = mergeInto == null && (forceInsert || editingItem == null)
                 if (isNewAdd) {
                     checkStarMilestoneAfterAdd()
@@ -795,6 +930,8 @@ class AddItemViewModel @Inject constructor(
     }
 
     private fun encodePaths(paths: List<String>): String = JSONArray(paths).toString()
+
+    private fun decodeSet(json: String?): Set<String> = decodePaths(json).toSet()
 
     private fun decodePaths(json: String?): List<String> {
         if (json.isNullOrBlank()) return emptyList()
@@ -884,3 +1021,13 @@ enum class SaveErrorKind {
     /** 其它保存失败 */
     SAVE_FAILED,
 }
+
+/** 合并多条草稿时的编辑预览与照片选择状态。 */
+data class BatchMergePreviewState(
+    val sourceUids: Set<Long>,
+    val name: String,
+    val location: String,
+    val description: String,
+    val availablePhotoPaths: List<String>,
+    val selectedPhotoPaths: List<String>,
+)

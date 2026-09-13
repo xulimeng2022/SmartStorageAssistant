@@ -7,7 +7,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.smartstorage.data.local.image.ImageStorage
 import com.example.smartstorage.data.local.prefs.TextColorConfig
+import com.example.smartstorage.data.local.prefs.ImageUnderstandingRepository
 import com.example.smartstorage.data.local.prefs.ThemeRepository
+import com.example.smartstorage.data.remote.vision.ImageIndexingCoordinator
+import com.example.smartstorage.data.repository.ImageAiIndexRepository
 import com.example.smartstorage.domain.model.Item
 import com.example.smartstorage.domain.usecase.DeleteItemUseCase
 import com.example.smartstorage.domain.usecase.ObserveItemByIdUseCase
@@ -35,6 +38,9 @@ class ItemDetailViewModel @Inject constructor(
     private val deleteItemUseCase: DeleteItemUseCase,
     private val imageStorage: ImageStorage,
     private val themeRepository: ThemeRepository,
+    private val imageUnderstandingRepository: ImageUnderstandingRepository,
+    private val imageIndexingCoordinator: ImageIndexingCoordinator,
+    private val imageAiIndexRepository: ImageAiIndexRepository,
 ) : ViewModel() {
 
     // 一次性 UI 消息（照片上限、图片保存失败）：由详情页用界面 Context 按当前语言解析
@@ -49,6 +55,10 @@ class ItemDetailViewModel @Inject constructor(
 
     private var currentId: Long = 0L
     private var observeJob: Job? = null
+    private var indexObserveJob: Job? = null
+
+    private val _photoIndexStates = MutableStateFlow<Map<String, PhotoIndexUiState>>(emptyMap())
+    val photoIndexStates: StateFlow<Map<String, PhotoIndexUiState>> = _photoIndexStates.asStateFlow()
 
     // 添加照片中（用于按钮进度圈与防重复点击）
     private val _addingPhoto = MutableStateFlow(false)
@@ -64,9 +74,32 @@ class ItemDetailViewModel @Inject constructor(
         if (currentId == id && observeJob?.isActive == true) return
         currentId = id
         observeJob?.cancel()
+        indexObserveJob?.cancel()
         observeJob = viewModelScope.launch {
             observeItemByIdUseCase(id).collect { _item.value = it }
         }
+        indexObserveJob = viewModelScope.launch {
+            imageAiIndexRepository.observeByItem(id).collect { rows ->
+                _photoIndexStates.value = rows.associate { it.imagePath to it.toPhotoIndexUiState() }
+            }
+        }
+    }
+
+    /** 创建单张照片索引；未开启 AI 图片理解时不静默上传。 */
+    fun requestPhotoIndex(path: String) {
+        val item = _item.value ?: return
+        if (path !in item.imagePaths) return
+        viewModelScope.launch {
+            val changed = imageIndexingCoordinator.requestIndex(item.id, path)
+            if (!changed) {
+                _uiMessages.trySend(UiMessage.Res(R.string.photo_index_enable_first))
+            }
+        }
+    }
+
+    /** 删除单图索引，只清除派生数据，不删除照片。 */
+    fun disablePhotoIndex(path: String) {
+        viewModelScope.launch { imageIndexingCoordinator.disableIndex(path) }
     }
 
     /** 删除物品，成功后回调。 */
@@ -84,10 +117,11 @@ class ItemDetailViewModel @Inject constructor(
             val current = _item.value ?: return@launch
             if (path !in current.imagePaths) return@launch
             runCatching {
-                imageStorage.deleteImage(path)
                 updateItemUseCase(
                     current.copy(imagePaths = current.imagePaths - path),
                 )
+                imageAiIndexRepository.deleteIndex(path)
+                imageStorage.deleteImage(path)
             }
         }
     }
@@ -128,6 +162,9 @@ class ItemDetailViewModel @Inject constructor(
                 // 以最新数据追加，避免期间其他操作被覆盖
                 val latest = _item.value ?: return@launch
                 updateItemUseCase(latest.copy(imagePaths = latest.imagePaths + newPaths))
+                if (imageUnderstandingRepository.state.value.enabled) {
+                    newPaths.forEach { imageIndexingCoordinator.requestIndex(latest.id, it) }
+                }
             } finally {
                 _addingPhoto.value = false
             }
@@ -147,6 +184,10 @@ class ItemDetailViewModel @Inject constructor(
                         updateItemUseCase(
                             current.copy(imagePaths = current.imagePaths + newPath),
                         )
+                    }.onSuccess {
+                        if (imageUnderstandingRepository.state.value.enabled) {
+                            imageIndexingCoordinator.requestIndex(current.id, newPath)
+                        }
                     }
                 }
                 .onFailure { e ->

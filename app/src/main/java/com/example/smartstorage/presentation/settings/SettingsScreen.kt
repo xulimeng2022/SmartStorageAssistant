@@ -39,7 +39,9 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.outlined.Help
+import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -104,6 +106,8 @@ import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import com.example.smartstorage.data.local.backup.ImportMode
+import com.example.smartstorage.data.remote.update.UpdateCheckResult
+import com.example.smartstorage.presentation.common.openUrlWithChooser
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -142,6 +146,12 @@ fun SettingsScreen(
     val visionProgress by viewModel.visionProgress.collectAsStateWithLifecycle()
     val showVisionPrivacy by viewModel.showVisionPrivacyDialog.collectAsStateWithLifecycle()
     val visionActionState by viewModel.visionActionState.collectAsStateWithLifecycle()
+    val updateChecking by viewModel.updateChecking.collectAsStateWithLifecycle()
+    val updateResult by viewModel.updateResult.collectAsStateWithLifecycle()
+    val showDeleteDataDialog by viewModel.showDeleteDataDialog.collectAsStateWithLifecycle()
+    val showDeleteDataFinalDialog by viewModel.showDeleteDataFinalDialog.collectAsStateWithLifecycle()
+    val resetBusy by viewModel.resetBusy.collectAsStateWithLifecycle()
+    val resetMessage by viewModel.resetMessage.collectAsStateWithLifecycle()
 
     // 默认导出文件名按当前语言实时拼接（ViewModel 只保留时间戳，避免缓存旧语言文案）
     val defaultExportName = stringResource(R.string.settings_backup_default_name, defaultExportTimestamp)
@@ -167,6 +177,14 @@ fun SettingsScreen(
     // 消息在显示层用界面 Context 解析：语言切换后新消息立即使用新语言
     val messageContext = LocalContext.current
 
+    // 完全删除结果消息 → Snackbar
+    LaunchedEffect(resetMessage) {
+        resetMessage?.let {
+            snackbarHostState.showSnackbar(it.resolve(messageContext))
+            viewModel.consumeResetMessage()
+        }
+    }
+
     // 备份结果消息 → Snackbar
     LaunchedEffect(backupMessage) {
         backupMessage?.let {
@@ -181,6 +199,123 @@ fun SettingsScreen(
     // 数据管理「备份与恢复教程」弹窗状态
     var showDataHelpDialog by remember { mutableStateOf(false) }
 
+    // 检查更新结果：最新 / 有更新 / 失败三种状态严格区分
+    updateResult?.let { result ->
+        val context = LocalContext.current
+        when (result) {
+            is UpdateCheckResult.UpToDate -> AlertDialog(
+                onDismissRequest = viewModel::dismissUpdateResult,
+                title = { Text(stringResource(R.string.settings_update_up_to_date_title)) },
+                text = { Text(stringResource(R.string.settings_update_up_to_date_body, result.currentVersion)) },
+                confirmButton = {
+                    TextButton(onClick = viewModel::dismissUpdateResult) {
+                        Text(stringResource(R.string.common_ok))
+                    }
+                },
+            )
+            is UpdateCheckResult.Available -> AlertDialog(
+                onDismissRequest = viewModel::dismissUpdateResult,
+                title = { Text(stringResource(R.string.settings_update_available_title, result.release.versionName)) },
+                text = {
+                    Text(
+                        text = result.release.notes.ifBlank {
+                            stringResource(R.string.settings_update_no_notes)
+                        },
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            openUrlWithChooser(context, result.release.downloadUrl)
+                            viewModel.dismissUpdateResult()
+                        },
+                    ) {
+                        Text(stringResource(R.string.settings_update_download))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = viewModel::dismissUpdateResult) {
+                        Text(stringResource(R.string.common_cancel))
+                    }
+                },
+            )
+            is UpdateCheckResult.Failed -> AlertDialog(
+                onDismissRequest = viewModel::dismissUpdateResult,
+                title = { Text(stringResource(R.string.settings_update_failed_title)) },
+                text = { Text(stringResource(R.string.settings_update_failed_body)) },
+                confirmButton = {
+                    TextButton(onClick = viewModel::dismissUpdateResult) {
+                        Text(stringResource(R.string.common_ok))
+                    }
+                },
+            )
+        }
+    }
+    // 完全删除数据：第一步说明范围，第二步不可恢复确认
+    if (showDeleteDataDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissResetAllData,
+            title = { Text(stringResource(R.string.settings_reset_all)) },
+            text = { Text(stringResource(R.string.settings_reset_scope)) },
+            confirmButton = {
+                TextButton(onClick = viewModel::continueResetAllData) {
+                    Text(stringResource(R.string.settings_reset_continue))
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            viewModel.dismissResetAllData()
+                            viewModel.onExportClick()
+                        },
+                    ) {
+                        Text(stringResource(R.string.settings_reset_backup_first))
+                    }
+                    TextButton(onClick = viewModel::dismissResetAllData) {
+                        Text(stringResource(R.string.common_cancel))
+                    }
+                }
+            },
+        )
+    }
+
+    if (showDeleteDataFinalDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissResetAllData,
+            title = { Text(stringResource(R.string.settings_reset_final_title)) },
+            text = { Text(stringResource(R.string.settings_reset_final_body)) },
+            confirmButton = {
+                val context = LocalContext.current
+                TextButton(
+                    onClick = {
+                        viewModel.confirmResetAllData {
+                            (context as? android.app.Activity)?.recreate()
+                        }
+                    },
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_reset_confirm),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissResetAllData) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+        )
+    }
+
+    if (resetBusy) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.settings_reset_running_title)) },
+            text = { Text(stringResource(R.string.settings_reset_running_body)) },
+            confirmButton = {},
+        )
+    }
     // 首页「搜索小贴士」弹窗状态
     var showSearchTips by remember { mutableStateOf(false) }
     var doNotRemindTips by remember { mutableStateOf(false) }
@@ -550,6 +685,12 @@ fun SettingsScreen(
                                 icon = Icons.Outlined.FileUpload,
                                 onClick = { openDocumentLauncher.launch(arrayOf("application/zip")) },
                             ),
+                            SettingsItem(
+                                label = stringResource(R.string.settings_reset_all),
+                                value = stringResource(R.string.settings_reset_all_desc),
+                                icon = Icons.Filled.DeleteForever,
+                                onClick = viewModel::requestResetAllData,
+                            ),
                         ),
                     )
                 }
@@ -565,6 +706,18 @@ fun SettingsScreen(
                                 value = stringResource(R.string.version_label, BuildConfig.VERSION_NAME),
                                 icon = Icons.Filled.Info,
                                 onClick = onOpenAbout,
+                            ),
+                            // 检查更新：用户主动访问 GitHub Releases 稳定渠道
+                            SettingsItem(
+                                label = stringResource(R.string.settings_check_update),
+                                value = if (updateChecking) {
+                                    stringResource(R.string.settings_checking_update)
+                                } else {
+                                    stringResource(R.string.version_label, BuildConfig.VERSION_NAME)
+                                },
+                                icon = Icons.Outlined.Update,
+                                enabled = !updateChecking,
+                                onClick = viewModel::checkForUpdates,
                             ),
                             // 赞助支持：进入捐赠页
                             SettingsItem(
@@ -593,6 +746,123 @@ fun SettingsScreen(
         )
     }
 
+    // 检查更新结果：最新 / 有更新 / 失败三种状态严格区分
+    updateResult?.let { result ->
+        val context = LocalContext.current
+        when (result) {
+            is UpdateCheckResult.UpToDate -> AlertDialog(
+                onDismissRequest = viewModel::dismissUpdateResult,
+                title = { Text(stringResource(R.string.settings_update_up_to_date_title)) },
+                text = { Text(stringResource(R.string.settings_update_up_to_date_body, result.currentVersion)) },
+                confirmButton = {
+                    TextButton(onClick = viewModel::dismissUpdateResult) {
+                        Text(stringResource(R.string.common_ok))
+                    }
+                },
+            )
+            is UpdateCheckResult.Available -> AlertDialog(
+                onDismissRequest = viewModel::dismissUpdateResult,
+                title = { Text(stringResource(R.string.settings_update_available_title, result.release.versionName)) },
+                text = {
+                    Text(
+                        text = result.release.notes.ifBlank {
+                            stringResource(R.string.settings_update_no_notes)
+                        },
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            openUrlWithChooser(context, result.release.downloadUrl)
+                            viewModel.dismissUpdateResult()
+                        },
+                    ) {
+                        Text(stringResource(R.string.settings_update_download))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = viewModel::dismissUpdateResult) {
+                        Text(stringResource(R.string.common_cancel))
+                    }
+                },
+            )
+            is UpdateCheckResult.Failed -> AlertDialog(
+                onDismissRequest = viewModel::dismissUpdateResult,
+                title = { Text(stringResource(R.string.settings_update_failed_title)) },
+                text = { Text(stringResource(R.string.settings_update_failed_body)) },
+                confirmButton = {
+                    TextButton(onClick = viewModel::dismissUpdateResult) {
+                        Text(stringResource(R.string.common_ok))
+                    }
+                },
+            )
+        }
+    }
+    // 完全删除数据：第一步说明范围，第二步不可恢复确认
+    if (showDeleteDataDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissResetAllData,
+            title = { Text(stringResource(R.string.settings_reset_all)) },
+            text = { Text(stringResource(R.string.settings_reset_scope)) },
+            confirmButton = {
+                TextButton(onClick = viewModel::continueResetAllData) {
+                    Text(stringResource(R.string.settings_reset_continue))
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            viewModel.dismissResetAllData()
+                            viewModel.onExportClick()
+                        },
+                    ) {
+                        Text(stringResource(R.string.settings_reset_backup_first))
+                    }
+                    TextButton(onClick = viewModel::dismissResetAllData) {
+                        Text(stringResource(R.string.common_cancel))
+                    }
+                }
+            },
+        )
+    }
+
+    if (showDeleteDataFinalDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissResetAllData,
+            title = { Text(stringResource(R.string.settings_reset_final_title)) },
+            text = { Text(stringResource(R.string.settings_reset_final_body)) },
+            confirmButton = {
+                val context = LocalContext.current
+                TextButton(
+                    onClick = {
+                        viewModel.confirmResetAllData {
+                            (context as? android.app.Activity)?.recreate()
+                        }
+                    },
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_reset_confirm),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissResetAllData) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+        )
+    }
+
+    if (resetBusy) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.settings_reset_running_title)) },
+            text = { Text(stringResource(R.string.settings_reset_running_body)) },
+            confirmButton = {},
+        )
+    }
     // 首页「搜索小贴士」弹窗（勾选「不再提示」关闭首页提示；取消勾选 = 重新开启）
     if (showSearchTips) {
         SearchTipsDialog(

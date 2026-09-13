@@ -16,8 +16,38 @@ data class BatchDraftItem(
 )
 
 /** 批量草稿的纯函数操作（无 Android 依赖，便于单元测试）。 */
+/** 多草稿合并预览的默认字段；照片为来源草稿的并集。 */
+data class BatchMergeResult(
+    val name: String,
+    val location: String,
+    val description: String,
+    val photoPaths: List<String>,
+)
 object BatchDraftOps {
 
+    /** 把选中的多条草稿合并为一条预览；不足两条或 uid 不匹配时返回 null。 */
+    fun merge(items: List<BatchDraftItem>, sourceUids: Set<Long>): BatchMergeResult? {
+        val selected = items.filter { it.uid in sourceUids }
+        if (selected.size < 2) return null
+        val locations = selected.map { it.location.trim() }.filter(String::isNotEmpty).distinct()
+        val descriptions = selected.map { it.description.trim() }.filter(String::isNotEmpty).distinct()
+        return BatchMergeResult(
+            name = selected.joinToString("、") { it.name.trim() },
+            location = when (locations.size) {
+                0 -> ""
+                1 -> locations.first()
+                else -> selected.filter { it.location.isNotBlank() }
+                    .joinToString("；") { "${it.name.trim()}：${it.location.trim()}" }
+            },
+            description = when (descriptions.size) {
+                0 -> ""
+                1 -> descriptions.first()
+                else -> selected.filter { it.description.isNotBlank() }
+                    .joinToString("；") { "${it.name.trim()}：${it.description.trim()}" }
+            },
+            photoPaths = selected.flatMap { it.photoPaths }.distinct(),
+        )
+    }
     /** 按 uid 修改某条草稿的名称/地点/备注；找不到时原样返回。 */
     fun update(
         items: List<BatchDraftItem>,

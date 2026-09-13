@@ -1,5 +1,6 @@
 package com.example.smartstorage.presentation.settings
 
+import com.example.smartstorage.BuildConfig
 import com.example.smartstorage.R
 import com.example.smartstorage.presentation.common.UiMessage
 import com.example.smartstorage.presentation.common.toFailureUiMessage
@@ -10,6 +11,7 @@ import android.net.Uri
 import com.example.smartstorage.data.local.backup.BackupInfo
 import com.example.smartstorage.data.local.backup.BackupRepository
 import com.example.smartstorage.data.local.backup.ImportMode
+import com.example.smartstorage.data.local.reset.AppDataResetRepository
 import com.example.smartstorage.data.local.prefs.AiConfig
 import com.example.smartstorage.data.local.prefs.AppPreferencesRepository
 import com.example.smartstorage.data.local.prefs.LlmPreset
@@ -20,6 +22,8 @@ import com.example.smartstorage.data.local.prefs.SettingsRepository
 import com.example.smartstorage.data.local.prefs.VisionCapabilityStatus
 import com.example.smartstorage.data.remote.vision.ImageIndexingCoordinator
 import com.example.smartstorage.data.remote.vision.VisionAnalyzer
+import com.example.smartstorage.data.remote.update.UpdateCheckResult
+import com.example.smartstorage.data.remote.update.UpdateChecker
 import com.example.smartstorage.data.remote.vision.VisionProbeResult
 import com.example.smartstorage.data.repository.ImageIndexProgress
 import com.example.smartstorage.data.repository.ImageAiIndexRepository
@@ -54,10 +58,12 @@ class SettingsViewModel @Inject constructor(
     private val appPreferencesRepository: AppPreferencesRepository,
     private val themeRepository: ThemeRepository,
     private val backupRepository: BackupRepository,
+    private val appDataResetRepository: AppDataResetRepository,
     private val imageUnderstandingRepository: ImageUnderstandingRepository,
     private val imageIndexingCoordinator: ImageIndexingCoordinator,
     private val imageAiIndexRepository: ImageAiIndexRepository,
     private val visionAnalyzer: VisionAnalyzer,
+    private val updateChecker: UpdateChecker,
 ) : ViewModel() {
 
     // ===== AI 智能解析配置（工作副本）=====
@@ -219,6 +225,25 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { imageIndexingCoordinator.clearAll() }
     }
 
+    // ===== 检查更新：用户主动触发，结果由 UI 区分“最新/有更新/失败” =====
+    private val _updateChecking = MutableStateFlow(false)
+    val updateChecking: StateFlow<Boolean> = _updateChecking.asStateFlow()
+
+    private val _updateResult = MutableStateFlow<UpdateCheckResult?>(null)
+    val updateResult: StateFlow<UpdateCheckResult?> = _updateResult.asStateFlow()
+
+    fun checkForUpdates() {
+        if (_updateChecking.value) return
+        _updateChecking.value = true
+        viewModelScope.launch {
+            _updateResult.value = updateChecker.check(BuildConfig.VERSION_NAME)
+            _updateChecking.value = false
+        }
+    }
+
+    fun dismissUpdateResult() {
+        _updateResult.value = null
+    }
     // ===== 外观设置操作 =====
 
     /** 切换主题模式：立即持久化，全局即时生效，无需重启 App */
@@ -395,6 +420,52 @@ class SettingsViewModel @Inject constructor(
     private val _backupMessage = MutableStateFlow<UiMessage?>(null)
     val backupMessage: StateFlow<UiMessage?> = _backupMessage.asStateFlow()
 
+    // ===== 完全删除 App 数据：两步确认、执行结果与进行中状态 =====
+    private val _showDeleteDataDialog = MutableStateFlow(false)
+    val showDeleteDataDialog: StateFlow<Boolean> = _showDeleteDataDialog.asStateFlow()
+
+    private val _showDeleteDataFinalDialog = MutableStateFlow(false)
+    val showDeleteDataFinalDialog: StateFlow<Boolean> = _showDeleteDataFinalDialog.asStateFlow()
+
+    private val _resetBusy = MutableStateFlow(false)
+    val resetBusy: StateFlow<Boolean> = _resetBusy.asStateFlow()
+
+    private val _resetMessage = MutableStateFlow<UiMessage?>(null)
+    val resetMessage: StateFlow<UiMessage?> = _resetMessage.asStateFlow()
+
+    fun requestResetAllData() {
+        if (_resetBusy.value) return
+        _showDeleteDataDialog.value = true
+    }
+
+    fun dismissResetAllData() {
+        _showDeleteDataDialog.value = false
+        _showDeleteDataFinalDialog.value = false
+    }
+
+    fun continueResetAllData() {
+        _showDeleteDataDialog.value = false
+        _showDeleteDataFinalDialog.value = true
+    }
+
+    fun confirmResetAllData(onComplete: () -> Unit) {
+        if (_resetBusy.value) return
+        _showDeleteDataFinalDialog.value = false
+        _resetBusy.value = true
+        viewModelScope.launch {
+            val report = appDataResetRepository.resetAll()
+            _resetBusy.value = false
+            if (report.isComplete) {
+                onComplete()
+            } else {
+                _resetMessage.value = UiMessage.Res(R.string.settings_reset_failed)
+            }
+        }
+    }
+
+    fun consumeResetMessage() {
+        _resetMessage.value = null
+    }
     /** 点击「导出数据」：弹出文件名输入对话框（默认带时间戳） */
     fun onExportClick() {
         val time = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())

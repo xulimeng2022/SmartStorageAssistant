@@ -1,6 +1,8 @@
 package com.example.smartstorage.di
 
 import com.example.smartstorage.data.remote.llm.LlmTransport
+import com.example.smartstorage.data.remote.update.GithubUpdateTransport
+import com.example.smartstorage.data.remote.update.UpdateTransport
 import com.example.smartstorage.data.remote.llm.OkHttpLlmTransport
 import com.example.smartstorage.data.remote.vision.OkHttpVisionTransport
 import com.example.smartstorage.data.remote.vision.VisionTransport
@@ -39,6 +41,11 @@ object RemoteModule {
     @Provides
     @Singleton
     fun provideLlmTransport(client: OkHttpClient): LlmTransport = OkHttpLlmTransport(client)
+
+    /** GitHub Releases 更新检查传输。 */
+    @Provides
+    @Singleton
+    fun provideUpdateTransport(client: OkHttpClient): UpdateTransport = GithubUpdateTransport(client)
 
     /** OpenAI 兼容视觉传输实现。 */
     @Provides

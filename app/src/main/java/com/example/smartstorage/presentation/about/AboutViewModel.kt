@@ -6,11 +6,13 @@ import com.example.smartstorage.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import com.example.smartstorage.presentation.common.UiMessage
 import com.example.smartstorage.presentation.common.copyTextToClipboard
+import com.example.smartstorage.presentation.common.openEmailWithFallback
 import com.example.smartstorage.presentation.common.openUrlWithChooser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -78,13 +80,18 @@ class AboutViewModel @Inject constructor(
             value = "xulimeng2026.netlify.app",
             onClick = { openUrlWithChooser(context, "https://xulimeng2026.netlify.app") },
         ),
-        // 预留扩展位示例（取消注释即可启用）：
-        // ContactItem(
-        //     icon = Icons.Outlined.Email,
-        //     labelRes = R.string.about_email,
-        //     value = "your_email@example.com",
-        //     onClick = { openUrlWithChooser(context, "mailto:your_email@example.com") },
-        // ),
+        ContactItem(
+            icon = Icons.Outlined.Email,
+            labelRes = R.string.about_email,
+            value = "xulimeng2026@hnu.edu.cn",
+            onClick = {
+                openEmailWithFallback(
+                    context = context,
+                    address = "xulimeng2026@hnu.edu.cn",
+                    fallbackMessageRes = R.string.about_email_copied,
+                )
+            },
+        ),
     )
 
     /** 复制联系方式并发一次性提示（QQ/微信共用）；文案由关于页按当前语言解析 */
