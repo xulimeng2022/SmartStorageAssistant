@@ -5,44 +5,41 @@
 
 ## Current Task
 
-- ID / Title: T-021 UI 1.2.0 最终 App 图标替换
+- ID / Title: T-022 UI 1.2.0 App 图标安全区返修
 - Status: FINAL_RELEASE_PACKAGE_BUILT / DEVICE_VISUAL_PENDING
-- Risk: Medium
-- Goal: 将用户最终 PNG 原图替换为 Launcher / adaptive / round / Android 12+ 默认 splash 的图标来源，并清理旧图标资源。
-- Allowed Scope: Coordinator 验收、集成、中央文档与验证；Launcher / 品牌资源由 UI 永久工作树执行。
-- Acceptance: 新 background / foreground 已集成；旧资源无引用；资源编译、Debug/Release/R8、107 JVM tests、APK 资源检查通过；真机视觉待验收。
+- Risk: Low
+- Goal: 保持现有蓝紫渐变与立方体/星光设计不变，仅把透明 foreground 缩小到原视觉约 85%，进入 Adaptive Icon 安全区。
+- Allowed Scope: UI 永久工作树执行资源返修；Coordinator 负责集成、Release 构建、文档与验收。
+- Acceptance: foreground 85%；三种 mask 下星光和立方体完整；Debug/Release 构建及正式签名通过；真机视觉待复测。
 
 ## Progress
 
-- Completed: UI 源提交 `a378a32`、UI docs `a159c94` 已审核并 cherry-pick/合并；集成实现 `2b4a616`、集成 docs `e0bd8a9` 已完成。
-- In Progress: 最终签名 APK 已生成，等待用户真机安装验收 Launcher mask、Splash、应用信息与最近任务。
+- Completed: UI 源提交 `e9d37dc`、文档 `59ab246`、Release Handoff `52fb977` 已集成；最终 Release 已覆盖归档。
+- In Progress: 等待用户安装 T-022 Release APK 复测 Launcher、Round / Squircle、Splash、应用信息与最近任务。
 
 ## Working Tree
 
-- State: Clean after T-021 central documentation commit
+- State: Clean after T-022 central documentation commit
 - Changed: None
 
 ## Validation
 
-- Source：用户 PNG 1254×1254，SHA-256 `4D32F0B84D8963EDF121BDFB01EE20951A755E76AA21C65486C11F5CBDCA94BC`。
-- Resource：`:app:processDebugResources` PASS。
-- JVM：22 suites / 107 tests，0 failures / 0 errors / 0 skipped（ASCII 临时目录）。
-- Debug / Release / R8：PASS；最终签名 APK `app/release/智能收纳助手-1.2.0.apk`，SHA-256 `3FAC4FEC1F3291161E53EEDE619276E499137A8873C80B9138A8A039C64CCD5E`，v2+v3 有效。
-- Lint：仅既有 Manifest 相机硬件声明 error，114 warnings；无 T-021 图标 error。
-- APK：Manifest icon / roundIcon、v26 adaptive XML、nodpi PNG 均已打包；旧 vector / color 已清理。
-- 真机 / Android instrumentation / 真实网络：NOT VERIFIED。
-- 既有 T-019/T-020：仍待用户真机视觉与持久性复测；现有 RC2 不包含 T-021 图标。
+- Resource / Debug：`:app:processDebugResources`、`:app:assembleDebug` PASS。
+- Release / R8：`:app:assembleRelease` PASS，包含 T-022 返修。
+- Final APK：`app/release/智能收纳助手-1.2.0.apk`，SHA-256 `1C080AEC567814A314868DBD44F8B3A1CDE0CA42BFBEE326E3A41917B7C2A854`，v2+v3 有效。
+- Mask 预演：圆形 / 圆角矩形 / Squircle 下星光完整，立方体不裁切，无双层圆角。
+- 真机：NOT VERIFIED；本轮以用户复测为准。
 
 ## Last Handoff
 
-- Task / Source Branch: T-021 / `codex/ui` → `codex/integration`
-- Commits: UI `a378a32`；docs `a159c94`；integration `2b4a616`；integration docs `e0bd8a9`。
-- Summary: 最终 App 图标资源已集成；静态构建、测试、lint 与 APK 资源检查完成。
+- Task / Source Branch: T-022 / `codex/ui` → `codex/integration`
+- Commits: implementation `e9d37dc`; integration `e2f0577`; docs `59ab246` / `0281f10`; release Handoff `52fb977` / `3df394e`。
+- Summary: 只缩小 foreground 到原视觉 85%，背景满铺不变，解决真机星光裁切与主体过大问题。
 
 ## Blockers
 
-- 当前无 ADB 设备；真机 Launcher / Splash 视觉尚未验证。
+- 无。
 
 ## Next Step
 
-- 用户构建并安装当前 `codex/integration` 或生成新的 signed candidate 后完成 T-021 真机验收；通过后再进入 Archify、项目页与个人主页更新。未获明确授权前不 push / tag / release。
+- 用户安装最新 `app/release/智能收纳助手-1.2.0.apk` 复核所有 Launcher Mask；通过后再进入 Archify、项目页与个人主页更新。未获明确授权前不 Push / Tag / GitHub Release。
