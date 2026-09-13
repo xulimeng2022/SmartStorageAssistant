@@ -20,8 +20,8 @@
 
 ## Working Tree
 
-- State: Clean
-- Changed: None expected
+- State: Clean after T-012 closure commit
+- Changed: None after T-012 closure commit
 
 ## Validation
 
@@ -38,13 +38,16 @@
 - Independent Test: PASS
 - Independent Review: PASS
 - Coordinator Integration Gate: PASS
+- T-012 Static Validation: PASS
+- T-012 UI / AI / Data Permanent Worktree Dispatch: PASS
+- T-012 PERMANENT_WORKTREE_FALLBACK: NOT TRIGGERED
 - Full Machine Recovery: NOT VERIFIED
 
 ## Last Handoff
 
-- Task / Source Branch: T-010 Recovery / Backup / Team Migration / codex/integration
-- Commits: Evidence checkpoint is current HEAD after commit
-- Summary: T-010 DONE / 已验收；Git / Multi-Codex Recovery VALIDATED；Full Machine Recovery NOT VERIFIED。
+- Task / Source Branch: T-012 Coordinator 跨永久工作树任务分发优先级 / codex/integration
+- Commits: T-012 closure commit
+- Summary: T-012 DONE；全局 Skill 项目无关；UI / AI / Data 三个永久工作树真实只读投递 PASS；fallback 未触发。
 
 ## Blockers
 

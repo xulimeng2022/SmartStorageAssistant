@@ -91,6 +91,9 @@
   - 角色恢复快照：主控（Coordinator）→ `docs/coordination/Coordinator.md`，Data → `docs/coordination/Data.md`，AI → `docs/coordination/AI.md`，UI → `docs/coordination/UI.md`
   - 正式任务状态、验收与 TDD 记录：`docs/project/04-任务与验收清单.md`、`docs/project/05-单任务卡-TDD.md` 与 `docs/project/tasks/`
   - Git HEAD / branch / commit / worktree：Git
+- 任务路由硬规则：项目永久角色任务遵循 `Permanent Worktree > Coordinator Owned Local > Temporary Subagent`；属于 UI / AI / Data Ownership 的开发任务必须先按 WORKFLOW 投递到对应永久工作树，不得因任务较小或 Coordinator 可直接完成而跳过。
+- Coordinator 本地执行仅限自身 Ownership、必要 glue、冲突解决与集成；永久工作树不可用时，模块写操作只有在明确授予临时 Single Writer 后才能由 Coordinator 或 Temporary Subagent 执行，否则生成人工接力卡。
+- 每次永久工作树投递与 fallback 必须记录目标角色、实际 Project / Worktree / Branch、threadId 和结果；永久工作树失败必须记录 `PERMANENT_WORKTREE_FALLBACK`，禁止静默降级或让临时子 Agent 冒充永久角色。
 - 各真相源职责分离，不要求每次全文读取 WORKFLOW。
 - 同一事实在不同真相源冲突时，不自行猜测、覆盖或静默选择；停止相关修改并报告主控（Coordinator）。
 

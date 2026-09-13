@@ -129,6 +129,59 @@ Multi-Codex 操作状态映射到现有正式任务体系：
 
 ## 6. Task 使用方式
 
+### Permanent Worktree Dispatch
+
+> 项目专属角色路由由本节定义；通用发现、投递、回收和 fallback 机制由 `multi-codex-coordinator` Skill 定义。Project、Worktree 路径、branch 占用和 threadId 必须运行时发现，不写死。
+
+| 逻辑角色 | 默认 Ownership | 永久 Branch | 默认路由 |
+| --- | --- | --- | --- |
+| Coordinator | 中央协调文档、App/root 集成、跨模块 DI/Bootstrap、必要 glue 与最终集成 | `codex/integration` | Coordinator Owned Local |
+| UI | `presentation/**`、Compose、ViewModel、Navigation、Theme、UI 资源与显示层多语言 | `codex/ui` | Permanent Worktree |
+| Data | Room、Entity、DAO、Migration、Repository 实现、持久化与通用 Data/Domain contract | `codex/data` | Permanent Worktree |
+| AI | `data/remote/llm/**`、`data/remote/vision/**`、Provider、Prompt、Parser、Vision 与 AI-only 类型/测试 | `codex/ai` | Permanent Worktree |
+| Test / Review | 按任务临时启动，不建立永久 Worktree | 任务来源分支 / diff | Temporary Role |
+
+#### 路由前预检
+
+1. 依据 [OWNERSHIP.md](OWNERSHIP.md) 判断任务属于 Coordinator Owned 还是明确的永久角色 Ownership；跨模块任务先按 Owner 拆分，共享 contract 先冻结。
+2. 从实际 Codex Project、`git worktree list --porcelain`、Role State 和分支占用中唯一定位目标角色。发现多个候选、路径不符或 branch 不符时停止选择，不静默猜测。
+3. 先检查当前 Task Card / Role State 是否已有同一 `Task ID` 的目标 threadId；存在时验证其 Project 与 `cwd` 后继续投递，不存在时创建新任务线程。
+4. 禁止为路由创建新 Worktree。新任务线程必须绑定既有角色 Project，并使用该 Project 的本地环境，确保执行目录就是原永久 Worktree。
+
+#### 投递与回收
+
+```text
+Task Card
+↓
+解析目标角色与实际 Project / Worktree / Branch
+↓
+复用同 Task ID threadId，否则在目标 Project 创建新任务线程
+↓
+确认 threadId / hostId（clientThreadId 未就绪时不得声称投递成功）
+↓
+等待并读取执行结果
+↓
+核验目标 cwd、branch、Git commit 与文件变化
+↓
+Review / Test / Integration
+```
+
+- Task Card 至少记录：Task ID、From、Target Role、目标 Project/Worktree/Branch、Goal、Scope、禁止范围、依赖、Acceptance、Required Output、threadId、Routing/Fallback。
+- 同一 Task ID 的返修优先续投原线程；新 Task ID 在目标永久 Worktree 中新建线程。线程 ID记录在本项目 Task Card / Role State，不写入通用 Skill。
+- 结果不能只信摘要；必须核验目标线程实际工作树、branch、commit、diff 与测试证据，再进入集成。
+
+#### Fallback 与 Single Writer
+
+- 永久工作树在发现、发送或等待阶段失败时记录：
+
+```text
+PERMANENT_WORKTREE_FALLBACK | task=<ID> | target=<Role> | stage=<resolve/send/wait> | reason=<原因> | next=<动作>
+```
+
+- `PERMANENT_WORKTREE_FALLBACK` 记录在对应 Formal Task Card；Lightweight Task 至少记录在 Coordinator 交付报告。不得静默 fallback。
+- Coordinator Owned 工作可直接本地完成。永久角色 Ownership 的模块写操作，无论由 Coordinator 还是 Temporary Subagent fallback 执行，都必须先由主控明确授予临时 Single Writer，限定 Task、文件/范围和原因；没有授权时生成人工接力卡并停止。
+- Temporary Subagent 只能作为只读辅助或永久工作树与本地执行都不可用后的最后手段，不得绕过文件 Ownership、Single Writer、测试与 Review，也不得用其结果冒充永久工作树投递证据。
+
 正式任务与验收体系见：
 
 - [任务与验收清单](../project/04-任务与验收清单.md)
