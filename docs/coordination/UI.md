@@ -15,7 +15,7 @@
 
 ## Progress
 
-- Completed: 新增 `BatchMergePhotoPolicy` 纯函数；`startBatchMerge()` 分别注入候选与默认选中照片；8 个目标 JVM 测试通过。
+- Completed: 新增 `BatchMergePhotoPolicy` 纯函数；`startBatchMerge()` 分别注入候选与默认选中照片；8 个目标 JVM 测试通过；T-019/T-020 已集成到 `codex/integration`。
 - In Progress: None
 
 ## Working Tree
@@ -33,7 +33,7 @@
 ## Last Handoff
 
 - Task / Source Branch: T-020 / codex/ui
-- Commits: implementation `7fff55e`; docs Handoff（本 docs-only commit）
+- Commits: implementation `7fff55e`; integration `cfe5a5d`; docs Handoff `1d9a7f4`; integration docs `45fe428`
 - Summary: 合并候选按选中草稿精确照片并集加当前照片池未分配照片生成，按绝对路径去重；默认仅选来源照片，仅属于未选中草稿的照片排除，候选不受 9 张截断。
 - Known limitation: 真机取消重开与保存重启后的照片可打开性未验证。
 
@@ -43,4 +43,4 @@
 
 ## Next Step
 
-- 等待 Coordinator 集成并安排真机验收。
+- 已集成并生成 RC2；等待用户真机复测布局与合并持久性流程。

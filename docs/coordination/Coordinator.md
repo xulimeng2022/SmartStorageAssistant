@@ -5,44 +5,44 @@
 
 ## Current Task
 
-- ID / Title: T-013 v1.2.0 RC 专项回归核验与缺陷收口
-- Status: DONE / READY_FOR_USER_DEVICE_ACCEPTANCE
+- ID / Title: T-019/T-020 v1.2.0 三项真机反馈返修
+- Status: DONE / INTEGRATED / READY_FOR_USER_DEVICE_ACCEPTANCE
 - Risk: High
-- Goal: 核验 T-011 1.2.0 RC，闭环已确认 BLOCKER，重建真机验收候选包。
+- Goal: 完成校园邮箱标签与设置布局、合并预览未分配照片两项 UI 返修，并重建可覆盖安装的签名 RC2。
 - Allowed Scope: Coordinator 协调、Review、集成、中央文档与候选包状态；模块代码由永久工作树执行。
-- Acceptance: 三方 findings 已分类；4 BLOCKER 闭环；99 JVM tests、Debug/Release/R8、v2+v3 签名通过；用户真机待验收。
-- Task Card: docs/project/tasks/T-013-v1.2.0-RC专项回归核验与缺陷收口.md
+- Acceptance: T-019/T-020 已集成；107 JVM tests、Debug/Release/R8 通过；RC2 同包名同签名、v2+v3 有效；用户真机待验收。
+- Task Card: docs/project/tasks/T-019-UI-1.2.0真机反馈修复-校园邮箱与设置布局.md；docs/project/tasks/T-020-UI-1.2.0真机反馈修复-合并未分配照片.md
 
 ## Progress
 
-- Completed: T-012 DONE；T-013 三方只读核验与缺陷分类；T-014 / T-015 / T-016 修复与 docs Handoff 已集成；签名 RC 已重建。
-- In Progress: 等待用户真机覆盖升级与完整交互验收。
+- Completed: T-019 UI 源 commit `698b9ee`、T-020 UI 源 commit `7fff55e` 已审核并 cherry-pick；文档冲突按双方意图合并；RC2 已构建并完成签名兼容校验。
+- In Progress: 等待用户安装 RC2 完成布局与合并持久性真机验收。
 
 ## Working Tree
 
-- State: Clean after T-013 closure commit
+- State: Clean after RC2 integration and candidate documentation commit
 - Changed: None
 
 ## Validation
 
-- UI / AI / Data findings：4 BLOCKER、10 IMPORTANT、4 OPTIONAL 已分类。
-- T-014 / T-015 / T-016：DONE / INTEGRATED。
-- JVM：21 suite / 99 tests，0 fail。
+- T-019：三语邮箱标签、SettingsItem subtitle 布局与 6 个长说明调用点已完成；真机视觉待验。
+- T-020：合并候选包含会话未分配照片、默认选择与绝对路径去重已完成；真机取消重开/保存重启待验。
+- JVM：22 suites / 107 tests，0 failures / 0 errors / 0 skipped。
 - Debug / Release / R8：PASS。
-- Candidate：`app/release/智能收纳助手-1.2.0-rc.apk`，SHA-256 `424A26AC4A25DDDBB31D6180E0DA248CD0824722743A3FFD06CD117D1EC05BFF`，v2+v3 有效。
+- Candidate：`app/release/智能收纳助手-1.2.0-rc2.apk`，SHA-256 `11A2F25E08F2950DD48CEBBFB02B8B30B4DC16766FADA8F3372B1EBB7DCF2BF7`，包名/版本 `com.example.smartstorage` / `1.2.0/6`，v2+v3 有效，证书 SHA-256 `0511094a1de87d24d3ed3dc3fd6d731f8158e40170ce85255ccecce74282525c`。
 - Android instrumentation / 真机 / 真实网络：NOT VERIFIED。
 - 后续体验项：T-017 批量合并分隔符本地化；T-018 单图索引失败原因细分。
 
 ## Last Handoff
 
-- Task / Source Branch: T-013 / codex/integration
-- Commits: UI `58679dc`、AI `5e07b13`、Data `11df4f2`；角色文档 `13a590f`、`b8dd304`、`d0e305d`；Coordinator 收口 `d877b68`。
-- Summary: 4 BLOCKER 已闭环；99 JVM tests 与 Debug/Release 通过；等待用户真机验收。
+- Task / Source Branch: T-019/T-020 / codex/integration
+- Commits: UI source `698b9ee`、`7fff55e`；集成实现 `88d6599`、`cfe5a5d`；docs Handoff `05acd2c`、`45fe428`。
+- Summary: 三项真机反馈修复已集成；107 JVM tests 与 Debug/Release/R8 通过；RC2 已签名并兼容当前测试包。
 
 ## Blockers
 
-- 用户真机与真实网络/视觉 API 尚未执行。
+- 用户真机布局与合并持久性流程尚未执行；ADB 当前无设备。
 
 ## Next Step
 
-- 用户安装 `app/release/智能收纳助手-1.2.0-rc.apk` 并按 RELEASE_GUIDE T-011/T-013 清单验收；通过后才考虑 Stable Candidate 进入 main 与正式 Release。
+- 用户安装 `app/release/智能收纳助手-1.2.0-rc2.apk`，重点复测设置布局、三语/深色，以及“合并→取消→再打开”“合并选图→保存→关闭并重启→详情打开照片”；通过后才考虑 Stable Candidate 进入 main 与正式 Release。
