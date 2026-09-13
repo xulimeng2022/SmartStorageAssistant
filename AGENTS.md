@@ -11,6 +11,7 @@
   5. `docs/project/modules/Mxx-*.md`（当前任务对应模块：负责/不负责/代码位置）
   6. `docs/project/04-任务与验收清单.md` 与 `docs/project/tasks/`（当前任务卡，如有）
   7. 需要当前版本 / 测试 / lint / 待验收状态时：`docs/project/PROJECT_STATUS.md`
+  8. 当用户显式发送 `执行 AI Bridge <Task ID>` 或 `重试 AI Bridge <Task ID>` 时：读取 `docs/coordination/AI_BRIDGE.md` 并按全局 `ai-bridge` Skill 执行。
 - `docs/reference/ai-project-template/` 是原始通用模板，只作结构/方法论参考，**不是项目事实**，禁止改动。
 
 ## 协作规则（强制）
