@@ -74,7 +74,12 @@ class ImageIndexingCoordinator @Inject constructor(
         val allowed = if (state.enabled && state.capability == VisionCapabilityStatus.SUPPORTED) {
             requestedPaths
         } else {
-            emptySet()
+            // 关闭图片理解时保留既有索引，只同步删除已不存在的照片，不擅自停用历史索引。
+            indexRepository.getByItem(itemId)
+                .filter { it.requested }
+                .map { it.imagePath }
+                .toSet()
+                .intersect(paths.toSet())
         }
         indexRepository.syncItemImages(itemId, paths, allowed)
         if (allowed.isNotEmpty()) {

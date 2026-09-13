@@ -26,6 +26,10 @@ class ImageIndexWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        val initialState = understandingRepository.state.value
+        if (!initialState.enabled || initialState.capability != VisionCapabilityStatus.SUPPORTED) {
+            return Result.success()
+        }
         return try {
             indexRepository.reconcileActiveItems()
             var processed = 0
