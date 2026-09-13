@@ -188,6 +188,10 @@ fun AddItemRoute(
         onToggleMergePhoto = viewModel::toggleMergePhoto,
         onConfirmMerge = viewModel::confirmBatchMerge,
         onCancelMerge = viewModel::cancelBatchMerge,
+        onDiscardDraft = {
+            viewModel.discardDraft()
+            onBack()
+        },
         onBack = onBack,
     )
 }
@@ -247,6 +251,7 @@ fun AddItemScreen(
     onToggleMergePhoto: (String, Boolean) -> Unit,
     onConfirmMerge: () -> Unit,
     onCancelMerge: () -> Unit,
+    onDiscardDraft: () -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -684,7 +689,7 @@ fun AddItemScreen(
                 TextButton(
                     onClick = {
                         showDiscardDialog = false
-                        onBack()
+                        onDiscardDraft()
                     },
                 ) {
                     Text(stringResource(R.string.discard_confirm), color = MaterialTheme.colorScheme.error)

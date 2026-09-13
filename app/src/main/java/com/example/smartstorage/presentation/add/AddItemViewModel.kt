@@ -343,6 +343,14 @@ class AddItemViewModel @Inject constructor(
         recomputeHasChanges()
     }
 
+    /** 用户明确放弃添加/编辑时，删除本次新增且未保存的照片文件。 */
+    fun discardDraft() {
+        val state = _editState.value
+        state.currentImagePaths
+            .filterNot { it in state.originalImagePaths }
+            .forEach { imageStorage.deleteImage(it) }
+        clearState()
+    }
     /** 进入编辑模式：把数据库数据复制到工作副本。 */
     fun loadItem(item: Item) {
         editingItem = item
@@ -449,6 +457,10 @@ class AddItemViewModel @Inject constructor(
                 removedImagePaths = removedList,
                 requestedIndexPaths = state.requestedIndexPaths - removedPath,
             )
+        }
+        // 本次新选、尚未保存的照片可直接删除文件；编辑前已有照片仍延迟到保存/放弃时处理。
+        if (removedPath !in _editState.value.originalImagePaths) {
+            imageStorage.deleteImage(removedPath)
         }
         // 照片池移除后，同步剥离所有批量草稿里对该路径的引用，避免保存悬空路径
         if (_batchItems.value.isNotEmpty()) {
