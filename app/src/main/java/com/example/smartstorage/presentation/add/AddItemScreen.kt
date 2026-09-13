@@ -594,6 +594,7 @@ fun AddItemScreen(
                             SaveErrorKind.NAME_EMPTY -> stringResource(R.string.save_err_name_empty)
                             SaveErrorKind.DUPLICATE_CHECK_FAILED -> stringResource(R.string.save_err_duplicate_check)
                             SaveErrorKind.SAVE_FAILED -> stringResource(R.string.save_err_save_failed)
+                            SaveErrorKind.TOO_MANY_IMAGES -> stringResource(R.string.save_err_too_many_images)
                         },
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,

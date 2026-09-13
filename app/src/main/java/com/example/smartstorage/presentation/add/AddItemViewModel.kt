@@ -865,9 +865,8 @@ class AddItemViewModel @Inject constructor(
                             .filter { it.requested }
                             .map { it.imagePath }
                             .toSet()
-                        val finalImages = (mergeInto.imagePaths + state.currentImagePaths)
-                            .distinct()
-                            .take(MAX_IMAGES)
+                        val finalImages = (mergeInto.imagePaths + state.currentImagePaths).distinct()
+                        if (finalImages.size > MAX_IMAGES) throw TooManyImagesException()
                         updateItemUseCase(
                             mergeInto.copy(
                                 location = state.location.trim(),
@@ -949,8 +948,14 @@ class AddItemViewModel @Inject constructor(
                 if (isNewAdd) {
                     checkStarMilestoneAfterAdd()
                 }
-            }.onFailure {
-                _saveState.value = SaveState.Error(SaveErrorKind.SAVE_FAILED)
+            }.onFailure { error ->
+                _saveState.value = SaveState.Error(
+                    if (error is TooManyImagesException) {
+                        SaveErrorKind.TOO_MANY_IMAGES
+                    } else {
+                        SaveErrorKind.SAVE_FAILED
+                    },
+                )
             }
         }
     }
@@ -1046,7 +1051,11 @@ enum class SaveErrorKind {
     DUPLICATE_CHECK_FAILED,
     /** 其它保存失败 */
     SAVE_FAILED,
+    TOO_MANY_IMAGES,
 }
+
+/** 编辑重名旧记录时，旧照片与新照片合并后超过上限。 */
+private class TooManyImagesException : Exception()
 
 /** 合并多条草稿时的编辑预览与照片选择状态。 */
 data class BatchMergePreviewState(

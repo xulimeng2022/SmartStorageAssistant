@@ -157,6 +157,7 @@
     <string name="add_warn_fail_single">⚠ AI 解析失敗，目前為本機規則結果，請核對後再儲存</string>
     <string name="add_warn_fail_multi">⚠ AI 解析失敗，目前為本機規則結果，請逐筆核對</string>
     <string name="save_err_name_empty">物品名稱不可為空</string>
+    <string name="save_err_too_many_images">合併後照片超過 9 張，請先取消部分照片</string>
     <string name="save_err_save_failed">儲存失敗，請稍後再試</string>
     <string name="save_err_duplicate_check">無法檢查重複物品，請稍後再試</string>
     <string name="add_toast_max_photos">最多新增 %1$d 張照片</string>

@@ -157,6 +157,7 @@
     <string name="add_warn_fail_single">⚠ AI parsing failed; results now come from local rules — please review before saving</string>
     <string name="add_warn_fail_multi">⚠ AI parsing failed; results now come from local rules — please review each item</string>
     <string name="save_err_name_empty">Item name cannot be empty</string>
+    <string name="save_err_too_many_images">Merging would exceed 9 photos. Deselect some photos first.</string>
     <string name="save_err_save_failed">Save failed. Please try again</string>
     <string name="save_err_duplicate_check">Could not check for duplicates. Please try again</string>
     <string name="add_toast_max_photos">You can add up to %1$d photos</string>
