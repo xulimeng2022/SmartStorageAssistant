@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "architecture",
+  "input": "C:\\Users\\XU\\.codex\\worktrees\\3aad\\智能收纳助手\\docs\\architecture\\archify\\collaboration\\smart-storage-assistant-collaboration-delivery.architecture.json",
+  "output": "C:\\Users\\XU\\.codex\\worktrees\\3aad\\智能收纳助手\\docs\\architecture\\archify\\collaboration\\smart-storage-assistant-collaboration-delivery.html",
+  "specification": {
+    "sha256": "568b9fa0a11e48f31b8f3db68cb3cc5ad74be9d8fb3ad05821b373e25dd80251",
+    "bytes": 5135
+  },
+  "artifact": {
+    "sha256": "c504c357c3ee1bafa66b6db49e8cafbff1e1238685d46ffb56aa82aeb7c60e29",
+    "bytes": 813192
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  },
+  "evidence": {
+    "verified": true,
+    "repository": "https://github.com/xulimeng2022/SmartStorageAssistant",
+    "revision": "5e417bcb558e82b877665c504d7b2886132c4bd6",
+    "references": 6
+  }
+}

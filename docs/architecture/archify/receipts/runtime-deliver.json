@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "architecture",
+  "input": "C:\\Users\\XU\\.codex\\worktrees\\3aad\\智能收纳助手\\docs\\architecture\\archify\\runtime\\smart-storage-assistant-runtime-architecture.architecture.json",
+  "output": "C:\\Users\\XU\\.codex\\worktrees\\3aad\\智能收纳助手\\docs\\architecture\\archify\\runtime\\smart-storage-assistant-runtime-architecture.html",
+  "specification": {
+    "sha256": "52689d6fcc7eb4b477d971fafa64a3626f65bb33cf72a3bab864efdc35406991",
+    "bytes": 15499
+  },
+  "artifact": {
+    "sha256": "34f02a0400d45cd22fd996882725392e3490914e5ab95fef2220617a226cc11b",
+    "bytes": 835338
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  },
+  "evidence": {
+    "verified": true,
+    "repository": "https://github.com/xulimeng2022/SmartStorageAssistant",
+    "revision": "797339128c6dc1f97d88d32204fa3f6e2b2b70b5",
+    "references": 39
+  }
+}

@@ -1,0 +1,641 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "智能收纳助手 v1.2.0 · 当前运行时架构",
+    "subtitle": "codex/integration@5e417bc · app tree 7973391:app · Room v6 + 本地视觉索引 + Top-5 手动复核",
+    "locale": "zh-CN",
+    "output": "smart-storage-assistant-runtime-architecture.html",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/xulimeng2022/SmartStorageAssistant",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "797339128c6dc1f97d88d32204fa3f6e2b2b70b5"
+    },
+    "views": [
+      {
+        "id": "overview",
+        "label": "总览",
+        "focus": [
+          "ui",
+          "viewmodels",
+          "platform",
+          "workbench",
+          "data_access",
+          "room",
+          "images",
+          "prefs",
+          "i18n",
+          "text_ai",
+          "vision_ai",
+          "index_scheduler",
+          "transport",
+          "ai_modes",
+          "llm_endpoint"
+        ],
+        "note": "本地优先的单进程 Android 应用；AI 仅可选，只有用户主动请求才访问 OpenAI 兼容端点。"
+      },
+      {
+        "id": "image-save",
+        "label": "图片保存与临时区",
+        "focus": [
+          "ui",
+          "platform",
+          "viewmodels",
+          "images",
+          "workbench",
+          "data_access",
+          "room"
+        ],
+        "note": "照片先进入非持久化工作区；保存或批量合并时才建立与物品的关联并同步索引。"
+      },
+      {
+        "id": "text-ai",
+        "label": "文本 AI",
+        "focus": [
+          "viewmodels",
+          "prefs",
+          "ai_modes",
+          "text_ai",
+          "transport",
+          "llm_endpoint",
+          "workbench"
+        ],
+        "note": "口述或键盘文本经 LlmClient 请求 OpenAI 兼容端点；失败时进入本地规则降级。"
+      },
+      {
+        "id": "vision-index",
+        "label": "视觉索引与找物",
+        "focus": [
+          "viewmodels",
+          "prefs",
+          "ai_modes",
+          "index_scheduler",
+          "data_access",
+          "room",
+          "images",
+          "vision_ai",
+          "transport",
+          "llm_endpoint",
+          "ui"
+        ],
+        "note": "开启图片理解后建立本地索引；先本地搜索，只有用户复核时才上传 Top-5。"
+      },
+      {
+        "id": "config-i18n",
+        "label": "数据安全、配置与多语言",
+        "focus": [
+          "ui",
+          "viewmodels",
+          "prefs",
+          "i18n",
+          "ai_modes",
+          "text_ai",
+          "vision_ai",
+          "room",
+          "data_access"
+        ],
+        "note": "Room v6、备份恢复、完全清理、语言与主题均和显示层配置分离。"
+      }
+    ],
+    "legend": {
+      "mode": "auto"
+    },
+    "viewBox": [
+      1240,
+      780
+    ]
+  },
+  "components": [
+    {
+      "id": "platform",
+      "type": "external",
+      "label": "Android 系统入口",
+      "sublabel": "Photo Picker · 相机 · 键盘语音",
+      "tag": "FileProvider",
+      "pos": [
+        40,
+        60
+      ],
+      "size": [
+        190,
+        72
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/presentation/add/AddItemScreen.kt"
+        },
+        {
+          "path": "app/src/main/AndroidManifest.xml"
+        },
+        {
+          "path": "app/src/main/res/xml/file_paths.xml"
+        }
+      ]
+    },
+    {
+      "id": "ui",
+      "type": "frontend",
+      "label": "Compose UI / 页面层",
+      "sublabel": "MainScreen · Pager · 覆盖层",
+      "tag": "Material3",
+      "pos": [
+        520,
+        60
+      ],
+      "size": [
+        180,
+        72
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/presentation/MainScreen.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/presentation/add/AddItemScreen.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/presentation/settings/SettingsScreen.kt"
+        }
+      ]
+    },
+    {
+      "id": "i18n",
+      "type": "frontend",
+      "label": "多语言与消息层",
+      "sublabel": "values · values-en · values-zh-rTW",
+      "tag": "资源 ID + 参数",
+      "pos": [
+        40,
+        200
+      ],
+      "size": [
+        180,
+        72
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/presentation/common/UiMessage.kt"
+        },
+        {
+          "path": "app/src/main/res/values/strings.xml"
+        },
+        {
+          "path": "app/src/main/res/values-en/strings.xml"
+        }
+      ]
+    },
+    {
+      "id": "prefs",
+      "type": "security",
+      "label": "偏好与安全配置",
+      "sublabel": "DataStore + 加密存储",
+      "tag": "AES-256-GCM",
+      "pos": [
+        260,
+        200
+      ],
+      "size": [
+        190,
+        74
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/local/prefs/SettingsRepository.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/local/prefs/ImageUnderstandingRepository.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/local/prefs/ThemeRepository.kt"
+        }
+      ]
+    },
+    {
+      "id": "viewmodels",
+      "type": "frontend",
+      "label": "ViewModel / UI 状态",
+      "sublabel": "Home · Add · Detail · Settings",
+      "tag": "StateFlow",
+      "pos": [
+        520,
+        200
+      ],
+      "size": [
+        190,
+        74
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/presentation/home/HomeViewModel.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/presentation/add/AddItemViewModel.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/presentation/settings/SettingsViewModel.kt"
+        }
+      ]
+    },
+    {
+      "id": "ai_modes",
+      "type": "security",
+      "label": "免费 / 自定义 AI 模式",
+      "sublabel": "OpenAI 兼容配置 · 能力指纹",
+      "tag": "Qwen3.5-4B / CUSTOM",
+      "pos": [
+        760,
+        200
+      ],
+      "size": [
+        180,
+        72
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/local/prefs/SettingsRepository.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/local/prefs/ImageUnderstandingRepository.kt"
+        }
+      ]
+    },
+    {
+      "id": "index_scheduler",
+      "type": "backend",
+      "label": "视觉索引调度",
+      "sublabel": "WorkManager OneTimeWork",
+      "tag": "image_ai_index",
+      "pos": [
+        980,
+        200
+      ],
+      "size": [
+        190,
+        72
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/remote/vision/ImageIndexingCoordinator.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/remote/vision/ImageIndexWorker.kt"
+        }
+      ]
+    },
+    {
+      "id": "workbench",
+      "type": "frontend",
+      "label": "临时工作区与批量草稿",
+      "sublabel": "工作副本 · 未分配照片 · 合并预览",
+      "tag": "保存前不落库",
+      "pos": [
+        100,
+        340
+      ],
+      "size": [
+        190,
+        76
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/presentation/add/AddItemViewModel.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/presentation/add/BatchMergePhotoPolicy.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/domain/model/BatchDraftItem.kt"
+        }
+      ]
+    },
+    {
+      "id": "text_ai",
+      "type": "backend",
+      "label": "文本 AI 解析",
+      "sublabel": "LlmClient · LocalDescriptionParser",
+      "tag": "Parse + Sanitize",
+      "pos": [
+        500,
+        340
+      ],
+      "size": [
+        190,
+        76
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/remote/llm/LlmClient.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/remote/llm/LocalDescriptionParser.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/remote/llm/VoiceTextNormalizer.kt"
+        }
+      ]
+    },
+    {
+      "id": "data_access",
+      "type": "backend",
+      "label": "用例与仓库层",
+      "sublabel": "Item · Backup · Index · Reset",
+      "tag": "Flow + Result",
+      "pos": [
+        340,
+        480
+      ],
+      "size": [
+        180,
+        72
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/repository/ItemRepositoryImpl.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/local/backup/BackupRepository.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/local/reset/AppDataResetRepository.kt"
+        }
+      ]
+    },
+    {
+      "id": "images",
+      "type": "database",
+      "label": "ImageStorage",
+      "sublabel": "私有目录 · JPEG80",
+      "tag": "最多 9 张",
+      "pos": [
+        100,
+        480
+      ],
+      "size": [
+        180,
+        74
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/local/image/ImageStorage.kt"
+        }
+      ]
+    },
+    {
+      "id": "vision_ai",
+      "type": "backend",
+      "label": "视觉分析与复核",
+      "sublabel": "VisionAnalyzer · Probe · Parser",
+      "tag": "本地索引 + Top-5",
+      "pos": [
+        760,
+        340
+      ],
+      "size": [
+        180,
+        74
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/remote/vision/VisionAnalyzer.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/remote/vision/VisionProbeEvaluator.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/remote/vision/VisionJsonParser.kt"
+        }
+      ]
+    },
+    {
+      "id": "transport",
+      "type": "backend",
+      "label": "HTTP Transport",
+      "sublabel": "OkHttp · 文本/图片请求",
+      "tag": "7s / 25s / 7s",
+      "pos": [
+        600,
+        480
+      ],
+      "size": [
+        185,
+        72
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/remote/llm/LlmTransport.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/remote/vision/VisionTransport.kt"
+        }
+      ]
+    },
+    {
+      "id": "room",
+      "type": "database",
+      "label": "Room v6",
+      "sublabel": "items + image_ai_indices",
+      "tag": "MIGRATION_4_5 / 5_6",
+      "pos": [
+        340,
+        620
+      ],
+      "size": [
+        180,
+        72
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/local/AppDatabase.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/di/DatabaseModule.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/local/dao/ImageAiIndexDao.kt"
+        }
+      ]
+    },
+    {
+      "id": "llm_endpoint",
+      "type": "external",
+      "label": "OpenAI 兼容 AI 端点",
+      "sublabel": "文本 + 多模态图片",
+      "tag": "用户主动请求",
+      "pos": [
+        600,
+        620
+      ],
+      "size": [
+        185,
+        72
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/local/prefs/SettingsRepository.kt"
+        },
+        {
+          "path": "app/src/main/java/com/example/smartstorage/data/remote/vision/VisionTransport.kt"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Android 单进程应用",
+      "wraps": [
+        "ui",
+        "viewmodels",
+        "workbench",
+        "data_access",
+        "room",
+        "images",
+        "prefs",
+        "i18n",
+        "text_ai",
+        "vision_ai",
+        "index_scheduler",
+        "transport",
+        "ai_modes"
+      ],
+      "pad": 24
+    }
+  ],
+  "connections": [
+    {
+      "label": "输入",
+      "id": "platform-to-ui",
+      "to": "ui",
+      "fromSide": "right",
+      "from": "platform",
+      "toSide": "left"
+    },
+    {
+      "to": "ui",
+      "toSide": "left",
+      "fromSide": "top",
+      "from": "i18n",
+      "id": "i18n-to-ui"
+    },
+    {
+      "label": "用户操作",
+      "id": "ui-to-viewmodels",
+      "to": "viewmodels",
+      "fromSide": "bottom",
+      "from": "ui",
+      "toSide": "top",
+      "variant": "emphasis"
+    },
+    {
+      "label": "配置 / Flow",
+      "id": "prefs-to-viewmodels",
+      "to": "viewmodels",
+      "fromSide": "right",
+      "from": "prefs",
+      "toSide": "left"
+    },
+    {
+      "to": "text_ai",
+      "toSide": "top",
+      "fromSide": "bottom",
+      "from": "ai_modes",
+      "id": "ai-modes-to-text-ai"
+    },
+    {
+      "to": "vision_ai",
+      "toSide": "top",
+      "fromSide": "bottom",
+      "from": "ai_modes",
+      "id": "ai-modes-to-vision-ai"
+    },
+    {
+      "label": "工作副本",
+      "id": "viewmodels-to-workbench",
+      "to": "workbench",
+      "fromSide": "left",
+      "from": "viewmodels",
+      "toSide": "top"
+    },
+    {
+      "label": "文本 AI",
+      "id": "viewmodels-to-text-ai",
+      "to": "text_ai",
+      "fromSide": "bottom",
+      "from": "viewmodels",
+      "toSide": "top",
+      "variant": "emphasis"
+    },
+    {
+      "label": "图片路径",
+      "id": "images-to-workbench",
+      "to": "workbench",
+      "fromSide": "top",
+      "from": "images",
+      "toSide": "bottom"
+    },
+    {
+      "label": "保存",
+      "id": "workbench-to-data-access",
+      "to": "data_access",
+      "fromSide": "right",
+      "from": "workbench",
+      "toSide": "left",
+      "variant": "emphasis"
+    },
+    {
+      "label": "文本请求",
+      "id": "text-ai-to-transport",
+      "to": "transport",
+      "fromSide": "bottom",
+      "from": "text_ai",
+      "toSide": "top",
+      "variant": "emphasis"
+    },
+    {
+      "label": "图片分析",
+      "id": "vision-ai-to-transport",
+      "to": "transport",
+      "fromSide": "bottom",
+      "from": "vision_ai",
+      "toSide": "top",
+      "variant": "emphasis"
+    },
+    {
+      "label": "索引图片",
+      "id": "index-scheduler-to-vision-ai",
+      "to": "vision_ai",
+      "fromSide": "bottom",
+      "from": "index_scheduler",
+      "toSide": "top"
+    },
+    {
+      "label": "DB 读写",
+      "id": "data-access-to-room",
+      "to": "room",
+      "fromSide": "bottom",
+      "from": "data_access",
+      "toSide": "top",
+      "variant": "emphasis",
+      "labelAt": [
+        430,
+        580
+      ]
+    },
+    {
+      "label": "HTTPS",
+      "id": "transport-to-endpoint",
+      "to": "llm_endpoint",
+      "fromSide": "bottom",
+      "from": "transport",
+      "toSide": "top",
+      "variant": "emphasis",
+      "labelAt": [
+        692,
+        580
+      ]
+    }
+  ]
+}

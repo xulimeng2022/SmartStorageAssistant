@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "智能收纳助手 · 开发协作与交付体系",
+    "subtitle": "Coordinator / 永久工作树 / Git 与 Formal Task / Archify / Obsidian / AI Bridge / 分发渠道",
+    "locale": "zh-CN",
+    "output": "smart-storage-assistant-collaboration-delivery.html",
+    "visual_preset": "blueprint",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/xulimeng2022/SmartStorageAssistant",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "5e417bcb558e82b877665c504d7b2886132c4bd6"
+    },
+    "views": [
+      { "id": "coordination", "label": "协作闭环", "focus": ["user_chatgpt", "ai_bridge", "coordinator", "roles", "git_tasks"], "note": "需求、计划、审核、Task / Handoff 与 Git 证据形成协作闭环。" },
+      { "id": "knowledge", "label": "知识与架构", "focus": ["git_tasks", "archify", "obsidian"], "note": "Git 是事实源；Archify 生成结构，Obsidian 保存经验与知识关系。" },
+      { "id": "delivery", "label": "交付与支持", "focus": ["git_tasks", "website", "distribution"], "note": "GitHub、国内网盘负责分发，爱发电是支持入口且认证尚未通过。" }
+    ],
+    "legend": { "mode": "auto" },
+    "viewBox": [1300, 700]
+  },
+  "components": [
+    { "id": "user_chatgpt", "type": "external", "label": "用户 / ChatGPT", "sublabel": "需求、计划审核", "pos": [30, 320], "size": [130, 64] },
+    { "id": "ai_bridge", "type": "messagebus", "label": "AI Bridge", "sublabel": "Google Drive · 7 文件", "tag": "计划 / 审核 / 报告", "pos": [190, 320], "size": [140, 64], "sources": [ { "path": "docs/coordination/AI_BRIDGE.md" } ] },
+    { "id": "coordinator", "type": "backend", "label": "Coordinator", "sublabel": "codex/integration · 集成编排", "tag": "主控", "pos": [360, 320], "size": [150, 64], "sources": [ { "path": "docs/coordination/Coordinator.md" }, { "path": "docs/coordination/WORKFLOW.md" } ] },
+    { "id": "roles", "type": "backend", "label": "UI / Data / AI 永久工作树", "sublabel": "Single Writer · Handoff", "tag": "3 个模块角色", "pos": [540, 320], "size": [170, 64], "sources": [ { "path": "docs/coordination/OWNERSHIP.md" } ] },
+    { "id": "git_tasks", "type": "messagebus", "label": "Git + Formal Task", "sublabel": "提交 · 任务卡 · Handoff", "tag": "生命周期真相源", "pos": [740, 320], "size": [150, 64], "sources": [ { "path": "docs/project/04-任务与验收清单.md" }, { "path": "docs/project/tasks/README.md" } ] },
+    { "id": "website", "type": "cloud", "label": "个人主页 / 项目页", "sublabel": "master@d0feffd · 下载入口", "tag": "对外页面", "pos": [920, 320], "size": [150, 64] },
+    { "id": "distribution", "type": "cloud", "label": "分发与支持", "sublabel": "GitHub / 夸克 / 百度 / 爱发电", "tag": "爱发电认证尚未通过", "pos": [1100, 320], "size": [160, 64] },
+    { "id": "archify", "type": "frontend", "label": "Archify", "sublabel": "源码 → 架构图与回执", "tag": "结构理解", "pos": [740, 140], "size": [150, 64] },
+    { "id": "obsidian", "type": "database", "label": "Obsidian", "sublabel": "经验 · 踩坑 · 知识链接", "tag": "个人知识网", "pos": [740, 500], "size": [150, 64] },
+    { "id": "cc_switch", "type": "external", "label": "CC Switch / DeepSeek", "sublabel": "开发链路，非 App 运行时", "tag": "Codex 运行环境", "pos": [360, 500], "size": [150, 64] }
+  ],
+  "connections": [
+    { "id": "user-to-bridge", "from": "user_chatgpt", "to": "ai_bridge", "label": "TASK / REVIEW", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelAt": [160, 300] },
+    { "id": "bridge-to-coordinator", "from": "ai_bridge", "to": "coordinator", "label": "计划 / 审核", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelAt": [340, 300] },
+    { "id": "coordinator-to-roles", "from": "coordinator", "to": "roles", "label": "Task / Handoff", "fromSide": "right", "toSide": "left", "labelAt": [525, 300] },
+    { "id": "roles-to-git", "from": "roles", "to": "git_tasks", "label": "commit / evidence", "fromSide": "right", "toSide": "left", "labelAt": [715, 300] },
+    { "id": "git-to-website", "from": "git_tasks", "to": "website", "label": "版本信息", "fromSide": "right", "toSide": "left", "labelAt": [905, 300] },
+    { "id": "website-to-distribution", "from": "website", "to": "distribution", "label": "分发 / 支持", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelAt": [1085, 300] },
+    { "id": "git-to-archify", "from": "git_tasks", "to": "archify", "label": "源码 / Git", "fromSide": "top", "toSide": "bottom", "labelAt": [840, 250] },
+    { "id": "git-to-obsidian", "from": "git_tasks", "to": "obsidian", "label": "任务 / Commit", "fromSide": "bottom", "toSide": "top", "labelAt": [840, 440] },
+    { "id": "coordinator-to-dev-runtime", "from": "coordinator", "to": "cc_switch", "label": "开发运行时", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelAt": [460, 440] }
+  ]
+}
