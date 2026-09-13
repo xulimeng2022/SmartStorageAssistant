@@ -32,9 +32,7 @@ class AppPreferencesRepository @Inject constructor(
     }
 
     /** 清除应用轻量偏好。 */
-    fun clearAll() {
-        prefs.edit().clear().commit()
-    }
+    fun clearAll(): Boolean = prefs.edit().clear().commit()
     companion object {
         private const val PREFS_NAME = "app_prefs"
         private const val KEY_INPUT_TEXT_COLOR = "input_text_color"

@@ -78,9 +78,10 @@ class ThemeRepository @Inject constructor(
     }
 
     /** 恢复默认主题和文字颜色。 */
-    suspend fun clearAll() {
+    suspend fun clearAll(): Boolean {
         context.themeDataStore.edit { it.clear() }
         _textColorConfig.value = TextColorConfig()
+        return true
     }
     /** 持久化主题模式 */
     suspend fun saveThemeMode(mode: ThemeMode) {

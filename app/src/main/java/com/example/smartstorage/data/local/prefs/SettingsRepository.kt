@@ -237,10 +237,11 @@ class SettingsRepository @Inject constructor(
     }
 
     /** 完全删除用户 AI 配置与加密凭据，并立即刷新内存缓存。 */
-    suspend fun clearAll() {
+    suspend fun clearAll(): Boolean {
         context.dataStore.edit { it.clear() }
-        encryptedPrefs().edit().clear().commit()
+        val encryptedCleared = encryptedPrefs().edit().clear().commit()
         apiKeyFlow.value = emptyMap()
+        return encryptedCleared
     }
     companion object {
         private const val DATASTORE_NAME = "ai_settings"

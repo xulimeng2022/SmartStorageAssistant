@@ -30,8 +30,10 @@ interface ImageAiIndexDao {
     suspend fun getByPath(path: String): ImageAiIndexEntity?
 
     @Query(
-        "SELECT * FROM image_ai_indices WHERE requested = 1 AND status IN ('PENDING', 'OUTDATED') " +
-            "ORDER BY image_path ASC"
+        "SELECT index_row.* FROM image_ai_indices AS index_row " +
+            "INNER JOIN items AS item ON item.id = index_row.item_id " +
+            "WHERE index_row.requested = 1 AND index_row.status IN ('PENDING', 'OUTDATED') " +
+            "AND item.deleted_at IS NULL ORDER BY index_row.image_path ASC"
     )
     suspend fun getQueued(): List<ImageAiIndexEntity>
 

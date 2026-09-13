@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.WorkManager
 import com.example.smartstorage.data.local.AppDatabase
 import com.example.smartstorage.data.local.image.ImageStorage
+import com.example.smartstorage.data.local.image.deleteDirectoryContents
 import com.example.smartstorage.data.local.prefs.AppLanguage
 import com.example.smartstorage.data.local.prefs.AppPreferencesRepository
 import com.example.smartstorage.data.local.prefs.ImageUnderstandingRepository
@@ -28,6 +29,17 @@ data class ResetReport(
     val errors: List<String>,
 ) {
     val isComplete: Boolean get() = workersStopped && databaseCleared && filesCleared && preferencesCleared && errors.isEmpty()
+}
+
+/** 汇总清空结果；任一布尔结果为 false 时记录失败而不是静默成功。 */
+internal fun recordClearResults(
+    results: List<Boolean>,
+    label: String,
+    errors: MutableList<String>,
+): Boolean {
+    val success = results.all { it }
+    if (!success) errors += "$label:false"
+    return success
 }
 
 /** 统一清空 App 自有数据；不删除系统相册、外部备份或远端服务数据。 */
@@ -55,19 +67,31 @@ class AppDataResetRepository @Inject constructor(
         }.onFailure { errors += "database:${it.javaClass.simpleName}" }.isSuccess
 
         val filesCleared = runCatching {
-            imageStorage.clearAllManagedImages()
-            context.cacheDir.listFiles()?.forEach { it.deleteRecursively() }
-        }.onFailure { errors += "files:${it.javaClass.simpleName}" }.isSuccess
+            recordClearResults(
+                results = listOf(
+                    imageStorage.clearAllManagedImages(),
+                    deleteDirectoryContents(context.cacheDir),
+                ),
+                label = "files",
+                errors = errors,
+            )
+        }.onFailure { errors += "files:${it.javaClass.simpleName}" }.getOrDefault(false)
 
         val preferencesCleared = runCatching {
-            settingsRepository.clearAll()
-            themeRepository.clearAll()
-            onboardingRepository.clearAll()
-            starMilestoneRepository.clearAll()
-            appPreferencesRepository.clearAll()
-            imageUnderstandingRepository.clearAll()
-            AppLanguage.clear(context)
-        }.onFailure { errors += "preferences:${it.javaClass.simpleName}" }.isSuccess
+            recordClearResults(
+                results = listOf(
+                    settingsRepository.clearAll(),
+                    themeRepository.clearAll(),
+                    onboardingRepository.clearAll(),
+                    starMilestoneRepository.clearAll(),
+                    appPreferencesRepository.clearAll(),
+                    imageUnderstandingRepository.clearAll(),
+                    AppLanguage.clear(context),
+                ),
+                label = "preferences",
+                errors = errors,
+            )
+        }.onFailure { errors += "preferences:${it.javaClass.simpleName}" }.getOrDefault(false)
 
         ResetReport(
             workersStopped = workersStopped,

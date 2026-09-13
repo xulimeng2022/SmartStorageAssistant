@@ -31,8 +31,9 @@ class StarMilestoneRepository @Inject constructor(
     private fun remindedKey(milestone: Int) = booleanPreferencesKey("star_reminded_$milestone")
 
     /** 清空累计添加数和 Star 提醒状态。 */
-    suspend fun clearAll() {
+    suspend fun clearAll(): Boolean {
         context.starDataStore.edit { it.clear() }
+        return true
     }
     /** 历史累计添加数 +1（仅在新增物品成功后调用） */
     suspend fun incrementTotalAdded() {

@@ -24,8 +24,9 @@ class OnboardingRepository @Inject constructor(
     private val KEY_IS_FIRST_LAUNCH = booleanPreferencesKey("is_first_launch")
 
     /** 恢复首次启动引导状态。 */
-    suspend fun clearAll() {
+    suspend fun clearAll(): Boolean {
         context.onboardingDataStore.edit { it.clear() }
+        return true
     }
     /** 是否首次启动（未完成引导时为 true）。 */
     val isFirstLaunch: Flow<Boolean> = context.onboardingDataStore.data

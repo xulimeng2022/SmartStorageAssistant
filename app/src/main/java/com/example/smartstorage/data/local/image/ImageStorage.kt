@@ -71,17 +71,12 @@ class ImageStorage @Inject constructor(
         return dest.absolutePath
     }
 
-    /** 删除全部 App 管理的物品图片；只操作私有目录，不触碰系统相册原图。 */
-    fun clearAllManagedImages() {
-        listOf(imageDir, File(context.cacheDir, PENDING_DIR)).forEach { dir ->
-            val canonicalRoot = dir.canonicalFile
-            dir.listFiles()?.forEach { file ->
-                if (file.canonicalFile.toPath().startsWith(canonicalRoot.toPath())) {
-                    file.deleteRecursively()
-                }
-            }
-        }
-    }
+    /** 删除全部 App 管理的物品图片；返回是否所有删除操作都真实成功。 */
+    fun clearAllManagedImages(): Boolean =
+        listOf(imageDir, File(context.cacheDir, PENDING_DIR))
+            .map(::deleteDirectoryContents)
+            .all { it }
+
     /** 删除图片文件（路径为空时忽略）。 */
     fun deleteImage(path: String?) {
         if (path.isNullOrBlank()) return
@@ -129,4 +124,21 @@ class ImageStorage @Inject constructor(
         private const val TARGET_WIDTH = 1080
         private const val JPEG_QUALITY = 80
     }
+}
+
+/** 只删除目录内容，目录本身保留；不存在视为已清理，任一删除失败返回 false。 */
+internal fun deleteDirectoryContents(dir: File): Boolean {
+    if (!dir.exists()) return true
+    val canonicalRoot = dir.canonicalFile
+    val children = dir.listFiles() ?: return false
+    var allDeleted = true
+    children.forEach { child ->
+        val canonicalChild = runCatching { child.canonicalFile }.getOrNull()
+        if (canonicalChild == null || !canonicalChild.toPath().startsWith(canonicalRoot.toPath())) {
+            allDeleted = false
+        } else if (!child.deleteRecursively()) {
+            allDeleted = false
+        }
+    }
+    return allDeleted
 }

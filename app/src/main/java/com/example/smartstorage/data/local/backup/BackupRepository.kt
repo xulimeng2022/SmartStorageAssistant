@@ -11,6 +11,10 @@ import com.example.smartstorage.data.local.entity.ItemEntity
 import com.example.smartstorage.data.local.prefs.ThemeRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -93,124 +97,143 @@ class BackupRepository @Inject constructor(
     /** 导入备份数据（覆盖 / 合并） */
     suspend fun importData(uri: Uri, mode: ImportMode): Result<ImportResult> =
         withContext(Dispatchers.IO) {
-            runCatching {
-                val stageDir = File(context.cacheDir, "restore_${UUID.randomUUID()}").apply { mkdirs() }
-                try {
-                    // 1. 单次流式解压并完整解析，成功前不改动现有数据库与图片。
-                    val (json, stagedImages) = extractZipEntries(uri, stageDir)
-                    val root = JSONObject(json)
-                    val version = root.optString("version", "")
-                    if (version !in SUPPORTED_BACKUP_VERSIONS) {
-                        throw IllegalArgumentException("备份文件版本不兼容（当前支持 $BACKUP_VERSION）")
-                    }
-                    val itemsJson = root.optJSONArray("items") ?: JSONArray()
-                    val backupItems = (0 until itemsJson.length()).map {
-                        parseBackupItem(itemsJson.getJSONObject(it))
-                    }
-                    val backupIndexes = parseBackupIndexes(root.optJSONArray("aiIndexes") ?: JSONArray())
-                    val oldItems = itemDao.getAllItems()
-
-                    // 2. 先把暂存图片复制到正式目录；数据库事务失败时删除这批新文件。
-                    val localImageDir = File(context.filesDir, "item_images").apply { mkdirs() }
-                    val imagePathMap = mutableMapOf<String, String>()
-                    val newFiles = mutableListOf<File>()
-                    var databaseCommitted = false
-                    try {
-                        stagedImages.forEach { (entryName, stagedFile) ->
-                            val dest = uniqueImageFile(localImageDir, stagedFile.name)
-                            stagedFile.copyTo(dest, overwrite = false)
-                            newFiles += dest
-                            imagePathMap[entryName] = dest.absolutePath
-                        }
-
-                        // 3. 所有数据库写入在一个事务中完成；覆盖模式不再提前清空。
-                        var imported = 0
-                        var skipped = 0
-                        val importedItemIds = mutableMapOf<Long, Long>()
-                        database.withTransaction {
-                            if (mode == ImportMode.OVERWRITE) {
-                                imageAiIndexDao.deleteAll()
-                                itemDao.deleteAllItems()
-                            }
-                            backupItems.forEach { backupItem ->
-                                if (
-                                    mode == ImportMode.MERGE &&
-                                    itemDao.findByNameIgnoreCase(backupItem.name) != null
-                                ) {
-                                    skipped++
-                                    return@forEach
-                                }
-                                val newPaths = backupItem.imagePaths.mapNotNull(imagePathMap::get)
-                                val newItemId = itemDao.insert(
-                                    ItemEntity(
-                                        id = if (mode == ImportMode.OVERWRITE) backupItem.id else 0L,
-                                        name = backupItem.name,
-                                        location = backupItem.location,
-                                        description = backupItem.description,
-                                        imagePaths = newPaths,
-                                        createdAt = backupItem.createTime,
-                                        updatedAt = backupItem.updateTime,
-                                        deletedAt = backupItem.deletedAt,
-                                    ),
-                                )
-                                importedItemIds[backupItem.id] = newItemId
-                                imported++
-                            }
-                            backupIndexes.forEach { index ->
-                                val newItemId = importedItemIds[index.itemId] ?: return@forEach
-                                val newPath = imagePathMap[index.imagePath] ?: return@forEach
-                                imageAiIndexDao.upsert(
-                                    ImageAiIndexEntity(
-                                        imagePath = newPath,
-                                        itemId = newItemId,
-                                        contentHash = index.contentHash,
-                                        objectTagsJson = index.objectTagsJson,
-                                        attributesJson = index.attributesJson,
-                                        visibleTextJson = index.visibleTextJson,
-                                        descriptionJson = index.descriptionJson,
-                                        searchText = index.searchText,
-                                        confidence = index.confidence,
-                                        status = "SUCCESS",
-                                        requested = true,
-                                        analysisProvider = index.provider,
-                                        analysisModel = index.model,
-                                        indexVersion = index.indexVersion,
-                                        analyzedAt = index.analyzedAt,
-                                    ),
-                                )
-                            }
-                        }
-                        databaseCommitted = true
-
-                        // 4. 数据库提交成功后才清理覆盖导入前的旧文件。
-                        if (mode == ImportMode.OVERWRITE) {
-                            val newPaths = newFiles.map { it.absolutePath }.toSet()
-                            oldItems.flatMap { it.imagePaths }
-                                .filterNot(newPaths::contains)
-                                .forEach { runCatching { File(it).delete() } }
-                        }
-                        runCatching {
-                            textColorConfigFromJson(root.optString("textColorConfig", ""))?.let { config ->
-                                themeRepository.saveTextColorConfig(config)
-                            }
-                        }
-                        ImportResult(
-                            totalItems = backupItems.size,
-                            importedItems = imported,
-                            skippedItems = skipped,
-                            failedItems = 0,
-                        )
-                    } catch (e: Exception) {
-                        if (!databaseCommitted) {
-                            newFiles.forEach { runCatching { it.delete() } }
-                        }
-                        throw e
-                    }
-                } finally {
-                    stageDir.deleteRecursively()
-                }
+            try {
+                Result.success(importDataOrThrow(uri, mode))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Result.failure(e)
             }
         }
+
+    private suspend fun importDataOrThrow(uri: Uri, mode: ImportMode): ImportResult {
+        val stageDir = File(context.cacheDir, "restore_${UUID.randomUUID()}").apply { mkdirs() }
+        val newFiles = mutableListOf<File>()
+        try {
+            // 1. 单次流式解压并完整解析，成功前不改动现有数据库与图片。
+            val (json, stagedImages) = extractZipEntries(uri, stageDir)
+            val root = JSONObject(json)
+            val version = root.optString("version", "")
+            if (version !in SUPPORTED_BACKUP_VERSIONS) {
+                throw IllegalArgumentException("备份文件版本不兼容（当前支持 $BACKUP_VERSION）")
+            }
+            val itemsJson = root.optJSONArray("items") ?: JSONArray()
+            val backupItems = (0 until itemsJson.length()).map {
+                parseBackupItem(itemsJson.getJSONObject(it))
+            }
+            val backupIndexes = parseBackupIndexes(root.optJSONArray("aiIndexes") ?: JSONArray())
+            val oldItems = itemDao.getAllItems()
+
+            // 2. 先把暂存图片复制到正式目录；复制前登记目标，失败残片也会进入清理。
+            val localImageDir = File(context.filesDir, "item_images").apply { mkdirs() }
+            val imagePathMap = mutableMapOf<String, String>()
+            stagedImages.forEach { (entryName, stagedFile) ->
+                val destination = uniqueImageFile(localImageDir, stagedFile.name)
+                trackImportCopy(destination, newFiles) {
+                    stagedFile.copyTo(destination, overwrite = false)
+                }
+                imagePathMap[entryName] = destination.absolutePath
+            }
+
+            // 3. 所有数据库写入在一个事务中完成；取消发生在提交边界时也必须先完成事务。
+            var imported = 0
+            var skipped = 0
+            val importedItemIds = mutableMapOf<Long, Long>()
+            currentCoroutineContext().ensureActive()
+            withContext(NonCancellable) {
+                database.withTransaction {
+                    if (mode == ImportMode.OVERWRITE) {
+                        imageAiIndexDao.deleteAll()
+                        itemDao.deleteAllItems()
+                    }
+                    backupItems.forEach { backupItem ->
+                        if (
+                            mode == ImportMode.MERGE &&
+                            itemDao.findByNameIgnoreCase(backupItem.name) != null
+                        ) {
+                            skipped++
+                            return@forEach
+                        }
+                        val newPaths = backupItem.imagePaths.mapNotNull(imagePathMap::get)
+                        val newItemId = itemDao.insert(
+                            ItemEntity(
+                                id = if (mode == ImportMode.OVERWRITE) backupItem.id else 0L,
+                                name = backupItem.name,
+                                location = backupItem.location,
+                                description = backupItem.description,
+                                imagePaths = newPaths,
+                                createdAt = backupItem.createTime,
+                                updatedAt = backupItem.updateTime,
+                                deletedAt = backupItem.deletedAt,
+                            ),
+                        )
+                        importedItemIds[backupItem.id] = newItemId
+                        imported++
+                    }
+                    backupIndexes.forEach { index ->
+                        val newItemId = importedItemIds[index.itemId] ?: return@forEach
+                        val newPath = imagePathMap[index.imagePath] ?: return@forEach
+                        imageAiIndexDao.upsert(
+                            ImageAiIndexEntity(
+                                imagePath = newPath,
+                                itemId = newItemId,
+                                contentHash = index.contentHash,
+                                objectTagsJson = index.objectTagsJson,
+                                attributesJson = index.attributesJson,
+                                visibleTextJson = index.visibleTextJson,
+                                descriptionJson = index.descriptionJson,
+                                searchText = index.searchText,
+                                confidence = index.confidence,
+                                status = "SUCCESS",
+                                requested = true,
+                                analysisProvider = index.provider,
+                                analysisModel = index.model,
+                                indexVersion = index.indexVersion,
+                                analyzedAt = index.analyzedAt,
+                            ),
+                        )
+                    }
+                }
+            }
+
+            // 保持取消语义；上面的 NonCancellable 只保护已开始的事务提交边界。
+            currentCoroutineContext().ensureActive()
+
+            // 4. 数据库提交成功后才清理覆盖导入前的旧文件。
+            if (mode == ImportMode.OVERWRITE) {
+                val newPaths = newFiles.map { it.absolutePath }.toSet()
+                oldItems.flatMap { it.imagePaths }
+                    .filterNot(newPaths::contains)
+                    .forEach { runCatching { File(it).delete() } }
+            }
+            runCatching {
+                textColorConfigFromJson(root.optString("textColorConfig", ""))?.let { config ->
+                    themeRepository.saveTextColorConfig(config)
+                }
+            }
+            return ImportResult(
+                totalItems = backupItems.size,
+                importedItems = imported,
+                skippedItems = skipped,
+                failedItems = 0,
+            )
+        } finally {
+            cleanupUnreferencedNewFiles(newFiles)
+            stageDir.deleteRecursively()
+        }
+    }
+
+    /** 仅在数据库引用集合可确认时清理本次新增且未被引用的文件。 */
+    private suspend fun cleanupUnreferencedNewFiles(newFiles: List<File>) {
+        if (newFiles.isEmpty()) return
+        withContext(NonCancellable + Dispatchers.IO) {
+            val referencedPaths = runCatching {
+                itemDao.getAllItems().flatMap { it.imagePaths }.toSet()
+            }.getOrNull() ?: return@withContext
+            importFilesToDelete(newFiles, referencedPaths)
+                .forEach { file -> runCatching { file.delete() } }
+        }
+    }
 
     /**
      * 单次流式读取 ZIP：data.json 读文本，images/ 直接写入暂存目录，避免全部图片驻留内存。

@@ -21,6 +21,7 @@ object VisualSearchEngine {
             val hits = tokens.count { searchable.contains(it) }
             if (hits != tokens.size) return@mapNotNull null
             val item = itemById[index.itemId] ?: return@mapNotNull null
+            if (index.imagePath !in item.imagePaths) return@mapNotNull null
             val analysis = index.toDomain()
             VisualMatch(
                 item = item,

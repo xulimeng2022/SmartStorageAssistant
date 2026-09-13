@@ -79,9 +79,10 @@ class ImageUnderstandingRepository @Inject constructor(
     }
 
     /** 关闭图片理解并清空能力/任务状态。 */
-    suspend fun clearAll() {
-        prefs.edit().clear().commit()
+    suspend fun clearAll(): Boolean {
+        val cleared = prefs.edit().clear().commit()
         refresh()
+        return cleared
     }
     private fun readState(): ImageUnderstandingState {
         // 旧版本可能持久化过 UNSUPPORTED/INCOMPATIBLE/ERROR 负结果；读取时一律视为未检测。
