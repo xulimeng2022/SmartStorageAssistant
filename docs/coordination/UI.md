@@ -5,18 +5,17 @@
 
 ## Current Task
 
-- ID / Title: T-021 UI 1.2.0 最终 App 图标替换
+- ID / Title: T-022 UI 1.2.0 App 图标安全区返修
 - Status: COMPLETE / READY_FOR_INTEGRATION
-- Risk: Medium
-- Goal: 以用户提供的 1254×1254 PNG 为唯一视觉基准，替换 adaptive launcher / round icon 与 Android 12+ 默认 splash 的图标来源，并清理旧图标资源。
-- Allowed Scope: Launcher / 品牌视觉资源、adaptive XML、M07、本角色 State
-- Acceptance: 新 background / foreground 被 launcher 与 round 引用；旧 vector / color 无引用；圆形与圆角遮罩预演无主体裁切或双层圆角；资源处理、Debug / Release、107 JVM tests 通过；真机视觉待验。
-- Task Card: docs/project/tasks/T-021-UI-1.2.0最终App图标替换.md
+- Risk: Low
+- Goal: 保持现有蓝紫渐变背景与白色立方体/星光设计不变，仅把透明 foreground 缩小到原视觉约 85%，使主体进入 Adaptive Icon 安全区。
+- Allowed Scope: 仅 `drawable-nodpi/ic_launcher_foreground_image.png`、UI State、M07。
+- Acceptance: foreground 缩放 85%；圆形、圆角矩形、Squircle mask 预演均完整保留星光与立方体；Debug 构建通过；真机视觉待复测。
 
 ## Progress
 
-- Completed: 生成 768×768 `ic_launcher_background_image.png` 与 `ic_launcher_foreground_image.png`；前景保留原图白色立方体与星光，背景为同源蓝紫渐变；旧 `ic_launcher_foreground.xml` 与旧背景 color 已删除；圆形 / 圆角遮罩预演通过。
-- Previous: T-019/T-020 校园邮箱与设置布局、合并未分配照片已集成到 `codex/integration`，仍待设备视觉与持久性复测。
+- Completed: 仅替换 `ic_launcher_foreground_image.png`；缩放为 85% 并居中透明画布；背景和 adaptive XML 未改。
+- Previous: T-021 已建立独立 background / foreground 并清理旧资源；T-019/T-020 已集成，仍待设备视觉与持久性复测。
 - In Progress: None
 
 ## Working Tree
@@ -26,27 +25,24 @@
 
 ## Validation
 
-- Source：1254×1254 PNG，SHA-256 `4D32F0B84D8963EDF121BDFB01EE20951A755E76AA21C65486C11F5CBDCA94BC`；未重新设计主体。
-- Resource processing：`:app:processDebugResources` PASS。
-- JVM：ASCII 临时目录中 107 tests PASS。
-- Debug：ASCII 临时目录中 `:app:assembleDebug` PASS。
-- Release / R8：ASCII 临时目录中 `:app:assembleRelease` PASS；为未签名 APK。
-- Lint：仅既有 Manifest 相机硬件声明 error，共 114 warnings；无图标资源 error。
-- APK 资源：Manifest 的 icon / roundIcon、两个 v26 adaptive XML、两个 nodpi PNG 均已打包。
-- Android 真机：Launcher、圆形 / Squircle mask、Splash、最近任务、应用信息、App 内 Logo 均 NOT VERIFIED。
+- Resource：`:app:processDebugResources` PASS（集成分支）。
+- Debug：`:app:assembleDebug` PASS（集成分支）。
+- Mask 预演：圆形 / 圆角矩形 / Squircle 下星光完整，立方体不裁切，无双层圆角。
+- Release：本轮未构建；现有 `app/release/智能收纳助手-1.2.0.apk` 不含 T-022 返修，不可用于最终图标验收。
+- Android 真机：NOT VERIFIED，需用户重新安装新 Debug 构建复测。
 
 ## Last Handoff
 
-- Task / Source Branch: T-021 / codex/ui
-- Commits: implementation `a378a32`; integration `2b4a616`
-- Summary: 最终图标已替换为独立 background / foreground adaptive 资源，旧资源已清理，静态验证通过。
-- Previous Handoff: T-020 / `7fff55e` / integration `cfe5a5d`；合并候选包含未分配照片，真机取消重开与保存重启待复测。
-- Known limitation: Android 12+ 未声明独立 splash 资源，系统 splash 默认跟随 launcher icon；Launcher 缓存可能要求卸载重装后复查。
+- Task / Source Branch: T-022 / codex/ui
+- Commits: implementation `e9d37dc`; integration `e2f0577`
+- Summary: 仅缩放 foreground 到 85%，降低视觉占比并保留背景满铺。
+- Previous Handoff: T-021 / `a378a32` / integration `2b4a616`；已建立独立 background / foreground，旧资源已清理。
+- Known limitation: 具体 Launcher Mask 仍取决于用户设备的启动器实现。
 
 ## Blockers
 
-- 当前无设备连接，真机视觉与 T-019/T-020 持久性尚未验证。
+- 无。
 
 ## Next Step
 
-- Coordinator 完成 T-021 中央任务登记与状态同步；用户在真机安装新构建并复测各 Launcher mask、Splash，以及既有 T-019/T-020 流程。
+- 用户安装新的 Debug 构建复测 Launcher、Round / Squircle、Splash、应用信息与最近任务；通过前不重建 Release。
