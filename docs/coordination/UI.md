@@ -33,7 +33,7 @@
 ## Last Handoff
 
 - Task / Source Branch: T-011 / codex/ui
-- Commits: 9d98e1d
+- Commits: 9d98e1d, 6cccb62, 0707743, ec179f9
 - Summary: 本角色范围已完成并进入 codex/integration，等待独立 Review 与真机验收。
 
 ## Blockers
