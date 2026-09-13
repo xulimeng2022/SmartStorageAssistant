@@ -4,12 +4,12 @@
 > 写入规则：只有主控 Codex 与 Release 流程可以更新；模块 / Review / 测试 Agent 只读，发现过期信息报告主控。
 > 不承载任务管理（任务卡见 `04-任务与验收清单.md` 与 `tasks/`），不写临时日志与命令输出。
 
-- 最近更新：2026-09-13（T-011 完成 1.2.0 历史问题与 A1–A8 代码收口；候选包待真机验收）
+- 最近更新：2026-09-13（T-013 完成 1.2.0 RC 专项回归核验与缺陷返修；候选包待用户真机验收）
 
 ## 当前版本与阶段
 
 - 当前版本：`1.2.0`（versionCode 6，见 `app/build.gradle.kts` 当前实际配置）。
-- 当前阶段：v1.2.0 候选包准备阶段，尚未正式发布；T-011 已进入 `codex/integration`，待真机覆盖升级验收。
+- 当前阶段：v1.2.0 候选包准备阶段，尚未正式发布；T-011 与 T-013 返修已进入 `codex/integration`，待真机覆盖升级验收。
 - Phase 3A — Coordination Infrastructure：`COMPLETE`。
 - Phase 3B — Global Status Reconciliation：`COMPLETE`。
 - Phase 3C — AGENTS Workflow Entry：`COMPLETE`。
@@ -23,6 +23,7 @@
 - Lightweight Resume Validation：`COMPLETE / PASS`。
 - Role State Finalization：`COMPLETE IN T-009 FINAL CHECKPOINT`。
 - T-011 历史问题与 A1–A8 收口：`IMPLEMENTED / 待真机`。
+- T-013 RC 专项回归核验与缺陷收口：`DONE / INTEGRATED / READY_FOR_USER_DEVICE_ACCEPTANCE`；4 个 BLOCKER 已闭环。
 
 ## Baseline 状态
 
@@ -44,11 +45,11 @@
 
 ## 测试与构建状态
 
-- 本轮自动验证：78 个 JVM 单元测试通过；Debug 与签名 Release 构建通过；v4→v5→v6 迁移 SQL 以隔离 SQLite 数据库验证通过。
-- 本轮代码包含 Room v6/索引生命周期、导入事务、照片索引、合并、语音纠错、邮箱、检查更新和完全删除数据。
-- Android Room 仪器测试、真机覆盖升级、真实网络/视觉 API 与完整清理流程尚未执行，不代表已通过真机验收。
+- T-013 集成后自动验证：99 个 JVM 单元测试通过；Debug 与 Release/R8 构建通过；v4→v5→v6 迁移 SQL 以隔离 SQLite 数据库验证通过。
+- 本轮代码包含 Room v6/索引生命周期、导入事务、照片索引、合并、语音纠错、邮箱、检查更新、完全删除数据，以及 T-013 的导入清理、隐私停止、解析和索引隔离修复。
+- Android Room 仪器测试、真机覆盖升级、真实网络/视觉 API 与完整清理流程尚未执行，不代表已通过真机验收；T-013 三方 findings 中仍有少量 IMPORTANT/OPTIONAL（含批量合并中文标点）留在后续体验项。
 
-- 候选包：`app/release/智能收纳助手-1.2.0-rc.apk`，SHA-256 `A3D306334E1BC57874378DEF93FC6F1534515CFB2FCC75F00110E90D76E8EFE2`。
+- 候选包：`app/release/智能收纳助手-1.2.0-rc.apk`，SHA-256 `424A26AC4A25DDDBB31D6180E0DA248CD0824722743A3FFD06CD117D1EC05BFF`；v2+v3 签名校验通过。
 
 ## Lint
 
@@ -57,6 +58,7 @@
 ## 待用户验收
 
 - v1.1.0 覆盖安装候选包的数据保留、单图索引创建/删除、批量合并、语音例子、完全删除数据、检查更新、邮箱、三语言和深色模式仍待真机验收。
+- T-013 修复后的设置页 Dialog、索引动作语义、关闭图片理解后停止后续上传、导入取消边界和清空失败反馈需在真机复验。
 
 ## 已知问题
 
