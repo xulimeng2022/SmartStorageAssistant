@@ -6,9 +6,9 @@
 - Owner: 主控（Coordinator）
 - Risk: Medium
 - Source Branch: `codex/integration`
-- Contract Change: 新增全局 `ai-bridge` Skill；项目仓库后续增加 AI Bridge 指针与最小规则链接，不改 App contract
+- Contract Change: 新增全局 `ai-bridge` Skill；项目仓库增加 AI Bridge 指针与最小规则链接，不改 App contract
 - Cross-module Request: UI / AI / Data 均不直接写 Bridge；继续通过 Coordinator Handoff
-- Execution Order: Google Drive 安装与登录 → bootstrap 唯一路径发现 → 全局 Skill 验证 → Google Drive Bridge 文件 → 仓库指针与规则 → BRIDGE-TEST-001 → Git 验证
+- Execution Order: Google Drive 安装与登录 → bootstrap 唯一路径发现 → 全局 Skill 验证 → Google Drive Bridge 文件 → 仓库指针与规则 → BRIDGE-TEST-001 Phase A → ChatGPT Connector Phase B
 - Handoff Target: 主控（Coordinator）
 
 ## Task Boundary
@@ -21,48 +21,55 @@
 
 ## Acceptance Criteria
 
-- [ ] Google Drive for Desktop 已安装并完成登录，使用 ChatGPT Connector 可访问的账号。
-- [ ] 唯一 `_bootstrap_*` 目录在本地命中且只命中一次。
-- [ ] 确认实际 Google Drive 本地根目录，未猜盘符或 Mirror / Stream 路径。
-- [ ] 建立 `AI-Bridge/projects/github.com__xulimeng2022__smartstorageassistant/` 和五个普通 Markdown 文件。
-- [ ] 全局 `ai-bridge` Skill 通过实际可用的验证；验证器不可用时完成并记录静态验证限制。
-- [ ] 建立 `docs/coordination/AI_BRIDGE.md` 和最小 AGENTS / WORKFLOW 入口。
-- [ ] `BRIDGE-TEST-001` Phase A 通过：本地读写、状态转换、REPORT、BLOCKERS、Git 验证。
-- [ ] 明确标记 Phase B 的 ChatGPT Connector 云端可见性等待外部用户验证。
-- [ ] 去重、错误 ID、项目隔离测试通过。
-- [ ] 不 Push、不 Tag、不 Release、不修改 App / CC Switch / DeepSeek。
+- [x] Google Drive for Desktop 已安装并完成登录。
+- [x] 唯一 `_bootstrap_7f3c9a` 在本地唯一命中。
+- [x] 确认真实同步位置：`G:\我的云端硬盘\AI-Bridge`，未猜盘符或 Mirror / Stream 路径。
+- [x] 已建立 `AI-Bridge/projects/github.com__xulimeng2022__smartstorageassistant/` 和五个普通 Markdown 文件。
+- [x] 全局 `ai-bridge` Skill 结构、模板和静态检查通过；`quick_validate.py` 因 Python 缺少 `PyYAML` 未运行，未安装新依赖。
+- [x] 已建立 `docs/coordination/AI_BRIDGE.md` 和最小 AGENTS / WORKFLOW 入口。
+- [x] `BRIDGE-TEST-001` Phase A 通过：本地读写、状态转换、REPORT、BLOCKERS、Git 验证。
+- [ ] `BRIDGE-TEST-001` Phase B：ChatGPT Connector 外部读取 REPORT / STATUS / BLOCKERS。
+- [x] 去重、错误 ID、项目隔离测试通过。
+- [x] 不 Push、不 Tag、不 Release、不修改 App / CC Switch / DeepSeek。
 
 ## Current State
 
-- Status: `BLOCKED`
-- Google Drive for Desktop: 未安装完成。首次 winget 下载在已达约 118.5 MB 时按下载监控规则停止；winget 进程已退出。
-- Bootstrap: 未提供 `_bootstrap_<随机短 ID>`，无法确认本地同步根目录。
-- Global Skill: 已创建 `C:\Users\XU\.codex\skills\ai-bridge`，包含 `SKILL.md`、`references/protocol.md`、`agents/openai.yaml` 和五个 templates。
-- Skill Validator: `quick_validate.py` 首次运行因 Python 环境缺少 `PyYAML` 未执行成功；未安装新依赖，待静态/可用环境验证。
-- Project Pointer: 尚未创建，避免写入未确认的 Google Drive 路径。
-- Runtime Bridge Files: 尚未创建。
+- Status: `PARTIAL / WAITING_CHATGPT_CONNECTOR_VERIFICATION`
+- Google Drive: installed and signed in; mounted at `G:\我的云端硬盘`.
+- Bootstrap: `_bootstrap_7f3c9a` unique candidate found and removed after confirmation.
+- Google Drive Bridge:
+  `G:\我的云端硬盘\AI-Bridge\projects\github.com__xulimeng2022__smartstorageassistant`
+- `STATUS.md`: `PARTIAL`.
+- `REPORT.md`: `PARTIAL`; Coordinator-side local read/write verification passed.
+- `BLOCKERS.md`: `None`.
+- Global Skill: `C:\Users\XU\.codex\skills\ai-bridge`.
+- Repository pointer: `docs/coordination/AI_BRIDGE.md`.
 - App / CC Switch / DeepSeek: 未修改。
 
-## Next Required User Actions
+## Remaining External Action
 
-1. 决定是否允许重新尝试 Google Drive 下载，或由用户使用官方安装包完成安装。
-2. 安装后由用户登录 Google Drive，不猜测账号或绕过认证。
-3. 在当前 ChatGPT 中通过 Google Drive Connector 创建唯一：
-   `AI-Bridge/_bootstrap_<随机短 ID>/`
-4. bootstrap 同步到本机后继续路径发现和后续初始化。
+1. 回到 ChatGPT，使用 Google Drive Connector 读取：
+   - `REPORT.md`
+   - `STATUS.md`
+   - `BLOCKERS.md`
+2. 返回当前 ChatGPT 的真实读取结果。
+3. 只有外部读取成功，才把 `BRIDGE-TEST-001` 标记为 `COMPLETED`。
 
 ## Rollback
 
 - 删除全局 `C:\Users\XU\.codex\skills\ai-bridge`。
-- 删除 Google Drive 中已创建的当前项目 Bridge 目录。
-- 回滚本任务卡、任务清单条目以及后续 `AI_BRIDGE.md` / AGENTS / WORKFLOW 最小链接。
+- 删除 Google Drive 中 `AI-Bridge/projects/github.com__xulimeng2022__smartstorageassistant`。
+- 回滚 `docs/coordination/AI_BRIDGE.md`、AGENTS / WORKFLOW 最小链接和本任务卡。
 - 不涉及 App、CC Switch 或 DeepSeek 回滚。
+
 ## Implementation Log
 
-- 2026-09-13：创建全局 `ai-bridge` Skill、完整协议和五个模板；静态结构检查通过。`quick_validate.py` 因当前 Python 环境缺少 `PyYAML` 未执行。
-- 2026-09-13：通过 winget 下载 Google Drive；下载监控发现临时目标 initially 0 字节，按规则取消。终止时已保留 118,489,088 字节部分文件，winget 进程已退出。
-- 2026-09-13：建立本任务卡和任务清单登记；尚未创建 Google Drive 项目指针或运行文件。
-- Repository Commits: `ec66492`、`a271852`。
+- 2026-09-13：创建全局 `ai-bridge` Skill、完整协议和模板；结构静态检查通过。
+- 2026-09-13：Google Drive for Desktop 安装并登录；唯一 bootstrap 命中后确认实际同步路径。
+- 2026-09-13：创建 Bridge README、项目目录和五个普通 Markdown 文件。
+- 2026-09-13：建立项目指针和最小 AGENTS / WORKFLOW 链接。
+- 2026-09-13：`BRIDGE-TEST-001` Phase A PASS；去重、错误 ID、项目隔离测试 PASS；STATUS/REPORT 保持 PARTIAL。
+- Repository Commits: `ec66492`、`a271852`、`6e0cd49`、`9e8e971`、`0ef92ed`、`e3cc155`、`4c196e6`。
 
 ## Fallback Record
 

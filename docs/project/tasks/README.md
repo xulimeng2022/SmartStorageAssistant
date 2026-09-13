@@ -4,7 +4,7 @@
 
 - 使用方式：开始 Level 2/3 任务前，把 [../05-单任务卡-TDD](../05-单任务卡-TDD.md) 复制为 `T-编号-简短名称.md`，并在 [../04-任务与验收清单](../04-任务与验收清单.md) 登记状态。
 - 任务完成后：把稳定结论回写对应模块文档与 04；任务卡内的实施日志属于短期信息，可保留在 Git 历史，不迁移到长期知识库。
-- 当前任务卡：BRIDGE-INIT-001 AI Bridge V1 Google Drive（BLOCKED，等待安装/登录与 bootstrap；见 BRIDGE-INIT-001-AI-Bridge-V1.md）。
+- 当前任务卡：BRIDGE-INIT-001 AI Bridge V1 Google Drive（PARTIAL，Phase A PASS，等待 ChatGPT Connector 外部验证；见 BRIDGE-INIT-001-AI-Bridge-V1.md）。
 - 待验收任务卡：T-013 v1.2.0 RC 专项回归核验与缺陷收口（返修闭环，待用户真机；见 T-013-v1.2.0-RC专项回归核验与缺陷收口.md）。
 - 最近完成任务卡：T-014 UI / T-015 AI / T-016 Data 缺陷返修（DONE / INTEGRATED；见对应 `T-0xx-*.md`）。
 - 待验收任务卡：T-011 v1.2.0 历史问题与 A1–A8 收口（已实现，待真机覆盖升级；见 `T-011-v1.2.0历史问题与A1-A8收口.md`）。
