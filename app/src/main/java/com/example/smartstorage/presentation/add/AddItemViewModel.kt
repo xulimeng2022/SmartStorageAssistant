@@ -612,14 +612,20 @@ class AddItemViewModel @Inject constructor(
     /** 打开合并预览；只有至少两条已勾选草稿时生效。 */
     fun startBatchMerge() {
         val selected = _batchSelected.value
-        val merged = BatchDraftOps.merge(_batchItems.value, selected) ?: return
+        val drafts = _batchItems.value
+        val merged = BatchDraftOps.merge(drafts, selected) ?: return
+        val photos = resolveBatchMergePhotoCandidates(
+            drafts = drafts,
+            selectedUids = selected,
+            currentImagePaths = _editState.value.currentImagePaths,
+        )
         _mergePreview.value = BatchMergePreviewState(
             sourceUids = selected,
             name = merged.name,
             location = merged.location,
             description = merged.description,
-            availablePhotoPaths = merged.photoPaths,
-            selectedPhotoPaths = merged.photoPaths,
+            availablePhotoPaths = photos.availablePhotoPaths,
+            selectedPhotoPaths = photos.selectedPhotoPaths,
         )
     }
 
