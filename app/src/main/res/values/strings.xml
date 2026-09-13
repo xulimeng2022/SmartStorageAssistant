@@ -44,7 +44,7 @@
     <string name="about_wechat">微信</string>
     <string name="about_wechat_copied">微信号已复制，请打开微信搜索添加</string>
     <string name="about_website">个人网站</string>
-    <string name="about_email">邮箱</string>
+    <string name="about_email">校园邮箱</string>
     <string name="about_email_copied">邮箱已复制，可粘贴到邮件服务</string>
     <string name="photo_index_retry">重试图片索引</string>
     <string name="photo_index_pending">等待索引</string>

@@ -373,7 +373,7 @@ fun SettingsScreen(
                             // 搜索小贴士：查看 / 重新开启首页搜索提示
                             SettingsItem(
                                 label = stringResource(R.string.settings_searchtips),
-                                value = stringResource(R.string.settings_searchtips_value),
+                                subtitle = stringResource(R.string.settings_searchtips_value),
                                 icon = Icons.Outlined.Help,
                                 onClick = {
                                     doNotRemindTips = !viewModel.isSearchTipsEnabled()
@@ -666,7 +666,7 @@ fun SettingsScreen(
                             // 回收站：进入回收站页面
                             SettingsItem(
                                 label = stringResource(R.string.trash),
-                                value = stringResource(R.string.trash_desc),
+                                subtitle = stringResource(R.string.trash_desc),
                                 icon = Icons.Filled.DeleteSweep,
                                 iconTint = MaterialTheme.colorScheme.error,
                                 onClick = onOpenTrash,
@@ -674,20 +674,20 @@ fun SettingsScreen(
                             // 导出数据：导出所有物品与图片到 ZIP 备份文件
                             SettingsItem(
                                 label = stringResource(R.string.export_data),
-                                value = stringResource(R.string.export_desc),
+                                subtitle = stringResource(R.string.export_desc),
                                 icon = Icons.Outlined.FileDownload,
                                 onClick = { viewModel.onExportClick() },
                             ),
                             // 导入数据：从备份文件恢复数据
                             SettingsItem(
                                 label = stringResource(R.string.import_data),
-                                value = stringResource(R.string.import_desc),
+                                subtitle = stringResource(R.string.import_desc),
                                 icon = Icons.Outlined.FileUpload,
                                 onClick = { openDocumentLauncher.launch(arrayOf("application/zip")) },
                             ),
                             SettingsItem(
                                 label = stringResource(R.string.settings_reset_all),
-                                value = stringResource(R.string.settings_reset_all_desc),
+                                subtitle = stringResource(R.string.settings_reset_all_desc),
                                 icon = Icons.Filled.DeleteForever,
                                 onClick = viewModel::requestResetAllData,
                             ),
@@ -722,7 +722,7 @@ fun SettingsScreen(
                             // 赞助支持：进入捐赠页
                             SettingsItem(
                                 label = stringResource(R.string.donate_entry),
-                                value = stringResource(R.string.donate_desc),
+                                subtitle = stringResource(R.string.donate_desc),
                                 icon = Icons.Outlined.Favorite,
                                 onClick = onOpenDonate,
                             ),
@@ -968,10 +968,11 @@ private fun formatBackupTime(timestamp: Long): String {
 }
 
 /**
- * 设置项数据模型：单行设置项（图标 + 标题 + 可选辅助文字 + 右侧箭头）。
+ * 设置项数据模型：单行设置项（图标 + 标题 + 可选副标题/右侧短状态 + 箭头）。
  *
  * @param label 标题文字
- * @param value 右侧辅助文字（可为空，如「开发中」）
+ * @param subtitle 标题下方的说明文字（可为空）
+ * @param value 右侧短状态文字（可为空，如版本号、当前语言）
  * @param icon 左侧图标
  * @param iconTint 图标颜色（null 时用 onSurfaceVariant）
  * @param enabled 是否可点击（false 表示置灰预留项，点击不生效）
@@ -981,6 +982,7 @@ private fun formatBackupTime(timestamp: Long): String {
  */
 internal data class SettingsItem(
     val label: String,
+    val subtitle: String? = null,
     val value: String? = null,
     val icon: ImageVector,
     val iconTint: Color? = null,
@@ -1043,7 +1045,7 @@ internal fun SettingsGroup(
 }
 
 /**
- * 设置列表项：一行（图标 + 标题 + 辅助文字 + 箭头）+ 可选附加内容 + 分隔线。
+ * 设置列表项：一行（图标 + 标题/副标题 + 可选短状态 + 箭头）+ 可选附加内容 + 分隔线。
  *
  * @param item 设置项数据
  * @param showDivider 是否在底部显示分隔线（最后一项不显示）
@@ -1054,7 +1056,7 @@ internal fun SettingsListItem(
     showDivider: Boolean,
 ) {
     Column {
-        // 主行：图标 + 标题 + 辅助文字 + 右侧箭头
+        // 主行：固定图标 + 可换行标题/副标题 + 可选短状态 + 固定箭头
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1069,18 +1071,30 @@ internal fun SettingsListItem(
                 modifier = Modifier.size(24.dp),
             )
             Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = item.label,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (item.enabled) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
+            Column(
                 modifier = Modifier.weight(1f),
-            )
-            // 右侧辅助文字（如版本号 / 开发中）
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = item.label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (item.enabled) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+                item.subtitle?.let { subtitle ->
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            // 右侧仅承载短状态（如版本号 / 当前语言）
             if (item.value != null) {
+                Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = item.value,
                     style = MaterialTheme.typography.bodyMedium,
@@ -1089,8 +1103,10 @@ internal fun SettingsListItem(
             }
             // 右侧图标：优先使用自定义 trailingIcon（如抽屉旋转箭头），否则可点击项显示默认箭头
             if (item.trailingIcon != null) {
+                Spacer(modifier = Modifier.width(8.dp))
                 item.trailingIcon()
             } else if (item.enabled) {
+                Spacer(modifier = Modifier.width(8.dp))
                 Icon(
                     imageVector = Icons.Outlined.ChevronRight,
                     contentDescription = stringResource(R.string.about_enter),
