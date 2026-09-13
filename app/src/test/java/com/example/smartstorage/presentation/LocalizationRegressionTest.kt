@@ -43,6 +43,20 @@ class LocalizationRegressionTest {
     }
 
     @Test
+    fun emailFallbackCopyMessageDescribesPasteDestination() {
+        val expected = mapOf(
+            "app/src/main/res/values/strings.xml" to "邮箱已复制，可粘贴到邮件服务",
+            "app/src/main/res/values-zh-rTW/strings.xml" to "信箱已複製，可貼到郵件服務",
+            "app/src/main/res/values-en/strings.xml" to
+                "Email copied. You can paste it into an email service.",
+        )
+
+        expected.forEach { (path, message) ->
+            assertEquals(message, parseStrings(path).getValue("about_email_copied"))
+        }
+    }
+
+    @Test
     fun presentationHasNoQuotedChineseLiterals() {
         val presentationDir = projectRoot.resolve("app/src/main/java/com/example/smartstorage/presentation")
         val offenders = mutableListOf<String>()

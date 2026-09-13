@@ -228,15 +228,18 @@ fun ItemDetailScreen(
                                 contentScale = ContentScale.Crop,
                             )
                             val indexStatus = photoIndexStates[path]?.status ?: PhotoIndexStatus.NOT_CREATED
+                            val indexAction = indexStatus.toPhotoIndexAction()
                             TextButton(
                                 onClick = {
-                                    when (indexStatus) {
-                                        PhotoIndexStatus.NOT_CREATED,
-                                        PhotoIndexStatus.FAILED,
+                                    when (indexAction) {
+                                        PhotoIndexAction.CREATE_OR_RETRY,
+                                        PhotoIndexAction.REFRESH,
                                         -> viewModel.requestPhotoIndex(path)
-                                        else -> viewModel.disablePhotoIndex(path)
+                                        PhotoIndexAction.DELETE -> viewModel.disablePhotoIndex(path)
+                                        PhotoIndexAction.NONE -> Unit
                                     }
                                 },
+                                enabled = indexAction != PhotoIndexAction.NONE,
                                 modifier = Modifier
                                     .align(Alignment.BottomStart)
                                     .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.86f)),

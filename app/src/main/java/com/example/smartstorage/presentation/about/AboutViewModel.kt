@@ -85,11 +85,10 @@ class AboutViewModel @Inject constructor(
             labelRes = R.string.about_email,
             value = "xulimeng2026@hnu.edu.cn",
             onClick = {
-                openEmailWithFallback(
-                    context = context,
-                    address = "xulimeng2026@hnu.edu.cn",
-                    fallbackMessageRes = R.string.about_email_copied,
-                )
+                val opened = openEmailWithFallback(context, "xulimeng2026@hnu.edu.cn")
+                if (!opened) {
+                    _uiMessages.trySend(UiMessage.Res(R.string.about_email_copied))
+                }
             },
         ),
     )

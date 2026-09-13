@@ -45,7 +45,7 @@
     <string name="about_wechat_copied">WeChat ID copied. Open WeChat and search to add</string>
     <string name="about_website">Personal website</string>
     <string name="about_email">Email</string>
-    <string name="about_email_copied">Email copied. Open your mail app to contact the author</string>
+    <string name="about_email_copied">Email copied. You can paste it into an email service.</string>
     <string name="photo_index_retry">Retry photo index</string>
     <string name="photo_index_pending">Index queued</string>
     <string name="photo_index_processing">Indexing</string>

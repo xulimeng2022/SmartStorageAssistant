@@ -13,6 +13,25 @@ enum class PhotoIndexStatus {
     OUTDATED,
 }
 
+/** 单图索引按钮允许执行的 UI 动作。 */
+enum class PhotoIndexAction {
+    CREATE_OR_RETRY,
+    REFRESH,
+    DELETE,
+    NONE,
+}
+
+fun PhotoIndexStatus.toPhotoIndexAction(): PhotoIndexAction = when (this) {
+    PhotoIndexStatus.NOT_CREATED,
+    PhotoIndexStatus.FAILED,
+    -> PhotoIndexAction.CREATE_OR_RETRY
+    PhotoIndexStatus.OUTDATED -> PhotoIndexAction.REFRESH
+    PhotoIndexStatus.SUCCESS -> PhotoIndexAction.DELETE
+    PhotoIndexStatus.PENDING,
+    PhotoIndexStatus.PROCESSING,
+    -> PhotoIndexAction.NONE
+}
+
 data class PhotoIndexUiState(
     val status: PhotoIndexStatus,
     val errorKind: String? = null,

@@ -12,6 +12,8 @@ import com.example.smartstorage.data.remote.vision.VisionAnalyzer
 import com.example.smartstorage.data.repository.ImageAiIndexRepository
 import com.example.smartstorage.data.repository.VisualSearchEngine
 import com.example.smartstorage.data.local.prefs.ImageUnderstandingRepository
+import com.example.smartstorage.data.local.prefs.ImageUnderstandingState
+import com.example.smartstorage.data.local.prefs.VisionCapabilityStatus
 import com.example.smartstorage.domain.model.VisualMatch
 import com.example.smartstorage.domain.model.VisualVerificationState
 import com.example.smartstorage.domain.model.Item
@@ -36,6 +38,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+/** 只有用户已开启图片理解且能力探测成功时，才允许发起视觉复核网络请求。 */
+internal fun canVerifyWithImageUnderstanding(state: ImageUnderstandingState): Boolean =
+    state.enabled && state.capability == VisionCapabilityStatus.SUPPORTED
 
 /**
  * 首页（清单）ViewModel：
@@ -120,11 +126,14 @@ class HomeViewModel @Inject constructor(
         _isVerifying.value = true
         viewModelScope.launch {
             val results = _verificationStates.value.toMutableMap()
-            candidates.forEach { candidate ->
+            for (candidate in candidates) {
+                if (!canVerifyWithImageUnderstanding(imageUnderstandingRepository.state.value)) {
+                    break
+                }
                 val bytes = runCatching { java.io.File(candidate.imagePath).readBytes() }.getOrNull()
                 if (bytes == null) {
                     results[candidate.key] = VisualVerificationState(candidate.key, failed = true)
-                    return@forEach
+                    continue
                 }
                 val result = visionAnalyzer.verify(query, bytes)
                 results[candidate.key] = result.fold(
@@ -145,9 +154,7 @@ class HomeViewModel @Inject constructor(
     }
 
     val canVerifyVisualMatches: StateFlow<Boolean> = imageUnderstandingRepository.state
-        .map {
-            it.enabled && it.capability == com.example.smartstorage.data.local.prefs.VisionCapabilityStatus.SUPPORTED
-        }
+        .map(::canVerifyWithImageUnderstanding)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
