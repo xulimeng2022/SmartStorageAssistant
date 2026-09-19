@@ -14,6 +14,15 @@ SmartStorage Assistant is a local-first Android app for recording where personal
 
 **Links:** [GitHub Repository](https://github.com/xulimeng2022/SmartStorageAssistant) · [Project Page](https://xulimeng2026.netlify.app/app/) · [Releases](https://github.com/xulimeng2022/SmartStorageAssistant/releases)
 
+## 📱 App Preview
+
+<p align="center">
+  <img src="docs/images/app-home.jpg" width="22%" alt="Home">
+  <img src="docs/images/app-add-item.jpg" width="22%" alt="Add Item">
+  <img src="docs/images/app-ai-settings.jpg" width="22%" alt="AI Settings">
+  <img src="docs/images/app-data-management.jpg" width="22%" alt="Data Management">
+</p>
+
 ## Core Capabilities
 
 - Natural-language item recording with AI-assisted structured extraction
@@ -35,6 +44,16 @@ Kotlin · Jetpack Compose · Room · Hilt · WorkManager · Kotlin Coroutines ·
 - API credentials are excluded from Git and injected through local configuration
 - Multilingual UI and backup/restore support
 - 71 JVM unit tests cover key AI capability, error-handling, and localization logic
+
+## 🏗️ Development Workflow
+
+The following diagram is a development workflow snapshot for SmartStorageAssistant v1.2.0 and Bridge 1.3.1, showing the collaboration between task coordination, specialized development worktrees, validation, release, and project knowledge management. Arrows indicate relationships, not continuous autonomous execution.
+
+<p align="center">
+  <a href="docs/images/development-workflow.png">
+    <img src="docs/images/development-workflow.png" width="70%" alt="Development Workflow">
+  </a>
+</p>
 
 ## Build / Validation
 
