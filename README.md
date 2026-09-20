@@ -88,7 +88,7 @@
 - QQ：2913895771
 - 微信：xulimeng2021
 - GitHub：[xulimeng2022](https://github.com/xulimeng2022)
-- 个人网站：[xulimeng2026.netlify.app](https://xulimeng2026.netlify.app)
+- 个人网站：[xulimeng2022.github.io](https://xulimeng2022.github.io)
 
 ## 📝 更新记录
 

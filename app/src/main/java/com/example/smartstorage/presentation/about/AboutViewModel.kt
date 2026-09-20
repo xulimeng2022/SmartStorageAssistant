@@ -75,8 +75,8 @@ class AboutViewModel @Inject constructor(
         ContactItem(
             icon = Icons.Outlined.Public,
             labelRes = R.string.about_website,
-            value = "xulimeng2026.netlify.app",
-            onClick = { openUrlWithChooser(context, "https://xulimeng2026.netlify.app") },
+            value = "xulimeng2022.github.io",
+            onClick = { openUrlWithChooser(context, "https://xulimeng2022.github.io") },
         ),
         // 预留扩展位示例（取消注释即可启用）：
         // ContactItem(
