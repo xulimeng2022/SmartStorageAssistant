@@ -12,7 +12,7 @@
 
 SmartStorage Assistant is a local-first Android app for recording where personal items are stored. It supports natural-language item capture, AI-assisted structured extraction, photo attachments, multilingual search, and visual indexing.
 
-**Links:** [GitHub Repository](https://github.com/xulimeng2022/SmartStorageAssistant) · [Project Page](https://xulimeng2026.netlify.app/app/) · [Releases](https://github.com/xulimeng2022/SmartStorageAssistant/releases)
+**Links:** [GitHub Repository](https://github.com/xulimeng2022/SmartStorageAssistant) · [Project Page](https://xulimeng2022.github.io/app/) · [Releases](https://github.com/xulimeng2022/SmartStorageAssistant/releases)
 
 ## 📱 App Preview
 
