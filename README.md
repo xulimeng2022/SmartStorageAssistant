@@ -1,10 +1,68 @@
-# 智能收纳助手
+# SmartStorage Assistant · 智能收纳助手
 
 > 语音记录物品存放位置，再也不用担心找不到东西了。
+>
+> An Android application for intelligent personal item management.
 
 智能收纳助手是一款基于 Android 的轻量级收纳管理工具。用户可以通过文字或键盘语音记录物品名称、存放地点和备注，也可以让 AI 从照片中建立可搜索的视觉索引，帮助找到“只记得长什么样、但没写进名称”的物品。
 
 当前版本：**1.2.0（versionCode 6）**
+
+## Overview
+
+SmartStorage Assistant is a local-first Android app for recording where personal items are stored. It supports natural-language item capture, AI-assisted structured extraction, photo attachments, multilingual search, and visual indexing.
+
+**Links:** [GitHub Repository](https://github.com/xulimeng2022/SmartStorageAssistant) · [Project Page](https://xulimeng2026.netlify.app/app/) · [Releases](https://github.com/xulimeng2022/SmartStorageAssistant/releases)
+
+## 📱 App Preview
+
+<p align="center">
+  <img src="docs/images/app-home.jpg" width="22%" alt="Home">
+  <img src="docs/images/app-add-item.jpg" width="22%" alt="Add Item">
+  <img src="docs/images/app-ai-settings.jpg" width="22%" alt="AI Settings">
+  <img src="docs/images/app-data-management.jpg" width="22%" alt="Data Management">
+</p>
+
+## Core Capabilities
+
+- Natural-language item recording with AI-assisted structured extraction
+- Local-first item, photo, and visual-index management
+- Image-based visual search with optional manual Top-5 AI recheck
+- Multilingual interface and ZIP backup/restore
+- Privacy control for image understanding and encrypted API key storage
+
+## Tech Stack
+
+Kotlin · Jetpack Compose · Room · Hilt · WorkManager · Kotlin Coroutines · OkHttp · DataStore · AndroidX Security Crypto · Coil · OpenAI-compatible LLM / Vision APIs
+
+## Engineering Highlights
+
+- Local-first data and visual-index management
+- AI parsing and indexing failures do not block normal item persistence
+- Structured visual metadata is stored locally after image analysis
+- Manual Top-5 image verification reduces unnecessary image uploads
+- API credentials are excluded from Git and injected through local configuration
+- Multilingual UI and backup/restore support
+- 71 JVM unit tests cover key AI capability, error-handling, and localization logic
+
+## 🏗️ Development Workflow
+
+The following diagram is a development workflow snapshot for SmartStorageAssistant v1.2.0 and Bridge 1.3.1, showing the collaboration between task coordination, specialized development worktrees, validation, release, and project knowledge management. Arrows indicate relationships, not continuous autonomous execution.
+
+<p align="center">
+  <a href="docs/images/development-workflow.png">
+    <img src="docs/images/development-workflow.png" width="70%" alt="Development Workflow">
+  </a>
+</p>
+
+## Build / Validation
+
+- Current release: **v1.2.0 (versionCode 6)**
+- JVM unit tests: 71 passing
+- Debug and Release builds: passing
+- Device acceptance: pending
+
+Detailed build and validation notes are provided below.
 
 ## ✨ 主要功能
 
@@ -18,7 +76,7 @@
 - ✅ **Top-5 视觉复核**：本地搜索完成后，用户可手动点击“AI 图片复核”，最多上传 5 个候选照片做二次判断。
 - 🔒 **隐私开关**：AI 图片理解默认关闭；首次开启前显示图片上传说明并探测当前模型能力。
 - 🗑️ **回收站**：删除物品先软删除，可恢复；永久删除时同步清理照片和视觉索引。
-- 🌙 **深色模式**：跟随系统或手动切换，采用固定微信式深灰层次。
+- 🌙 **深色模式**：跟随系统或手动切换，采用固定深灰层次。
 - 🌐 **多语言**：简体中文、繁體中文、English，支持跟随系统和手动切换；Toast/Snackbar 等临时提示与界面同语言，切换后立即生效。
 - 💾 **备份恢复**：导出 ZIP，支持覆盖/合并导入；备份格式 1.1 可包含正常物品的视觉索引。
 
@@ -85,8 +143,7 @@
 ## 📧 联系方式
 
 - 作者：徐力萌
-- QQ：2913895771
-- 微信：xulimeng2021
+- 湖南大学：xulimeng2026@hnu.edu.cn
 - GitHub：[xulimeng2022](https://github.com/xulimeng2022)
 - 个人网站：[xulimeng2022.github.io](https://xulimeng2022.github.io)
 
@@ -94,7 +151,7 @@
 
 - **v1.2.0（2026-09-11，versionCode 6）**：修复语言切换后 Toast/Snackbar 等临时提示仍停留在旧语言的问题（临时消息改为“类型化 + 显示层解析”）；修复 DeepSeek V4.1 Flash（`deepseek-flash`）视觉探测误报失败的问题（网络调用移入 IO 线程、探测结果细分为鉴权/额度/限流/网络/超时/服务端/请求参数/模型/响应解析等，负结果不再持久化）；Release APK 启用 v2 + v3 签名。
 - **v1.2.0（2026-09-11，versionCode 5）**：完成三语言本地化收尾；新增 AI 图片理解隐私开关、合成图能力探测、Room v5 图片视觉索引、历史照片索引、暂停/继续/重试、照片内容搜索和 Top-5 手动复核；备份升级到 1.1；模型目录更新到 2026-09-11；免费模型升级为 Qwen3.5-4B。
-- **v1.1.0（2026-09-08，versionCode 4）**：新增三语言切换、微信式深色主题、AI 解析失败两出口、批量照片归属修复、全屏照片缩放预览和 LLM 错误分类。
+- **v1.1.0（2026-09-08，versionCode 4）**：新增三语言切换、深色主题、AI 解析失败两出口、批量照片归属修复、全屏照片缩放预览和 LLM 错误分类。
 - **v1.0.1（versionCode 2）**：逐字模糊搜索、多图附件、全屏照片预览、AI 批量识别与可编辑确认。
 
 ---
